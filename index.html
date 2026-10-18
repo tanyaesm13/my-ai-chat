@@ -162,7 +162,8 @@
     if (audioUnlocked || !('speechSynthesis' in window)) return;
     audioUnlocked = true;
     try {
-      speechSynthesis.cancel();
+      // NOTE: no cancel() here — on iOS a cancel in the same tick swallows
+      // the primer and the engine never unlocks, leaving all later speech silent.
       const primer = new SpeechSynthesisUtterance('Hi');
       primer.volume = 0;
       speechSynthesis.speak(primer);
@@ -182,9 +183,13 @@
     setTimeout(function () {
       if (!voiceOn || !('speechSynthesis' in window)) return;
       const utter = new SpeechSynthesisUtterance(text);
-      if (lumiVoice) utter.voice = lumiVoice;
+      // On iOS, an explicitly-set voice can go silent on some versions —
+      // use the device default there. Elsewhere use the picked voice.
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+      if (lumiVoice && !isIOS) utter.voice = lumiVoice;
       utter.rate = 1;
       utter.pitch = 1.1;
+      utter.volume = 1;
       utter.onstart = () => {
         if (lumiAvatar) lumiAvatar.classList.add('talking');
         const callAvatar = document.getElementById('callAvatar');
@@ -200,7 +205,13 @@
         if (callAvatar) callAvatar.classList.remove('talking');
       };
       utter.onend = stopTalking;
-      utter.onerror = stopTalking;
+      utter.onerror = (ev) => {
+        stopTalking();
+        // Surface the failure in chat so it can be diagnosed.
+        try {
+          addMsg('🔇 Voice error: ' + (ev && ev.error ? ev.error : 'unknown') + '. Check the silent switch and volume, then tap 🎭 again.', 'error');
+        } catch (e) {}
+      };
       try { speechSynthesis.resume(); } catch (e) {}
       speechSynthesis.speak(utter);
     }, 150);
@@ -314,6 +325,9 @@
     const next = enVoices[(pos + 1) % enVoices.length];
     lumiVoice = next;
     voiceIdx = all.indexOf(next);
+    // Tapping the voice button means she wants to hear it — make sure voice is on.
+    voiceOn = true;
+    voiceToggle.textContent = '🔊';
     try { localStorage.setItem('lumi_voice_idx', String(voiceIdx)); } catch (e) {}
     addMsg('🎭 Voice: ' + next.name, 'ai');
     speak("Hi, I'm Lumi!");
