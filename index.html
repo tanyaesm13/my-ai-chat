@@ -16,38 +16,62 @@
     header { padding: 16px; text-align: center; background: #000000; border-bottom: 3px solid #ff2e88; }
     header h1 { margin: 0; font-size: 20px; color: #ff4da6; }
     header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
-    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; animation: float 3s ease-in-out infinite; display: block; margin: 0 auto 8px; }
+    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; animation: float 3s ease-in-out infinite; display: block; margin: 0 auto 8px; cursor: pointer; }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     #lumiAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 18px #ff2e88; }
     @keyframes talkPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
-    #voiceToggle { background: none; border: 1px solid #ff2e88; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; padding: 0; margin-top: 8px; }
+    .hbtns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+    .hbtns button { background: none; border: 1px solid #ff2e88; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; padding: 0; color: #fff; }
+    .hbtns button.wide { width: auto; border-radius: 18px; padding: 0 10px; font-size: 13px; font-weight: 700; }
+    .hbtns button.active { background: #ff2e88; }
     #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #000000; }
     .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; line-height: 1.4; white-space: pre-wrap; }
     .user { align-self: flex-end; background: #ff2e88; color: #fff; }
     .ai { align-self: flex-start; background: #1a1a1a; border: 1px solid #ff2e88; }
     .error { align-self: center; background: #7f1d1d; font-size: 13px; }
+    #chips { display: flex; gap: 8px; padding: 10px 12px 0; background: #000000; justify-content: center; flex-wrap: wrap; }
+    .chip { padding: 8px 14px; border-radius: 18px; border: 1px solid #ff2e88; background: #1a1a1a; color: #ff4da6; font-size: 13px; cursor: pointer; }
+    .chip:active { background: #ff2e88; color: #fff; }
     #form { display: flex; gap: 8px; padding: 12px; background: #000000; border-top: 2px solid #ff2e88; }
     #input { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111111; color: #fff; font-size: 16px; }
     button { padding: 12px 20px; border-radius: 24px; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; }
       button:disabled { opacity: 0.6; }
     #micBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
     #micBtn.listening { background: #ff4da6; box-shadow: 0 0 12px #ff2e88; }
+    #micBtn.flash { animation: micFlash 0.5s ease-in-out 3; }
+    @keyframes micFlash { 0%,100% { box-shadow: 0 0 0 #ff2e88; } 50% { box-shadow: 0 0 18px #ff2e88; background: #ff4da6; } }
+    #locBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
     #contact { text-align: center; padding: 8px; font-size: 13px; background: #000000; }
     #contact a { color: #ff4da6; }
+    body.big-text #chat { font-size: 125%; }
 </style>
 </head>
 <body>
 <header>
-    <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi">
+    <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi" title="Tap to stop">
     <h1>Lumi</h1>
     <p>Ask me anything</p>
-    <button id="voiceToggle" title="Toggle voice">🔊</button>
+    <div class="hbtns">
+        <button id="voiceToggle" title="Toggle voice">🔊</button>
+        <button id="wakeToggle" title="Hey Lumi wake word">🎧</button>
+        <button id="voicePickBtn" title="Pick voice">🎭</button>
+        <button id="spanishBtn" class="wide" title="Toggle Spanish mode">ES</button>
+        <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
+        <button id="exportBtn" title="Export chat">⬇</button>
+        <button id="clearBtn" title="Clear chat">🗑</button>
+    </div>
 </header>
 <div id="chat">
     <div class="msg ai">Hi! I'm Lumi. What would you like to talk about?</div>
 </div>
+<div id="chips">
+    <button type="button" class="chip">Weather near me</button>
+    <button type="button" class="chip">Motivate me</button>
+    <button type="button" class="chip">Help me plan my day</button>
+</div>
 <form id="form">
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
+    <button id="locBtn" type="button" title="Share location with next message">📍</button>
     <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
     <button id="send" type="submit">Send</button>
 </form>
@@ -62,22 +86,38 @@
   const form = document.getElementById('form');
   const input = document.getElementById('input');
   const sendBtn = document.getElementById('send');
+  const GREETING = "Hi! I'm Lumi. What would you like to talk about?";
   let history = [];
   try { history = JSON.parse(localStorage.getItem('lumi_history') || '[]'); } catch (e) { history = []; }
   history = history.filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')).slice(-40);
   // Lumi voice: read replies aloud with the browser's built-in speech synthesis.
   let voiceOn = true;
+  let spanishOn = false;
   const voiceToggle = document.getElementById('voiceToggle');
   const lumiAvatar = document.getElementById('lumiAvatar');
+  let voiceIdx = null;
+  try {
+    const savedVoice = localStorage.getItem('lumi_voice_idx');
+    if (savedVoice !== null && savedVoice !== '') voiceIdx = parseInt(savedVoice, 10);
+  } catch (e) {}
   let lumiVoice = null;
   function pickVoice() {
     if (!('speechSynthesis' in window)) return;
     const voices = speechSynthesis.getVoices();
     if (!voices.length) return;
-    lumiVoice =
-      voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en') && /female|zira|samantha|google uk english female/i.test(v.name)) ||
-      voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) ||
-      null;
+    if (spanishOn) {
+      lumiVoice =
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('es') && /female|paloma|helena|laura|paulina|monica|zira/i.test(v.name)) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('es')) ||
+        null;
+    } else if (voiceIdx !== null && !isNaN(voiceIdx) && voices[voiceIdx]) {
+      lumiVoice = voices[voiceIdx];
+    } else {
+      lumiVoice =
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en') && /female|zira|samantha|google uk english female/i.test(v.name)) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) ||
+        null;
+    }
   }
   pickVoice();
   if ('speechSynthesis' in window) {
@@ -101,6 +141,10 @@
     voiceToggle.textContent = voiceOn ? '🔊' : '🔇';
     if (!voiceOn && 'speechSynthesis' in window) speechSynthesis.cancel();
   });
+  // Tap the avatar to stop Lumi mid-sentence.
+  lumiAvatar.addEventListener('click', () => {
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  });
   function addMsg(text, cls) {
     const div = document.createElement('div');
     div.className = 'msg ' + cls;
@@ -109,10 +153,15 @@
     chat.scrollTop = chat.scrollHeight;
     return div;
   }
+  let pendingLocation = null;
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = input.value.trim();
+    let text = input.value.trim();
     if (!text) return;
+    if (pendingLocation) {
+      text += ' [My location: ' + pendingLocation + ']';
+      pendingLocation = null;
+    }
     addMsg(text, 'user');
     history.push({ role: 'user', content: text });
     input.value = '';
@@ -153,24 +202,142 @@
       alert("Sent! Thank you.");
     }
   });
+  // Suggestion chips: tap one to fill the input and send.
+  document.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      input.value = chip.textContent;
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    });
+  });
+  // Clear chat button: confirm, then wipe chat, history and saved history.
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    if (!confirm('Clear the chat history?')) return;
+    history = [];
+    try { localStorage.removeItem('lumi_history'); } catch (e) {}
+    chat.innerHTML = '';
+    addMsg(GREETING, 'ai');
+  });
+  // Voice picker: cycle through the available English voices, saved in localStorage.
+  document.getElementById('voicePickBtn').addEventListener('click', () => {
+    if (!('speechSynthesis' in window)) {
+      addMsg('Voice output is not supported in this browser.', 'error');
+      return;
+    }
+    const all = speechSynthesis.getVoices();
+    const enVoices = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    if (!enVoices.length) {
+      addMsg('No English voices found on this device.', 'error');
+      return;
+    }
+    const pos = enVoices.indexOf(lumiVoice);
+    const next = enVoices[(pos + 1) % enVoices.length];
+    lumiVoice = next;
+    voiceIdx = all.indexOf(next);
+    try { localStorage.setItem('lumi_voice_idx', String(voiceIdx)); } catch (e) {}
+    addMsg('🎭 Voice: ' + next.name, 'ai');
+    speak("Hi, I'm Lumi!");
+  });
+  // Spanish mode toggle.
+  let micRecognition = null;
+  document.getElementById('spanishBtn').addEventListener('click', () => {
+    spanishOn = !spanishOn;
+    document.getElementById('spanishBtn').classList.toggle('active', spanishOn);
+    history.push({ role: 'user', content: spanishOn ? '[System: respond in Spanish from now on]' : '[System: respond in English from now on]' });
+    try { localStorage.setItem('lumi_history', JSON.stringify(history.slice(-40))); } catch (e) {}
+    pickVoice();
+    if (micRecognition) micRecognition.lang = spanishOn ? 'es-MX' : 'en-US';
+    addMsg(spanishOn ? 'Modo español activado 🇪🇸' : 'English mode 🇺🇸', 'ai');
+  });
+  // Export chat as a .txt file.
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const lines = [];
+    chat.querySelectorAll('.msg').forEach((m) => {
+      lines.push((m.classList.contains('user') ? 'You' : 'Lumi') + ': ' + m.textContent);
+    });
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fname = 'lumi-chat-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.txt';
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+  // Bigger text toggle, saved in localStorage.
+  const bigTextBtn = document.getElementById('bigTextBtn');
+  let bigText = false;
+  try { bigText = localStorage.getItem('lumi_bigtext') === '1'; } catch (e) {}
+  if (bigText) document.body.classList.add('big-text');
+  bigTextBtn.classList.toggle('active', bigText);
+  bigTextBtn.addEventListener('click', () => {
+    bigText = !bigText;
+    document.body.classList.toggle('big-text', bigText);
+    bigTextBtn.classList.toggle('active', bigText);
+    try { localStorage.setItem('lumi_bigtext', bigText ? '1' : '0'); } catch (e) {}
+  });
+  // Location button: attach coords to the next message.
+  const locBtn = document.getElementById('locBtn');
+  if (!('geolocation' in navigator)) {
+    locBtn.style.display = 'none';
+  } else {
+    locBtn.addEventListener('click', () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          pendingLocation = pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
+          addMsg('📍 Location ready — it will go with your next message.', 'ai');
+        },
+        () => { addMsg('Location not available.', 'error'); },
+        { timeout: 10000 }
+      );
+    });
+  }
   // Voice input: talk instead of typing, using the browser's built-in SpeechRecognition.
+  // Also handles the "Hey Lumi" wake-word toggle (continuous listening).
   (function () {
     const micBtn = document.getElementById('micBtn');
+    const wakeToggle = document.getElementById('wakeToggle');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       micBtn.style.display = 'none';
+      if (wakeToggle) wakeToggle.style.display = 'none';
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    micRecognition = recognition;
+    recognition.lang = spanishOn ? 'es-MX' : 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     let listening = false;
+    let wakeOn = false;
+    let wakeHold = false;
+    const wakeRec = new SpeechRecognition();
+    wakeRec.continuous = true;
+    wakeRec.interimResults = true;
+    wakeRec.lang = 'en-US';
+    function startVoiceInput() {
+      if (listening) return;
+      try { recognition.start(); } catch (e) {}
+    }
+    function flashMic() {
+      micBtn.classList.remove('flash');
+      void micBtn.offsetWidth;
+      micBtn.classList.add('flash');
+      setTimeout(() => micBtn.classList.remove('flash'), 1600);
+    }
+    function startWake() {
+      if (wakeOn && !wakeHold) { try { wakeRec.start(); } catch (e) {} }
+    }
+    function stopWake() {
+      try { wakeRec.abort(); } catch (e) {}
+    }
     micBtn.addEventListener('click', () => {
       if (listening) {
         recognition.stop();
       } else {
-        recognition.start();
+        startVoiceInput();
       }
     });
     recognition.addEventListener('start', () => {
@@ -184,12 +351,36 @@
     const stopListening = () => {
       listening = false;
       micBtn.classList.remove('listening');
+      wakeHold = false;
+      startWake();
     };
     recognition.addEventListener('end', stopListening);
     recognition.addEventListener('error', (e) => {
       stopListening();
       if (e.error === 'not-allowed') {
         addMsg('The browser blocked the microphone. You may need to allow microphone access for this site.', 'error');
+      }
+    });
+    wakeRec.addEventListener('result', (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i][0].transcript.toLowerCase().indexOf('hey lumi') !== -1) {
+          wakeHold = true;
+          stopWake();
+          flashMic();
+          startVoiceInput();
+          break;
+        }
+      }
+    });
+    wakeRec.addEventListener('end', () => { startWake(); });
+    wakeToggle.addEventListener('click', () => {
+      wakeOn = !wakeOn;
+      wakeToggle.classList.toggle('active', wakeOn);
+      if (wakeOn) {
+        wakeHold = false;
+        startWake();
+      } else {
+        stopWake();
       }
     });
   })();
