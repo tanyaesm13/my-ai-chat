@@ -154,9 +154,29 @@
   if ('speechSynthesis' in window) {
     speechSynthesis.onvoiceschanged = pickVoice;
   }
+  // iOS audio unlock: iOS Safari blocks speechSynthesis until a user gesture
+  // "unlocks" it, and replies arrive after an async fetch (outside the tap),
+  // so we prime the engine on the first tap/click anywhere on the page.
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked || !('speechSynthesis' in window)) return;
+    audioUnlocked = true;
+    try {
+      speechSynthesis.cancel();
+      const primer = new SpeechSynthesisUtterance(' ');
+      primer.volume = 0;
+      speechSynthesis.speak(primer);
+      speechSynthesis.resume();
+    } catch (e) {}
+  }
+  ['touchend', 'click'].forEach(function (evt) {
+    document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+  });
   function speak(text) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
+    unlockAudio();
     speechSynthesis.cancel();
+    try { speechSynthesis.resume(); } catch (e) {}
     const utter = new SpeechSynthesisUtterance(text);
     if (lumiVoice) utter.voice = lumiVoice;
     utter.rate = 1;
@@ -178,6 +198,17 @@
     utter.onend = stopTalking;
     utter.onerror = stopTalking;
     speechSynthesis.speak(utter);
+    // iOS Safari sometimes pauses in the middle of long replies: keep the
+    // engine alive while it is speaking.
+    try {
+      if (window._lumiResumeTimer) clearInterval(window._lumiResumeTimer);
+      window._lumiResumeTimer = setInterval(function () {
+        try {
+          if (speechSynthesis.speaking) speechSynthesis.resume();
+          else clearInterval(window._lumiResumeTimer);
+        } catch (e) {}
+      }, 4000);
+    } catch (e) {}
   }
   voiceToggle.addEventListener('click', () => {
     voiceOn = !voiceOn;
@@ -199,6 +230,7 @@
   let pendingLocation = null;
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    unlockAudio();
     let text = input.value.trim();
     if (!text) return;
     if (pendingLocation) {
