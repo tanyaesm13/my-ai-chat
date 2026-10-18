@@ -16,10 +16,14 @@
     header { padding: 16px; text-align: center; background: #000000; border-bottom: 3px solid #ff2e88; }
     header h1 { margin: 0; font-size: 20px; color: #ff4da6; }
     header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
-    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; animation: float 3s ease-in-out infinite; display: block; margin: 0 auto 8px; cursor: pointer; }
+    #avatarWrap { position: relative; display: inline-block; margin: 0 auto 8px; animation: float 3s ease-in-out infinite; }
+    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; display: block; cursor: pointer; }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     #lumiAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 18px #ff2e88; }
-    @keyframes talkPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+    @keyframes talkPulse { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.06) rotate(-1.5deg); } }
+    .mouth { position: absolute; left: 50%; bottom: 16%; width: 26%; aspect-ratio: 2 / 1; transform: translateX(-50%) scaleY(0.4); background: rgba(15,0,8,0.92); border-radius: 50%; opacity: 0; pointer-events: none; }
+    #lumiAvatar.talking + .mouth, #callAvatar.talking + .mouth { opacity: 1; animation: mouthTalk 0.45s ease-in-out infinite; }
+    @keyframes mouthTalk { 0%,100% { transform: translateX(-50%) scaleY(0.35); } 50% { transform: translateX(-50%) scaleY(1.1); } }
     .hbtns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
     .hbtns button { background: none; border: 1px solid #ff2e88; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; padding: 0; color: #fff; }
     .hbtns button.wide { width: auto; border-radius: 18px; padding: 0 10px; font-size: 13px; font-weight: 700; }
@@ -44,17 +48,31 @@
     #contact { text-align: center; padding: 8px; font-size: 13px; background: #000000; }
     #contact a { color: #ff4da6; }
     body.big-text #chat { font-size: 125%; }
+    /* Video-call mode: full-screen overlay with a giant animated avatar. */
+    #callOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
+    #callOverlay.open { display: flex; }
+    #callName { margin: 0; font-size: 22px; color: #ff4da6; }
+    #callAvatarWrap { position: relative; display: inline-block; animation: float 4s ease-in-out infinite; }
+    #callAvatar { width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; display: block; }
+    #callAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 30px #ff2e88; }
+    #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
+    #callBtns { display: flex; gap: 20px; }
+    #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #ff2e88; color: #fff; padding: 0; }
 </style>
 </head>
 <body>
 <header>
-    <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi" title="Tap to stop">
+    <div id="avatarWrap">
+        <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi" title="Tap to stop">
+        <div class="mouth"></div>
+    </div>
     <h1>Lumi</h1>
     <p>Ask me anything</p>
     <div class="hbtns">
         <button id="voiceToggle" title="Toggle voice">🔊</button>
         <button id="wakeToggle" title="Hey Lumi wake word">🎧</button>
         <button id="voicePickBtn" title="Pick voice">🎭</button>
+        <button id="callBtn" title="Video call">📹</button>
         <button id="spanishBtn" class="wide" title="Toggle Spanish mode">ES</button>
         <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
         <button id="exportBtn" title="Export chat">⬇</button>
@@ -76,6 +94,19 @@
     <button id="send" type="submit">Send</button>
 </form>
 <div id="contact"><a href="#" id="contactBtn">Contact</a></div>
+<div id="callOverlay">
+    <h2 id="callName">Lumi</h2>
+    <div id="callAvatarWrap">
+        <img id="callAvatar" src="lumi-avatar.webp" alt="Lumi">
+        <div class="mouth"></div>
+    </div>
+    <div id="callCaption">Hi! I'm Lumi. What would you like to talk about?</div>
+    <div id="callBtns">
+        <button id="callMicBtn" type="button" title="Talk">🎤</button>
+        <button id="callSpeakerBtn" type="button" title="Toggle voice">🔊</button>
+        <button id="callCloseBtn" type="button" title="End call">❌</button>
+    </div>
+</div>
 <script>
   // STEP 5: Replace this with your real Cloudflare Worker URL after you deploy it in Step 3.
   // Example: const WORKER_URL = "https://my-ai-chat.your-name.workers.dev";
@@ -130,8 +161,20 @@
     if (lumiVoice) utter.voice = lumiVoice;
     utter.rate = 1;
     utter.pitch = 1.1;
-    utter.onstart = () => { if (lumiAvatar) lumiAvatar.classList.add('talking'); };
-    const stopTalking = () => { if (lumiAvatar) lumiAvatar.classList.remove('talking'); };
+    utter.onstart = () => {
+      if (lumiAvatar) lumiAvatar.classList.add('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.add('talking');
+      if (window.callMode) {
+        const cap = document.getElementById('callCaption');
+        if (cap) cap.textContent = text;
+      }
+    };
+    const stopTalking = () => {
+      if (lumiAvatar) lumiAvatar.classList.remove('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.remove('talking');
+    };
     utter.onend = stopTalking;
     utter.onerror = stopTalking;
     speechSynthesis.speak(utter);
@@ -347,6 +390,7 @@
     recognition.addEventListener('result', (e) => {
       const input = document.getElementById('input');
       input.value = e.results[0][0].transcript;
+      if (window.callMode && form.requestSubmit) form.requestSubmit();
     });
     const stopListening = () => {
       listening = false;
@@ -383,7 +427,40 @@
         stopWake();
       }
     });
+    // Expose the mic button's toggle so video-call mode can reuse the same voice input.
+    window.lumiToggleVoiceInput = () => micBtn.click();
   })();
+  // Video-call mode: full-screen overlay with a giant animated avatar.
+  // Typing is hidden behind the overlay; tap the mic and talk, Lumi answers
+  // in voice plus an on-screen caption.
+  const callOverlay = document.getElementById('callOverlay');
+  const callCaption = document.getElementById('callCaption');
+  const callMicBtn = document.getElementById('callMicBtn');
+  const callSpeakerBtn = document.getElementById('callSpeakerBtn');
+  function latestAiText() {
+    const msgs = chat.querySelectorAll('.msg.ai');
+    return msgs.length ? msgs[msgs.length - 1].textContent : GREETING;
+  }
+  function syncCallSpeaker() { callSpeakerBtn.textContent = voiceToggle.textContent; }
+  function openCall() {
+    window.callMode = true;
+    callCaption.textContent = latestAiText();
+    syncCallSpeaker();
+    if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
+    callOverlay.classList.add('open');
+  }
+  function closeCall() {
+    callOverlay.classList.remove('open');
+    window.callMode = false;
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    lumiAvatar.classList.remove('talking');
+    const ca = document.getElementById('callAvatar');
+    if (ca) ca.classList.remove('talking');
+  }
+  document.getElementById('callBtn').addEventListener('click', openCall);
+  document.getElementById('callCloseBtn').addEventListener('click', closeCall);
+  callMicBtn.addEventListener('click', () => { if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput(); });
+  callSpeakerBtn.addEventListener('click', () => { voiceToggle.click(); syncCallSpeaker(); });
 </script>
 </body>
 </html>
