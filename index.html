@@ -163,7 +163,7 @@
     audioUnlocked = true;
     try {
       speechSynthesis.cancel();
-      const primer = new SpeechSynthesisUtterance(' ');
+      const primer = new SpeechSynthesisUtterance('Hi');
       primer.volume = 0;
       speechSynthesis.speak(primer);
       speechSynthesis.resume();
@@ -175,29 +175,35 @@
   function speak(text) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
     unlockAudio();
-    speechSynthesis.cancel();
+    try { speechSynthesis.cancel(); } catch (e) {}
     try { speechSynthesis.resume(); } catch (e) {}
-    const utter = new SpeechSynthesisUtterance(text);
-    if (lumiVoice) utter.voice = lumiVoice;
-    utter.rate = 1;
-    utter.pitch = 1.1;
-    utter.onstart = () => {
-      if (lumiAvatar) lumiAvatar.classList.add('talking');
-      const callAvatar = document.getElementById('callAvatar');
-      if (callAvatar) callAvatar.classList.add('talking');
-      if (window.callMode) {
-        const cap = document.getElementById('callCaption');
-        if (cap) cap.textContent = text;
-      }
-    };
-    const stopTalking = () => {
-      if (lumiAvatar) lumiAvatar.classList.remove('talking');
-      const callAvatar = document.getElementById('callAvatar');
-      if (callAvatar) callAvatar.classList.remove('talking');
-    };
-    utter.onend = stopTalking;
-    utter.onerror = stopTalking;
-    speechSynthesis.speak(utter);
+    // iOS quirk: speaking in the same tick as cancel() can swallow the
+    // utterance, so queue it just after.
+    setTimeout(function () {
+      if (!voiceOn || !('speechSynthesis' in window)) return;
+      const utter = new SpeechSynthesisUtterance(text);
+      if (lumiVoice) utter.voice = lumiVoice;
+      utter.rate = 1;
+      utter.pitch = 1.1;
+      utter.onstart = () => {
+        if (lumiAvatar) lumiAvatar.classList.add('talking');
+        const callAvatar = document.getElementById('callAvatar');
+        if (callAvatar) callAvatar.classList.add('talking');
+        if (window.callMode) {
+          const cap = document.getElementById('callCaption');
+          if (cap) cap.textContent = text;
+        }
+      };
+      const stopTalking = () => {
+        if (lumiAvatar) lumiAvatar.classList.remove('talking');
+        const callAvatar = document.getElementById('callAvatar');
+        if (callAvatar) callAvatar.classList.remove('talking');
+      };
+      utter.onend = stopTalking;
+      utter.onerror = stopTalking;
+      try { speechSynthesis.resume(); } catch (e) {}
+      speechSynthesis.speak(utter);
+    }, 150);
     // iOS Safari sometimes pauses in the middle of long replies: keep the
     // engine alive while it is speaking.
     try {
@@ -268,7 +274,6 @@
     e.preventDefault();
     if (CONTACT_WEBHOOK_URL === "PASTE_YOUR_MAKE_WEBHOOK_URL_HERE") {
       alert("Contact button is not connected yet (Step 6, optional). Add your Make.com webhook URL to set it up.");
-      return;
     }
     const email = prompt("What email should we reply to?");
     const msg = prompt("What would you like to say?");
