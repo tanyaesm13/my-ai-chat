@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My AI Chat</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #000000; color: #fff; display: flex; flex-direction: column; height: 100dvh; }
+  header { padding: 16px; text-align: center; background: #000000; border-bottom: 3px solid #ff2e88; }
+  header h1 { margin: 0; font-size: 20px; color: #ff4da6; }
+  header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
+  #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #000000; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; line-height: 1.4; white-space: pre-wrap; }
+  .user { align-self: flex-end; background: #ff2e88; color: #fff; }
+  .ai { align-self: flex-start; background: #1a1a1a; border: 1px solid #ff2e88; }
+  .error { align-self: center; background: #7f1d1d; font-size: 13px; }
+  #form { display: flex; gap: 8px; padding: 12px; background: #000000; border-top: 2px solid #ff2e88; }
+  #input { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111111; color: #fff; font-size: 16px; }
+  button { padding: 12px 20px; border-radius: 24px; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; }
+  button:disabled { opacity: 0.6; }
+  #contact { text-align: center; padding: 8px; font-size: 13px; background: #000000; }
+  #contact a { color: #ff4da6; }
+</style>
+</head>
+<body>
+<header>
+  <h1>My AI Chat</h1>
+  <p>Ask me anything</p>
+</header>
+<div id="chat">
+  <div class="msg ai">Hi! I'm your AI assistant. What would you like to talk about?</div>
+</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
+  <button id="send" type="submit">Send</button>
+</form>
+<div id="contact"><a href="#" id="contactBtn">Contact</a></div>
+<script>
+  // STEP 5: Replace this with your real Cloudflare Worker URL after you deploy it in Step 3.
+  // Example: const WORKER_URL = "https://my-ai-chat.your-name.workers.dev";
+  const WORKER_URL = "PASTE_YOUR_WORKER_URL_HERE";
+
+  // STEP 6 (optional): Replace this with your Make.com webhook URL if you add the contact button.
+  const CONTACT_WEBHOOK_URL = "PASTE_YOUR_MAKE_WEBHOOK_URL_HERE";
+
+  const chat = document.getElementById('chat');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+
+  function addMsg(text, cls) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    addMsg(text, 'user');
+    input.value = '';
+    sendBtn.disabled = true;
+
+    if (WORKER_URL === "PASTE_YOUR_WORKER_URL_HERE") {
+      addMsg("Your chat page is ready, but the Worker URL is not connected yet (Step 5). Paste your Cloudflare Worker URL into WORKER_URL in index.html, then re-upload to GitHub.", 'error');
+      sendBtn.disabled = false;
+      return;
+    }
+
+    const thinking = addMsg("Thinking...", 'ai');
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      thinking.textContent = data.reply || data.error || "Sorry, I didn't get a reply.";
+    } catch (err) {
+      thinking.textContent = "Sorry, I couldn't reach the Worker. Check your Worker URL and that the Worker is deployed.";
+    }
+    sendBtn.disabled = false;
+  });
+
+  document.getElementById('contactBtn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (CONTACT_WEBHOOK_URL === "PASTE_YOUR_MAKE_WEBHOOK_URL_HERE") {
+      alert("Contact button is not connected yet (Step 6, optional). Add your Make.com webhook URL to set it up.");
+      return;
+    }
+    const email = prompt("What email should we reply to?");
+    const msg = prompt("What would you like to say?");
+    if (email && msg) {
+      await fetch(CONTACT_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, message: msg }) });
+      alert("Sent! Thank you.");
+    }
+  });
+</script>
+</body>
+</html>
