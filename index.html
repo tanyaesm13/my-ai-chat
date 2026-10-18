@@ -127,7 +127,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history })
+        body: JSON.stringify({ message: text, messages: history })
       });
       const data = await res.json();
       const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
