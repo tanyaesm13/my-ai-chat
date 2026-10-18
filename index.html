@@ -158,6 +158,7 @@
   // "unlocks" it, and replies arrive after an async fetch (outside the tap),
   // so we prime the engine on the first tap/click anywhere on the page.
   let audioUnlocked = false;
+  let priming = false;
   function unlockAudio() {
     if (audioUnlocked || !('speechSynthesis' in window)) return;
     audioUnlocked = true;
@@ -166,9 +167,14 @@
       // the primer and the engine never unlocks, leaving all later speech silent.
       const primer = new SpeechSynthesisUtterance('Hi');
       primer.volume = 0;
+      priming = true;
+      primer.onend = () => { priming = false; };
+      primer.onerror = () => { priming = false; };
       speechSynthesis.speak(primer);
       speechSynthesis.resume();
-    } catch (e) {}
+      // Fallback: never leave the flag stuck if the events don't fire.
+      setTimeout(() => { priming = false; }, 2000);
+    } catch (e) { priming = false; }
   }
   ['touchend', 'click'].forEach(function (evt) {
     document.addEventListener(evt, unlockAudio, { once: true, passive: true });
@@ -176,7 +182,12 @@
   function speak(text) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
     unlockAudio();
-    try { speechSynthesis.cancel(); } catch (e) {}
+    // Don't cancel the unlock primer: on iOS, killing the in-flight primer
+    // can prevent the engine from unlocking, leaving all speech silent.
+    // Only interrupt when real speech is already playing or queued.
+    try {
+      if (!priming && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
+    } catch (e) {}
     try { speechSynthesis.resume(); } catch (e) {}
     // iOS quirk: speaking in the same tick as cancel() can swallow the
     // utterance, so queue it just after.
