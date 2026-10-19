@@ -420,6 +420,16 @@
   ['touchend', 'click'].forEach(function (evt) {
     document.addEventListener(evt, unlockAudio, { once: true, passive: true });
   });
+  // Remove emojis and markdown before speaking, so the voice never
+  // verbalizes them ("smiling face", "asterisk", ...).
+  function cleanForSpeech(t) {
+    return String(t || '')
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
+      .replace(/[*_#`~>|]/g, '')
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
   function speak(text) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
     unlockAudio();
@@ -429,7 +439,7 @@
     // actually queued, and give the engine a beat afterwards on iOS.
     const doSpeak = () => {
     window._lumiHeardStart = false;
-    const utter = new SpeechSynthesisUtterance(text);
+    const utter = new SpeechSynthesisUtterance(cleanForSpeech(text));
     // On iOS, an explicitly-set voice can go silent on some versions —
     // use the device default there. Elsewhere use the picked voice.
     if (lumiVoice && !isIOS) utter.voice = lumiVoice;
