@@ -262,26 +262,19 @@
   function speak(text) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
     unlockAudio();
-    // Same-tick cancel + speak. The old code waited 150ms between them;
-    // on modern iOS that gap lets the engine go idle and swallow the utterance.
-    try { speechSynthesis.cancel(); } catch (e) {}
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+    // iOS quirk: cancel() on the same tick as speak() can swallow the
+    // utterance entirely (no error, no sound). Only cancel when something is
+    // actually queued, and give the engine a beat afterwards on iOS.
+    const doSpeak = () => {
     const utter = new SpeechSynthesisUtterance(text);
     // On iOS, an explicitly-set voice can go silent on some versions —
     // use the device default there. Elsewhere use the picked voice.
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
     if (lumiVoice && !isIOS) utter.voice = lumiVoice;
     utter.rate = 1;
-    utter.pitch = 1.1;
+    // Non-default pitch goes silent on some iOS versions — keep it at 1.
+    utter.pitch = 1;
     utter.volume = 1;
-    utter.onstart = () => {
-      if (lumiAvatar) lumiAvatar.classList.add('talking');
-      const callAvatar = document.getElementById('callAvatar');
-      if (callAvatar) callAvatar.classList.add('talking');
-      if (window.callMode) {
-        const cap = document.getElementById('callCaption');
-        if (cap) cap.textContent = text;
-      }
-    };
     const stopTalking = () => {
       if (lumiAvatar) lumiAvatar.classList.remove('talking');
       const callAvatar = document.getElementById('callAvatar');
@@ -297,6 +290,24 @@
     };
     try { speechSynthesis.resume(); } catch (e) {}
     speechSynthesis.speak(utter);
+    // Watchdog: if the engine never starts (swallowed utterance), say so
+    // plainly instead of failing silently.
+    const _speakWatch = setTimeout(function () {
+      try {
+        if (!speechSynthesis.speaking && !window._lumiHeardStart) {
+          addMsg('🔇 The voice engine did not start. Check the silent switch (it mutes Lumi on iPhone) and volume, then tap 🎭 again.', 'error');
+        }
+      } catch (e) {}
+    }, 2500);
+    utter.onstart = () => { window._lumiHeardStart = true; clearTimeout(_speakWatch);
+      if (lumiAvatar) lumiAvatar.classList.add('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.add('talking');
+      if (window.callMode) {
+        const cap = document.getElementById('callCaption');
+        if (cap) cap.textContent = text;
+      }
+    };
     // iOS Safari sometimes pauses in the middle of long replies: keep the
     // engine alive while it is speaking.
     try {
@@ -308,6 +319,14 @@
         } catch (e) {}
       }, 4000);
     } catch (e) {}
+    }; // end doSpeak
+    if (isIOS && (speechSynthesis.speaking || speechSynthesis.pending)) {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      setTimeout(doSpeak, 120);
+    } else {
+      if (!isIOS) { try { speechSynthesis.cancel(); } catch (e) {} }
+      doSpeak();
+    }
   }
   voiceToggle.addEventListener('click', () => {
     voiceOn = !voiceOn;
