@@ -197,6 +197,23 @@
       greeting: "Hey, I'm Quinn 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up. I deserve a raise, by the way.",
       blurb: 'Social media agent — captions, hashtags, hooks, content ideas.' },
   };
+  // Each agent keeps their OWN conversation history, so Quinn never sees
+  // Lumi's replies and stays in character.
+  function historyKey(id) { return 'lumi_history_' + (id || currentAgent); }
+  function loadHistory(id) {
+    let h = [];
+    try { h = JSON.parse(localStorage.getItem(historyKey(id)) || '[]'); } catch (e) { h = []; }
+    return h.filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')).slice(-40);
+  }
+  function saveHistory() {
+    try { localStorage.setItem(historyKey(), JSON.stringify(history.slice(-40))); } catch (e) {}
+  }
+  function renderHistory() {
+    chat.innerHTML = '';
+    if (!history.length) { addMsg(AGENTS[currentAgent].greeting, 'ai'); return; }
+    history.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'ai'));
+  }
+  let history = [];
   let currentAgent = 'lumi';
   try {
     const saved = localStorage.getItem('lumi_agent');
@@ -237,10 +254,13 @@
   const headerTitle = document.querySelector('header h1');
   const callName = document.getElementById('callName');
   function applyAgent(id, announce) {
+    if (id !== currentAgent) { try { saveHistory(); } catch (e) {} }
     currentAgent = id;
     const a = AGENTS[id];
     if (agentVoice[id] === undefined) agentVoice[id] = pickVoiceFor(id);
     lumiVoice = agentVoice[id] || null;
+    history = loadHistory(id);
+    renderHistory();
     try { localStorage.setItem('lumi_agent', id); } catch (e) {}
     document.getElementById('lumiAvatar').src = a.avatar;
     document.getElementById('lumiAvatar').alt = a.name;
@@ -276,15 +296,8 @@
   document.getElementById('teamClose').addEventListener('click', () => {
     document.getElementById('teamOverlay').classList.remove('open');
   });
+  history = loadHistory(currentAgent);
   applyAgent(currentAgent, false);
-  // If a non-Lumi agent was saved, fix the hardcoded initial greeting.
-  if (currentAgent !== 'lumi') {
-    const first = chat.querySelector('.msg.ai');
-    if (first) first.textContent = AGENTS[currentAgent].greeting;
-  }
-  let history = [];
-  try { history = JSON.parse(localStorage.getItem('lumi_history') || '[]'); } catch (e) { history = []; }
-  history = history.filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')).slice(-40);
   // Lumi voice: read replies aloud with the browser's built-in speech synthesis.
   let voiceOn = true;
   let spanishOn = false;
@@ -455,7 +468,7 @@
       const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
       thinking.textContent = reply;
       history.push({ role: 'assistant', content: reply });
-      try { localStorage.setItem('lumi_history', JSON.stringify(history.slice(-40))); } catch (e) {}
+      saveHistory();
       speak(reply);
     } catch (err) {
       thinking.textContent = "Sorry, I couldn't reach the Worker. Check your Worker URL and that the Worker is deployed.";
@@ -486,9 +499,9 @@
   document.getElementById('clearBtn').addEventListener('click', () => {
     if (!confirm('Clear the chat history?')) return;
     history = [];
-    try { localStorage.removeItem('lumi_history'); } catch (e) {}
-    chat.innerHTML = '';
-    addMsg(AGENTS[currentAgent].greeting, 'ai');
+    try { localStorage.removeItem(historyKey()); } catch (e) {}
+    history = [];
+    renderHistory();
   });
   // Voice picker: cycle through the available English voices, saved in localStorage.
   document.getElementById('voicePickBtn').addEventListener('click', () => {
@@ -520,7 +533,7 @@
     spanishOn = !spanishOn;
     document.getElementById('spanishBtn').classList.toggle('active', spanishOn);
     history.push({ role: 'user', content: spanishOn ? '[System: respond in Spanish from now on]' : '[System: respond in English from now on]' });
-    try { localStorage.setItem('lumi_history', JSON.stringify(history.slice(-40))); } catch (e) {}
+    saveHistory();
     pickVoice();
     if (micRecognition) micRecognition.lang = spanishOn ? 'es-MX' : 'en-US';
     addMsg(spanishOn ? 'Modo español activado 🇪🇸' : 'English mode 🇺🇸', 'ai');
@@ -756,17 +769,20 @@
     async function askAgent(id, text) {
       setSpeaking(id, true);
       meetCaption.textContent = AGENTS[id].name + ' is thinking...';
+      const mh = loadHistory(id);
       try {
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, messages: history, agent: id })
+          body: JSON.stringify({ message: text, messages: mh, agent: id })
         });
         const data = await res.json();
         const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
         meetCaption.innerHTML = '<b>' + AGENTS[id].emoji + ' ' + AGENTS[id].name + ':</b> ' + reply.replace(/</g, '&lt;');
-        history.push({ role: 'assistant', content: AGENTS[id].name + ': ' + reply });
-        try { localStorage.setItem('lumi_history', JSON.stringify(history.slice(-40))); } catch (e) {}
+        mh.push({ role: 'user', content: text });
+        mh.push({ role: 'assistant', content: reply });
+        try { localStorage.setItem(historyKey(id), JSON.stringify(mh.slice(-40))); } catch (e) {}
+        if (id === currentAgent) { history = mh; }
         speak(reply);
       } catch (err) {
         meetCaption.textContent = "Couldn't reach " + AGENTS[id].name + '. Check your connection.';
@@ -780,7 +796,6 @@
       if (!text || meetBusy) return;
       meetBusy = true;
       meetInput.value = '';
-      history.push({ role: 'user', content: text });
       if (meetAgent === 'all') {
         for (const id of Object.keys(AGENTS)) {
           await askAgent(id, '(Keep it to one or two sentences:) ' + text);
