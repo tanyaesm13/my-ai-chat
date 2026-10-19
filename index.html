@@ -69,6 +69,8 @@
     .agentCard h3 { margin: 8px 0 4px; font-size: 16px; }
     .agentCard p { margin: 0; font-size: 12px; opacity: 0.85; line-height: 1.35; }
     #teamClose { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    .agentCard .vlabel { margin-top: 8px; font-size: 12px; opacity: 0.9; }
+    .agentCard .vlabel button { background: none; border: none; padding: 2px 6px; font-size: 14px; cursor: pointer; }
     #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
     /* Team meeting mode: 2x2 agent grid + self camera + captions. */
     #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; flex-direction: column; align-items: center; gap: 10px; padding: 14px; overflow-y: auto; }
@@ -229,6 +231,15 @@
   };
   const agentVoice = {};
   let lumiVoice = null;
+  // Vocal character per agent: even on the same device voice, each agent
+  // sounds distinct. (iOS keeps pitch/rate at 1 — non-default values can go
+  // silent on some iOS versions.)
+  const AGENT_VOICE_STYLE = {
+    lumi:  { pitch: 1.0,  rate: 1.0  },
+    izzy:  { pitch: 0.82, rate: 1.1  },
+    bea:   { pitch: 1.12, rate: 0.95 },
+    quinn: { pitch: 1.28, rate: 1.12 },
+  };
   function pickVoiceFor(agentId) {
     if (!('speechSynthesis' in window)) return null;
     const en = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
@@ -282,15 +293,52 @@
       const card = document.createElement('div');
       card.className = 'agentCard';
       card.dataset.agent = id;
-      card.innerHTML = '<img src="' + a.avatar + '" alt="' + a.name + '"><h3>' + a.emoji + ' ' + a.name + '</h3><p>' + a.blurb + '</p>';
-      card.addEventListener('click', () => {
+      card.innerHTML = '<img src="' + a.avatar + '" alt="' + a.name + '"><h3>' + a.emoji + ' ' + a.name + '</h3><p>' + a.blurb + '</p>' +
+        '<p class="vlabel">🎙 <span id="vlabel-' + id + '">voice</span> <button type="button" class="vprev" data-agent="' + id + '" title="Hear voice">🔊</button> <button type="button" class="vnext" data-agent="' + id + '" title="Change voice">🎭</button></p>';
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.vprev') || e.target.closest('.vnext')) return;
         document.getElementById('teamOverlay').classList.remove('open');
         if (id !== currentAgent) applyAgent(id, true);
       });
       wrap.appendChild(card);
     });
   })();
+  function refreshVoiceLabels() {
+    Object.keys(AGENTS).forEach((id) => {
+      const el = document.getElementById('vlabel-' + id);
+      if (el) el.textContent = (agentVoice[id] && agentVoice[id].name) ? agentVoice[id].name : 'default';
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const prev = e.target.closest('.vprev');
+    const next = e.target.closest('.vnext');
+    if (!prev && !next) return;
+    e.stopPropagation();
+    const id = (prev || next).dataset.agent;
+    const en = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    if (!en.length) return;
+    if (next) {
+      const pos = en.indexOf(agentVoice[id]);
+      const ni = (pos + 1) % en.length;
+      agentVoice[id] = en[ni];
+      try { localStorage.setItem('lumi_voice_' + id, String(ni)); } catch (err) {}
+      if (id === currentAgent) lumiVoice = en[ni];
+      refreshVoiceLabels();
+    }
+    // Preview in that agent's voice + vocal character.
+    const wasAgent = currentAgent;
+    currentAgent = id;
+    const keepVoice = lumiVoice;
+    lumiVoice = agentVoice[id];
+    voiceOn = true; voiceToggle.textContent = '🔊';
+    speak("Hi, I'm " + AGENTS[id].name + "!");
+    currentAgent = wasAgent;
+    lumiVoice = keepVoice;
+  });
+  const _origRefresh = refreshAgentVoices;
+  refreshAgentVoices = function () { _origRefresh(); refreshVoiceLabels(); };
   document.getElementById('teamBtn').addEventListener('click', () => {
+    refreshVoiceLabels();
     document.getElementById('teamOverlay').classList.add('open');
   });
   document.getElementById('teamClose').addEventListener('click', () => {
@@ -364,9 +412,10 @@
     // On iOS, an explicitly-set voice can go silent on some versions —
     // use the device default there. Elsewhere use the picked voice.
     if (lumiVoice && !isIOS) utter.voice = lumiVoice;
-    utter.rate = 1;
-    // Non-default pitch goes silent on some iOS versions — keep it at 1.
-    utter.pitch = 1;
+    const vstyle = (!isIOS && AGENT_VOICE_STYLE[currentAgent]) || { pitch: 1, rate: 1 };
+    utter.rate = vstyle.rate;
+    // Non-default pitch goes silent on some iOS versions — keep it at 1 there.
+    utter.pitch = isIOS ? 1 : vstyle.pitch;
     utter.volume = 1;
     const stopTalking = () => {
       if (lumiAvatar) lumiAvatar.classList.remove('talking');
