@@ -264,7 +264,23 @@
   }
   const headerTitle = document.querySelector('header h1');
   const callName = document.getElementById('callName');
-  function applyAgent(id, announce) {
+  async function pullSharedHistory(id) {
+    // Shared memory lives in the Worker (KV) — every device sees the same
+    // conversation. Falls back to this device's local copy when offline.
+    try {
+      const r = await fetch(WORKER_URL + '?history=' + encodeURIComponent(id), { method: 'GET' });
+      const d = await r.json();
+      if (d && Array.isArray(d.messages) && d.messages.length) {
+        history = d.messages
+          .filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+          .slice(-40);
+        saveHistory();
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  async function applyAgent(id, announce) {
     if (id !== currentAgent) { try { saveHistory(); } catch (e) {} }
     currentAgent = id;
     const a = AGENTS[id];
@@ -284,6 +300,11 @@
       c.classList.toggle('active', c.dataset.agent === id);
     });
     if (announce) addMsg(a.greeting, 'ai');
+    // Quietly refresh from shared memory so this device sees conversations
+    // from her other devices too.
+    if (WORKER_URL.indexOf('PASTE_YOUR') === -1) {
+      pullSharedHistory(id).then((ok) => { if (ok) renderHistory(); });
+    }
   }
   // Build the team picker cards.
   (function buildTeamCards() {
@@ -507,13 +528,23 @@
       return;
     }
     const thinking = addMsg("Thinking...", 'ai');
-    try {
+    async function postOnce() {
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, messages: history, agent: currentAgent })
       });
-      const data = await res.json();
+      return res.json();
+    }
+    try {
+      let data;
+      try {
+        data = await postOnce();
+      } catch (e) {
+        // One automatic retry — transient hiccups shouldn't surface to her.
+        await new Promise(r => setTimeout(r, 2000));
+        data = await postOnce();
+      }
       const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
       thinking.textContent = reply;
       history.push({ role: 'assistant', content: reply });
@@ -846,13 +877,22 @@
       setSpeaking(id, true);
       meetCaption.textContent = AGENTS[id].name + ' is thinking...';
       const mh = loadHistory(id);
-      try {
+      async function meetPostOnce() {
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text, messages: mh, agent: id })
         });
-        const data = await res.json();
+        return res.json();
+      }
+      try {
+        let data;
+        try {
+          data = await meetPostOnce();
+        } catch (e) {
+          await new Promise(r => setTimeout(r, 2000));
+          data = await meetPostOnce();
+        }
         const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
         meetCaption.innerHTML = '<b>' + AGENTS[id].emoji + ' ' + AGENTS[id].name + ':</b> ' + reply.replace(/</g, '&lt;');
         mh.push({ role: 'user', content: text });
