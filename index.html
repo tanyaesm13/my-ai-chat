@@ -58,6 +58,18 @@
     #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
     #callBtns { display: flex; gap: 20px; }
     #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #ff2e88; color: #fff; padding: 0; }
+    /* Agent team picker */
+    #teamOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+    #teamOverlay.open { display: flex; }
+    #teamOverlay h2 { margin: 0; font-size: 20px; color: #ff4da6; }
+    #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
+    .agentCard { background: #1a1a1a; border: 2px solid #ff2e88; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
+    .agentCard.active { background: #ff2e88; }
+    .agentCard img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4da6; }
+    .agentCard h3 { margin: 8px 0 4px; font-size: 16px; }
+    .agentCard p { margin: 0; font-size: 12px; opacity: 0.85; line-height: 1.35; }
+    #teamClose { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
 </style>
 </head>
 <body>
@@ -73,6 +85,7 @@
         <button id="wakeToggle" title="Hey Lumi wake word">🎧</button>
         <button id="voicePickBtn" title="Pick voice">🎭</button>
         <button id="callBtn" title="Video call">📹</button>
+        <button id="teamBtn" title="Lumi's team">👥</button>
         <button id="spanishBtn" class="wide" title="Toggle Spanish mode">ES</button>
         <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
         <button id="exportBtn" title="Export chat">⬇</button>
@@ -94,10 +107,16 @@
     <button id="send" type="submit">Send</button>
 </form>
 <div id="contact"><a href="#" id="contactBtn">Contact</a></div>
+<div id="teamOverlay">
+    <h2>👥 Lumi's Team</h2>
+    <div id="teamCards"></div>
+    <button id="teamClose" type="button">Close</button>
+</div>
 <div id="callOverlay">
     <h2 id="callName">Lumi</h2>
     <div id="callAvatarWrap">
         <img id="callAvatar" src="lumi-avatar.webp" alt="Lumi">
+        <video id="callVideo" loop muted playsinline></video>
         <div class="mouth"></div>
     </div>
     <div id="callCaption">Hi! I'm Lumi. What would you like to talk about?</div>
@@ -118,6 +137,72 @@
   const input = document.getElementById('input');
   const sendBtn = document.getElementById('send');
   const GREETING = "Hi! I'm Lumi. What would you like to talk about?";
+  // Lumi's agent team: each agent has its own persona (in the Worker), avatar, and animated video.
+  const AGENTS = {
+    lumi: { name: 'Lumi', emoji: '🌟', avatar: 'lumi-avatar.webp', video: null,
+      greeting: "Hi! I'm Lumi. What would you like to talk about?",
+      blurb: 'Your main AI assistant — research, writing, planning, everything.' },
+    izzy: { name: 'Izzy', emoji: '📧', avatar: 'izzy-avatar.webp', video: 'izzy-video.mp4',
+      greeting: "Hi, I'm Izzy 📧 — Lumi's email agent. Inbox zero is my love language. What are we writing today?",
+      blurb: 'Email agent — drafts, replies, subject lines, inbox triage.' },
+    bea: { name: 'Bea', emoji: '📅', avatar: 'bea-avatar.webp', video: 'bea-video.mp4',
+      greeting: "Hi, I'm Bea 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan. (And yes, you're taking lunch.)",
+      blurb: 'Booking agent — appointments, calendars, plans, reminders.' },
+    sam: { name: 'Sam', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
+      greeting: "Hey, I'm Sam 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up. I deserve a raise, by the way.",
+      blurb: 'Social media agent — captions, hashtags, hooks, content ideas.' },
+  };
+  let currentAgent = 'lumi';
+  try {
+    const saved = localStorage.getItem('lumi_agent');
+    if (saved && AGENTS[saved]) currentAgent = saved;
+  } catch (e) {}
+  const headerTitle = document.querySelector('header h1');
+  const callName = document.getElementById('callName');
+  function applyAgent(id, announce) {
+    currentAgent = id;
+    const a = AGENTS[id];
+    try { localStorage.setItem('lumi_agent', id); } catch (e) {}
+    document.getElementById('lumiAvatar').src = a.avatar;
+    document.getElementById('lumiAvatar').alt = a.name;
+    document.getElementById('lumiAvatar').title = a.name + ' — tap to stop';
+    if (headerTitle) headerTitle.textContent = a.name;
+    if (callName) callName.textContent = a.name;
+    const ca = document.getElementById('callAvatar');
+    if (ca) { ca.src = a.avatar; ca.alt = a.name; }
+    document.querySelectorAll('.agentCard').forEach((c) => {
+      c.classList.toggle('active', c.dataset.agent === id);
+    });
+    if (announce) addMsg(a.greeting, 'ai');
+  }
+  // Build the team picker cards.
+  (function buildTeamCards() {
+    const wrap = document.getElementById('teamCards');
+    Object.keys(AGENTS).forEach((id) => {
+      const a = AGENTS[id];
+      const card = document.createElement('div');
+      card.className = 'agentCard';
+      card.dataset.agent = id;
+      card.innerHTML = '<img src="' + a.avatar + '" alt="' + a.name + '"><h3>' + a.emoji + ' ' + a.name + '</h3><p>' + a.blurb + '</p>';
+      card.addEventListener('click', () => {
+        document.getElementById('teamOverlay').classList.remove('open');
+        if (id !== currentAgent) applyAgent(id, true);
+      });
+      wrap.appendChild(card);
+    });
+  })();
+  document.getElementById('teamBtn').addEventListener('click', () => {
+    document.getElementById('teamOverlay').classList.add('open');
+  });
+  document.getElementById('teamClose').addEventListener('click', () => {
+    document.getElementById('teamOverlay').classList.remove('open');
+  });
+  applyAgent(currentAgent, false);
+  // If a non-Lumi agent was saved, fix the hardcoded initial greeting.
+  if (currentAgent !== 'lumi') {
+    const first = chat.querySelector('.msg.ai');
+    if (first) first.textContent = AGENTS[currentAgent].greeting;
+  }
   let history = [];
   try { history = JSON.parse(localStorage.getItem('lumi_history') || '[]'); } catch (e) { history = []; }
   history = history.filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')).slice(-40);
@@ -154,27 +239,22 @@
   if ('speechSynthesis' in window) {
     speechSynthesis.onvoiceschanged = pickVoice;
   }
-  // iOS audio unlock: iOS Safari blocks speechSynthesis until a user gesture
-  // "unlocks" it, and replies arrive after an async fetch (outside the tap),
-  // so we prime the engine on the first tap/click anywhere on the page.
+  // iOS audio unlock: iOS Safari needs the page to have received user
+  // interaction before speechSynthesis will talk. We used to prime the
+  // engine with a silent (volume 0) utterance on the first tap, but on some
+  // iOS versions a zero-volume utterance wedges the speech queue: everything
+  // spoken afterwards — even inside a tap handler — queues behind it forever
+  // and never plays, with no error. Total silence, exactly the reported bug.
+  // So the unlock is now gesture bookkeeping only: no silent speech.
   let audioUnlocked = false;
-  let priming = false;
   function unlockAudio() {
     if (audioUnlocked || !('speechSynthesis' in window)) return;
     audioUnlocked = true;
     try {
-      // NOTE: no cancel() here — on iOS a cancel in the same tick swallows
-      // the primer and the engine never unlocks, leaving all later speech silent.
-      const primer = new SpeechSynthesisUtterance('Hi');
-      primer.volume = 0;
-      priming = true;
-      primer.onend = () => { priming = false; };
-      primer.onerror = () => { priming = false; };
-      speechSynthesis.speak(primer);
+      // Force the voice list to load and make sure the engine isn't paused.
+      speechSynthesis.getVoices();
       speechSynthesis.resume();
-      // Fallback: never leave the flag stuck if the events don't fire.
-      setTimeout(() => { priming = false; }, 2000);
-    } catch (e) { priming = false; }
+    } catch (e) {}
   }
   ['touchend', 'click'].forEach(function (evt) {
     document.addEventListener(evt, unlockAudio, { once: true, passive: true });
@@ -182,50 +262,41 @@
   function speak(text) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
     unlockAudio();
-    // Don't cancel the unlock primer: on iOS, killing the in-flight primer
-    // can prevent the engine from unlocking, leaving all speech silent.
-    // Only interrupt when real speech is already playing or queued.
-    try {
-      if (!priming && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
-    } catch (e) {}
+    // Same-tick cancel + speak. The old code waited 150ms between them;
+    // on modern iOS that gap lets the engine go idle and swallow the utterance.
+    try { speechSynthesis.cancel(); } catch (e) {}
+    const utter = new SpeechSynthesisUtterance(text);
+    // On iOS, an explicitly-set voice can go silent on some versions —
+    // use the device default there. Elsewhere use the picked voice.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+    if (lumiVoice && !isIOS) utter.voice = lumiVoice;
+    utter.rate = 1;
+    utter.pitch = 1.1;
+    utter.volume = 1;
+    utter.onstart = () => {
+      if (lumiAvatar) lumiAvatar.classList.add('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.add('talking');
+      if (window.callMode) {
+        const cap = document.getElementById('callCaption');
+        if (cap) cap.textContent = text;
+      }
+    };
+    const stopTalking = () => {
+      if (lumiAvatar) lumiAvatar.classList.remove('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.remove('talking');
+    };
+    utter.onend = stopTalking;
+    utter.onerror = (ev) => {
+      stopTalking();
+      // Surface the failure in chat so it can be diagnosed.
+      try {
+        addMsg('🔇 Voice error: ' + (ev && ev.error ? ev.error : 'unknown') + '. Check the silent switch and volume, then tap 🎭 again.', 'error');
+      } catch (e) {}
+    };
     try { speechSynthesis.resume(); } catch (e) {}
-    // iOS quirk: speaking in the same tick as cancel() can swallow the
-    // utterance, so queue it just after.
-    setTimeout(function () {
-      if (!voiceOn || !('speechSynthesis' in window)) return;
-      const utter = new SpeechSynthesisUtterance(text);
-      // On iOS, an explicitly-set voice can go silent on some versions —
-      // use the device default there. Elsewhere use the picked voice.
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
-      if (lumiVoice && !isIOS) utter.voice = lumiVoice;
-      utter.rate = 1;
-      utter.pitch = 1.1;
-      utter.volume = 1;
-      utter.onstart = () => {
-        if (lumiAvatar) lumiAvatar.classList.add('talking');
-        const callAvatar = document.getElementById('callAvatar');
-        if (callAvatar) callAvatar.classList.add('talking');
-        if (window.callMode) {
-          const cap = document.getElementById('callCaption');
-          if (cap) cap.textContent = text;
-        }
-      };
-      const stopTalking = () => {
-        if (lumiAvatar) lumiAvatar.classList.remove('talking');
-        const callAvatar = document.getElementById('callAvatar');
-        if (callAvatar) callAvatar.classList.remove('talking');
-      };
-      utter.onend = stopTalking;
-      utter.onerror = (ev) => {
-        stopTalking();
-        // Surface the failure in chat so it can be diagnosed.
-        try {
-          addMsg('🔇 Voice error: ' + (ev && ev.error ? ev.error : 'unknown') + '. Check the silent switch and volume, then tap 🎭 again.', 'error');
-        } catch (e) {}
-      };
-      try { speechSynthesis.resume(); } catch (e) {}
-      speechSynthesis.speak(utter);
-    }, 150);
+    speechSynthesis.speak(utter);
     // iOS Safari sometimes pauses in the middle of long replies: keep the
     // engine alive while it is speaking.
     try {
@@ -279,7 +350,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, messages: history })
+        body: JSON.stringify({ message: text, messages: history, agent: currentAgent })
       });
       const data = await res.json();
       const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
@@ -318,7 +389,7 @@
     history = [];
     try { localStorage.removeItem('lumi_history'); } catch (e) {}
     chat.innerHTML = '';
-    addMsg(GREETING, 'ai');
+    addMsg(AGENTS[currentAgent].greeting, 'ai');
   });
   // Voice picker: cycle through the available English voices, saved in localStorage.
   document.getElementById('voicePickBtn').addEventListener('click', () => {
@@ -358,7 +429,7 @@
   document.getElementById('exportBtn').addEventListener('click', () => {
     const lines = [];
     chat.querySelectorAll('.msg').forEach((m) => {
-      lines.push((m.classList.contains('user') ? 'You' : 'Lumi') + ': ' + m.textContent);
+      lines.push((m.classList.contains('user') ? 'You' : AGENTS[currentAgent].name) + ': ' + m.textContent);
     });
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -501,19 +572,34 @@
   const callSpeakerBtn = document.getElementById('callSpeakerBtn');
   function latestAiText() {
     const msgs = chat.querySelectorAll('.msg.ai');
-    return msgs.length ? msgs[msgs.length - 1].textContent : GREETING;
+    return msgs.length ? msgs[msgs.length - 1].textContent : AGENTS[currentAgent].greeting;
   }
   function syncCallSpeaker() { callSpeakerBtn.textContent = voiceToggle.textContent; }
   function openCall() {
     window.callMode = true;
     callCaption.textContent = latestAiText();
     syncCallSpeaker();
+    // Show the agent's animated video if it has one, else the static avatar.
+    const a = AGENTS[currentAgent];
+    const cv = document.getElementById('callVideo');
+    const ca = document.getElementById('callAvatar');
+    if (a.video && cv) {
+      cv.src = a.video;
+      cv.style.display = 'block';
+      if (ca) ca.style.display = 'none';
+      cv.play().catch(() => {});
+    } else {
+      if (cv) { cv.pause(); cv.style.display = 'none'; cv.removeAttribute('src'); }
+      if (ca) ca.style.display = 'block';
+    }
     if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
     callOverlay.classList.add('open');
   }
   function closeCall() {
     callOverlay.classList.remove('open');
     window.callMode = false;
+    const cv = document.getElementById('callVideo');
+    if (cv) { cv.pause(); }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     lumiAvatar.classList.remove('talking');
     const ca = document.getElementById('callAvatar');
