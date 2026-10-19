@@ -108,7 +108,7 @@
     <p>Ask me anything</p>
     <div class="hbtns">
         <button id="voiceToggle" title="Toggle voice">🔊</button>
-        <button id="wakeToggle" title="Hey Lumi wake word">🎧</button>
+        <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Izzy, Hey Bea, Hey Quinn">🎧</button>
         <button id="voicePickBtn" title="Pick voice">🎭</button>
         <button id="callBtn" title="Video call">📹</button>
         <button id="teamBtn" title="Lumi's team">👥</button>
@@ -706,12 +706,32 @@
         addMsg('The browser blocked the microphone. You may need to allow microphone access for this site.', 'error');
       }
     });
+    // Each agent has their own wake phrase — saying it switches to them first.
+    const WAKE_PHRASES = {
+      lumi: ['hey lumi'],
+      izzy: ['hey izzy', 'hey issy'],
+      bea: ['hey bea', 'hey bee', 'hey b'],
+      quinn: ['hey quinn', 'hey queen'],
+    };
+    function wakeAgentFor(phrase) {
+      const t = phrase.toLowerCase();
+      for (const id of Object.keys(WAKE_PHRASES)) {
+        if (WAKE_PHRASES[id].some(p => t.indexOf(p) !== -1)) return id;
+      }
+      return null;
+    }
     wakeRec.addEventListener('result', (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i][0].transcript.toLowerCase().indexOf('hey lumi') !== -1) {
+        const heard = e.results[i][0].transcript;
+        const id = wakeAgentFor(heard);
+        if (id) {
           wakeHold = true;
           stopWake();
           flashMic();
+          // Talk to the agent she named: in a team meeting, direct the
+          // meeting; otherwise switch the main chat to them.
+          if (window.meetMode && window.meetSelectAgent) window.meetSelectAgent(id);
+          else if (id !== currentAgent) applyAgent(id, false);
           startVoiceInput();
           break;
         }
@@ -806,6 +826,13 @@
       meetGrid.appendChild(tile);
       tiles[id] = tile;
     });
+    window.meetSelectAgent = (id) => {
+      if (!AGENTS[id]) return;
+      meetAgent = id;
+      meetEveryone.classList.remove('active');
+      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
+      meetCaption.textContent = AGENTS[id].name + ' is listening...';
+    };
     meetEveryone.addEventListener('click', () => {
       const on = meetEveryone.classList.toggle('active');
       meetAgent = on ? 'all' : 'lumi';
