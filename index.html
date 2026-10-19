@@ -70,6 +70,30 @@
     .agentCard p { margin: 0; font-size: 12px; opacity: 0.85; line-height: 1.35; }
     #teamClose { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
+    /* Team meeting mode: 2x2 agent grid + self camera + captions. */
+    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; flex-direction: column; align-items: center; gap: 10px; padding: 14px; overflow-y: auto; }
+    #meetOverlay.open { display: flex; }
+    #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #ff4da6; }
+    #meetHint { margin: 0; font-size: 13px; color: #bbb; text-align: center; }
+    #meetGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; }
+    .meetTile { position: relative; border-radius: 16px; overflow: hidden; border: 3px solid #333; background: #111; cursor: pointer; aspect-ratio: 1; padding: 0; }
+    .meetTile video, .meetTile img.mtile { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .meetTile .meetLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 4px; background: rgba(0,0,0,0.68); color: #fff; font-size: 14px; text-align: center; }
+    .meetTile.selected { border-color: #ff2e88; }
+    .meetTile.speaking { border-color: #ff2e88; animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 24px #ff2e88; }
+    #meetRow { display: flex; gap: 10px; align-items: center; width: 100%; max-width: 520px; }
+    #meetSelfWrap { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
+    #meetSelfVideo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4da6; background: #111; display: none; }
+    #meetSelfOff { width: 84px; height: 84px; border-radius: 50%; background: #1a1a1a; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+    #meetEveryone { flex: 1; border-radius: 24px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; padding: 10px; font-size: 15px; cursor: pointer; }
+    #meetEveryone.active { background: #ff2e88; }
+    #meetCaption { width: 100%; max-width: 520px; min-height: 64px; max-height: 22vh; overflow-y: auto; font-size: 15px; line-height: 1.45; color: #fff; padding: 12px 16px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; }
+    #meetForm { display: flex; gap: 8px; width: 100%; max-width: 520px; align-items: center; }
+    #meetInput { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111; color: #fff; font-size: 16px; }
+    #meetForm button { width: 52px; height: 52px; border-radius: 50%; font-size: 20px; padding: 0; flex-shrink: 0; }
+    #meetCamBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
+    #meetCloseBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
+    #meetStartBtn { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 10px 22px; font-size: 15px; cursor: pointer; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -110,7 +134,28 @@
 <div id="teamOverlay">
     <h2>👥 Lumi's Team</h2>
     <div id="teamCards"></div>
+    <button id="meetStartBtn" type="button">🎬 Start team meeting</button>
     <button id="teamClose" type="button">Close</button>
+</div>
+<div id="meetOverlay">
+    <h2>🎬 Team Meeting</h2>
+    <p id="meetHint">Tap an agent to direct your question — or tap Everyone and get all four takes.</p>
+    <div id="meetGrid"></div>
+    <div id="meetRow">
+        <div id="meetSelfWrap">
+            <video id="meetSelfVideo" autoplay muted playsinline></video>
+            <div id="meetSelfOff">🙂</div>
+        </div>
+        <button id="meetEveryone" type="button">🌟 Everyone answers</button>
+    </div>
+    <div id="meetCaption">Pick who answers, then ask away.</div>
+    <div id="meetForm">
+        <button id="meetMicBtn" type="button" title="Talk">🎤</button>
+        <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
+        <button id="meetSendBtn" type="button" title="Send">➤</button>
+        <button id="meetCamBtn" type="button" title="Toggle your camera">📷</button>
+        <button id="meetCloseBtn" type="button" title="Leave meeting">❌</button>
+    </div>
 </div>
 <div id="callOverlay">
     <h2 id="callName">Lumi</h2>
@@ -540,8 +585,14 @@
       micBtn.classList.add('listening');
     });
     recognition.addEventListener('result', (e) => {
+      const transcript = e.results[0][0].transcript;
+      if (window.meetMode) {
+        document.getElementById('meetInput').value = transcript;
+        if (window.meetSendFromInput) window.meetSendFromInput();
+        return;
+      }
       const input = document.getElementById('input');
-      input.value = e.results[0][0].transcript;
+      input.value = transcript;
       if (window.callMode && form.requestSubmit) form.requestSubmit();
     });
     const stopListening = () => {
@@ -628,6 +679,134 @@
   document.getElementById('callCloseBtn').addEventListener('click', closeCall);
   callMicBtn.addEventListener('click', () => { if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput(); });
   callSpeakerBtn.addEventListener('click', () => { voiceToggle.click(); syncCallSpeaker(); });
+  // Team meeting mode: 2x2 grid of the agents, tap one (or Everyone) to
+  // direct your question. Your camera preview is optional and stays on-device.
+  (function () {
+    const meetOverlay = document.getElementById('meetOverlay');
+    const meetGrid = document.getElementById('meetGrid');
+    const meetCaption = document.getElementById('meetCaption');
+    const meetInput = document.getElementById('meetInput');
+    const meetEveryone = document.getElementById('meetEveryone');
+    let meetAgent = 'lumi';
+    const tiles = {};
+    Object.keys(AGENTS).forEach((id) => {
+      const a = AGENTS[id];
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'meetTile' + (id === meetAgent ? ' selected' : '');
+      tile.dataset.agent = id;
+      const media = a.video
+        ? '<video loop muted playsinline preload="metadata" src="' + a.video + '"></video>'
+        : '<img class="mtile" src="' + a.avatar + '" alt="' + a.name + '">';
+      tile.innerHTML = media + '<div class="meetLabel">' + a.emoji + ' ' + a.name + '</div>';
+      tile.addEventListener('click', () => {
+        meetAgent = id;
+        meetEveryone.classList.remove('active');
+        Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
+        meetCaption.textContent = a.name + ' will answer next.';
+      });
+      meetGrid.appendChild(tile);
+      tiles[id] = tile;
+    });
+    meetEveryone.addEventListener('click', () => {
+      const on = meetEveryone.classList.toggle('active');
+      meetAgent = on ? 'all' : 'lumi';
+      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', !on && k === 'lumi'));
+      meetCaption.textContent = on ? 'Everyone will weigh in.' : 'Lumi will answer next.';
+    });
+    function setSpeaking(id, on) {
+      if (tiles[id]) tiles[id].classList.toggle('speaking', !!on);
+    }
+    async function askAgent(id, text) {
+      setSpeaking(id, true);
+      meetCaption.textContent = AGENTS[id].name + ' is thinking...';
+      try {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, messages: history, agent: id })
+        });
+        const data = await res.json();
+        const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
+        meetCaption.innerHTML = '<b>' + AGENTS[id].emoji + ' ' + AGENTS[id].name + ':</b> ' + reply.replace(/</g, '&lt;');
+        history.push({ role: 'assistant', content: AGENTS[id].name + ': ' + reply });
+        try { localStorage.setItem('lumi_history', JSON.stringify(history.slice(-40))); } catch (e) {}
+        speak(reply);
+      } catch (err) {
+        meetCaption.textContent = "Couldn't reach " + AGENTS[id].name + '. Check your connection.';
+      }
+      // Visual speaking pulse sized to the reply; TTS end also clears it.
+      setTimeout(() => setSpeaking(id, false), 4000);
+    }
+    let meetBusy = false;
+    async function meetSend() {
+      const text = meetInput.value.trim();
+      if (!text || meetBusy) return;
+      meetBusy = true;
+      meetInput.value = '';
+      history.push({ role: 'user', content: text });
+      if (meetAgent === 'all') {
+        for (const id of Object.keys(AGENTS)) {
+          await askAgent(id, '(Keep it to one or two sentences:) ' + text);
+        }
+      } else {
+        await askAgent(meetAgent, text);
+      }
+      meetBusy = false;
+    }
+    window.meetSendFromInput = () => { meetSend(); };
+    document.getElementById('meetSendBtn').addEventListener('click', meetSend);
+    meetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); meetSend(); } });
+    document.getElementById('meetMicBtn').addEventListener('click', () => {
+      if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput();
+    });
+    // Self camera (stays on-device; toggle on/off).
+    let meetStream = null;
+    const selfVideo = document.getElementById('meetSelfVideo');
+    const selfOff = document.getElementById('meetSelfOff');
+    const camBtn = document.getElementById('meetCamBtn');
+    function stopCam() {
+      if (meetStream) { meetStream.getTracks().forEach((t) => t.stop()); meetStream = null; }
+      selfVideo.srcObject = null;
+      selfVideo.style.display = 'none';
+      selfOff.style.display = 'flex';
+      camBtn.textContent = '📷';
+    }
+    camBtn.addEventListener('click', async () => {
+      if (meetStream) { stopCam(); return; }
+      try {
+        meetStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        selfVideo.srcObject = meetStream;
+        selfVideo.style.display = 'block';
+        selfOff.style.display = 'none';
+        camBtn.textContent = '📷❌';
+      } catch (e) {
+        meetCaption.textContent = 'Camera unavailable — the browser blocked it or this device has none.';
+      }
+    });
+    function openMeet() {
+      window.meetMode = true;
+      document.getElementById('teamOverlay').classList.remove('open');
+      meetOverlay.classList.add('open');
+      Object.values(tiles).forEach((t) => {
+        const v = t.querySelector('video');
+        if (v) v.play().catch(() => {});
+      });
+    }
+    function closeMeet() {
+      meetOverlay.classList.remove('open');
+      window.meetMode = false;
+      stopCam();
+      Object.values(tiles).forEach((t) => {
+        const v = t.querySelector('video');
+        if (v) v.pause();
+        t.classList.remove('speaking');
+      });
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+    }
+    document.getElementById('meetStartBtn').addEventListener('click', openMeet);
+    document.getElementById('meetCloseBtn').addEventListener('click', closeMeet);
+  })();
 </script>
 </body>
 </html>
