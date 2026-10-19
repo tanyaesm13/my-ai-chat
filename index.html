@@ -184,7 +184,7 @@
   const GREETING = "Hi! I'm Lumi. What would you like to talk about?";
   // Lumi's agent team: each agent has its own persona (in the Worker), avatar, and animated video.
   const AGENTS = {
-    lumi: { name: 'Lumi', emoji: '🌟', avatar: 'lumi-avatar.webp', video: null,
+    lumi: { name: 'Lumi', emoji: '🌟', avatar: 'lumi-avatar.webp', video: 'lumi-video.mp4',
       greeting: "Hi! I'm Lumi. What would you like to talk about?",
       blurb: 'Your main AI assistant — research, writing, planning, everything.' },
     izzy: { name: 'Izzy', emoji: '📧', avatar: 'izzy-avatar.webp', video: 'izzy-video.mp4',
@@ -202,11 +202,45 @@
     const saved = localStorage.getItem('lumi_agent');
     if (saved && AGENTS[saved]) currentAgent = saved;
   } catch (e) {}
+  // Each agent has their own designated voice, matched to their persona.
+  // Saved per agent in localStorage; the voice picker cycles the current agent's voice.
+  const AGENT_VOICE_PREFS = {
+    lumi:  [/samantha/i, /google us english female/i, /zira/i, /female/i],
+    izzy:  [/zira/i, /samantha/i, /google uk english female/i, /female/i],
+    bea:   [/google uk english female/i, /helena/i, /samantha/i, /female/i],
+    quinn: [/helena/i, /moira/i, /tessa/i, /samantha/i, /female/i],
+  };
+  const agentVoice = {};
+  let lumiVoice = null;
+  function pickVoiceFor(agentId) {
+    if (!('speechSynthesis' in window)) return null;
+    const en = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    if (!en.length) return null;
+    try {
+      const saved = localStorage.getItem('lumi_voice_' + agentId);
+      if (saved !== null && saved !== '' && en[+saved]) return en[+saved];
+    } catch (e) {}
+    const taken = new Set(Object.keys(agentVoice).filter(k => k !== agentId && agentVoice[k]).map(k => agentVoice[k].name));
+    const prefs = AGENT_VOICE_PREFS[agentId] || [/female/i];
+    for (const pat of prefs) {
+      const v = en.find(v => pat.test(v.name || '') && !taken.has(v.name));
+      if (v) return v;
+    }
+    const free = en.find(v => !taken.has(v.name));
+    if (free) return free;
+    return en[Object.keys(AGENTS).indexOf(agentId) % en.length];
+  }
+  function refreshAgentVoices() {
+    Object.keys(AGENTS).forEach((id) => { agentVoice[id] = pickVoiceFor(id); });
+    lumiVoice = agentVoice[currentAgent] || null;
+  }
   const headerTitle = document.querySelector('header h1');
   const callName = document.getElementById('callName');
   function applyAgent(id, announce) {
     currentAgent = id;
     const a = AGENTS[id];
+    if (agentVoice[id] === undefined) agentVoice[id] = pickVoiceFor(id);
+    lumiVoice = agentVoice[id] || null;
     try { localStorage.setItem('lumi_agent', id); } catch (e) {}
     document.getElementById('lumiAvatar').src = a.avatar;
     document.getElementById('lumiAvatar').alt = a.name;
@@ -261,7 +295,6 @@
     const savedVoice = localStorage.getItem('lumi_voice_idx');
     if (savedVoice !== null && savedVoice !== '') voiceIdx = parseInt(savedVoice, 10);
   } catch (e) {}
-  let lumiVoice = null;
   function pickVoice() {
     if (!('speechSynthesis' in window)) return;
     const voices = speechSynthesis.getVoices();
@@ -281,8 +314,9 @@
     }
   }
   pickVoice();
+  refreshAgentVoices();
   if ('speechSynthesis' in window) {
-    speechSynthesis.onvoiceschanged = pickVoice;
+    speechSynthesis.onvoiceschanged = () => { pickVoice(); refreshAgentVoices(); };
   }
   // iOS audio unlock: iOS Safari needs the page to have received user
   // interaction before speechSynthesis will talk. We used to prime the
@@ -312,6 +346,7 @@
     // utterance entirely (no error, no sound). Only cancel when something is
     // actually queued, and give the engine a beat afterwards on iOS.
     const doSpeak = () => {
+    window._lumiHeardStart = false;
     const utter = new SpeechSynthesisUtterance(text);
     // On iOS, an explicitly-set voice can go silent on some versions —
     // use the device default there. Elsewhere use the picked voice.
@@ -467,16 +502,17 @@
       addMsg('No English voices found on this device.', 'error');
       return;
     }
-    const pos = enVoices.indexOf(lumiVoice);
+    const pos = enVoices.indexOf(agentVoice[currentAgent]);
     const next = enVoices[(pos + 1) % enVoices.length];
+    agentVoice[currentAgent] = next;
     lumiVoice = next;
     voiceIdx = all.indexOf(next);
     // Tapping the voice button means she wants to hear it — make sure voice is on.
     voiceOn = true;
     voiceToggle.textContent = '🔊';
-    try { localStorage.setItem('lumi_voice_idx', String(voiceIdx)); } catch (e) {}
-    addMsg('🎭 Voice: ' + next.name, 'ai');
-    speak("Hi, I'm Lumi!");
+    try { localStorage.setItem('lumi_voice_' + currentAgent, String(pos + 1 >= 0 ? (pos + 1) % enVoices.length : 0)); } catch (e) {}
+    addMsg('🎭 ' + AGENTS[currentAgent].name + ' voice: ' + next.name, 'ai');
+    speak("Hi, I'm " + AGENTS[currentAgent].name + "!");
   });
   // Spanish mode toggle.
   let micRecognition = null;
