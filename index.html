@@ -236,9 +236,9 @@
   // silent on some iOS versions.)
   const AGENT_VOICE_STYLE = {
     lumi:  { pitch: 1.0,  rate: 1.0  },
-    izzy:  { pitch: 0.82, rate: 1.1  },
-    bea:   { pitch: 1.12, rate: 0.95 },
-    quinn: { pitch: 1.28, rate: 1.12 },
+    izzy:  { pitch: 0.82, rate: 1.18 },
+    bea:   { pitch: 1.12, rate: 0.88 },
+    quinn: { pitch: 1.28, rate: 1.3  },
   };
   function pickVoiceFor(agentId) {
     if (!('speechSynthesis' in window)) return null;
@@ -433,9 +433,10 @@
     // On iOS, an explicitly-set voice can go silent on some versions —
     // use the device default there. Elsewhere use the picked voice.
     if (lumiVoice && !isIOS) utter.voice = lumiVoice;
-    const vstyle = (!isIOS && AGENT_VOICE_STYLE[currentAgent]) || { pitch: 1, rate: 1 };
+    const vstyle = AGENT_VOICE_STYLE[currentAgent] || { pitch: 1, rate: 1 };
+    // Rate is safe everywhere; non-default pitch goes silent on some iOS
+    // versions, so iOS keeps pitch at 1 and differs by rate + voice only.
     utter.rate = vstyle.rate;
-    // Non-default pitch goes silent on some iOS versions — keep it at 1 there.
     utter.pitch = isIOS ? 1 : vstyle.pitch;
     utter.volume = 1;
     const stopTalking = () => {
