@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My AI Chat</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff2e88">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lumi">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #000000; color: #fff; display: flex; flex-direction: column; height: 100dvh; }
+    header { padding: 16px; text-align: center; background: #000000; border-bottom: 3px solid #ff2e88; }
+    header h1 { margin: 0; font-size: 20px; color: #ff4da6; }
+    header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
+    #avatarWrap { position: relative; display: inline-block; margin: 0 auto 8px; animation: float 3s ease-in-out infinite; }
+    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; display: block; cursor: pointer; }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    #lumiAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 18px #ff2e88; }
+    @keyframes talkPulse { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.06) rotate(-1.5deg); } }
+    .mouth { position: absolute; left: 50%; bottom: 16%; width: 26%; aspect-ratio: 2 / 1; transform: translateX(-50%) scaleY(0.4); background: rgba(15,0,8,0.92); border-radius: 50%; opacity: 0; pointer-events: none; }
+    #lumiAvatar.talking + .mouth, #callAvatar.talking + .mouth { opacity: 1; animation: mouthTalk 0.45s ease-in-out infinite; }
+    @keyframes mouthTalk { 0%,100% { transform: translateX(-50%) scaleY(0.35); } 50% { transform: translateX(-50%) scaleY(1.1); } }
+    .hbtns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
+    .hbtns button { background: none; border: 1px solid #ff2e88; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; padding: 0; color: #fff; }
+    .hbtns button.wide { width: auto; border-radius: 18px; padding: 0 10px; font-size: 13px; font-weight: 700; }
+    .hbtns button.active { background: #ff2e88; }
+    #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #000000; }
+    .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; line-height: 1.4; white-space: pre-wrap; }
+    .user { align-self: flex-end; background: #ff2e88; color: #fff; }
+    .ai { align-self: flex-start; background: #1a1a1a; border: 1px solid #ff2e88; }
+    .error { align-self: center; background: #7f1d1d; font-size: 13px; }
+    #chips { display: flex; gap: 8px; padding: 10px 12px 0; background: #000000; justify-content: center; flex-wrap: wrap; }
+    .chip { padding: 8px 14px; border-radius: 18px; border: 1px solid #ff2e88; background: #1a1a1a; color: #ff4da6; font-size: 13px; cursor: pointer; }
+    .chip:active { background: #ff2e88; color: #fff; }
+    #form { display: flex; gap: 8px; padding: 12px; background: #000000; border-top: 2px solid #ff2e88; }
+    #input { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111111; color: #fff; font-size: 16px; }
+    button { padding: 12px 20px; border-radius: 24px; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; }
+      button:disabled { opacity: 0.6; }
+    #micBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    #micBtn.listening { background: #ff4da6; box-shadow: 0 0 12px #ff2e88; }
+    #micBtn.flash { animation: micFlash 0.5s ease-in-out 3; }
+    @keyframes micFlash { 0%,100% { box-shadow: 0 0 0 #ff2e88; } 50% { box-shadow: 0 0 18px #ff2e88; background: #ff4da6; } }
+    #locBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    #contact { text-align: center; padding: 8px; font-size: 13px; background: #000000; }
+    #contact a { color: #ff4da6; }
+    body.big-text #chat { font-size: 125%; }
+    /* Video-call mode: full-screen overlay with a giant animated avatar. */
+    #callOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
+    #callOverlay.open { display: flex; }
+    #callName { margin: 0; font-size: 22px; color: #ff4da6; }
+    #callAvatarWrap { position: relative; display: inline-block; animation: float 4s ease-in-out infinite; }
+    #callAvatar { width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; display: block; }
+    #callAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 30px #ff2e88; }
+    #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
+    #callBtns { display: flex; gap: 20px; }
+    #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #ff2e88; color: #fff; padding: 0; }
+    /* Agent team picker */
+    #teamOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+    #teamOverlay.open { display: flex; }
+    #teamOverlay h2 { margin: 0; font-size: 20px; color: #ff4da6; }
+    #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
+    .agentCard { background: #1a1a1a; border: 2px solid #ff2e88; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
+    .agentCard.active { background: #ff2e88; }
+    .agentCard img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4da6; }
+    .agentCard h3 { margin: 8px 0 4px; font-size: 16px; }
+    .agentCard p { margin: 0; font-size: 12px; opacity: 0.85; line-height: 1.35; }
+    #teamClose { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    .agentCard .vlabel { margin-top: 8px; font-size: 12px; opacity: 0.9; }
+    .agentCard .vlabel button { background: none; border: none; padding: 2px 6px; font-size: 14px; cursor: pointer; }
+    #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
+    /* Team meeting mode: 2x2 agent grid + self camera + captions. */
+    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; flex-direction: column; align-items: center; gap: 10px; padding: 14px; overflow-y: auto; }
+    #meetOverlay.open { display: flex; }
+    #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #ff4da6; }
+    #meetHint { margin: 0; font-size: 13px; color: #bbb; text-align: center; }
+    #meetGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; }
+    .meetTile { position: relative; border-radius: 16px; overflow: hidden; border: 3px solid #333; background: #111; cursor: pointer; aspect-ratio: 1; padding: 0; }
+    .meetTile video, .meetTile img.mtile { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .meetTile .meetLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 4px; background: rgba(0,0,0,0.68); color: #fff; font-size: 14px; text-align: center; }
+    .meetTile.selected { border-color: #ff2e88; }
+    .meetTile.speaking { border-color: #ff2e88; animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 24px #ff2e88; }
+    #meetRow { display: flex; gap: 10px; align-items: center; width: 100%; max-width: 520px; }
+    #meetSelfWrap { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
+    #meetSelfVideo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4da6; background: #111; display: none; }
+    #meetSelfOff { width: 84px; height: 84px; border-radius: 50%; background: #1a1a1a; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 30px; }
+    #meetEveryone { flex: 1; border-radius: 24px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; padding: 10px; font-size: 15px; cursor: pointer; }
+    #meetEveryone.active { background: #ff2e88; }
+    #meetCaption { width: 100%; max-width: 520px; min-height: 64px; max-height: 22vh; overflow-y: auto; font-size: 15px; line-height: 1.45; color: #fff; padding: 12px 16px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; }
+    #meetForm { display: flex; gap: 8px; width: 100%; max-width: 520px; align-items: center; }
+    #meetInput { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111; color: #fff; font-size: 16px; }
+    #meetForm button { width: 52px; height: 52px; border-radius: 50%; font-size: 20px; padding: 0; flex-shrink: 0; }
+    #meetCamBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
+    #meetCloseBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
+    #meetStartBtn { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 10px 22px; font-size: 15px; cursor: pointer; margin-top: 4px; }
+    /* 3D animated avatars (TalkingHead) inside meeting tiles. The stage sits
+       on top of the classic video/portrait, which stays as the fallback. */
+    .stage3d { position: absolute; inset: 0; display: none; z-index: 1; }
+    .meetTile.has3d .stage3d { display: block; }
+    .meetTile.has3d video, .meetTile.has3d img.mtile { visibility: hidden; }
+    .meetTile .meetLabel { z-index: 2; }
+    .stage3d canvas { width: 100% !important; height: 100% !important; display: block; }
+    #meet3dStatus { margin: 0; font-size: 12px; color: #ff9ecb; text-align: center; min-height: 15px; max-width: 520px; }
+</style>
+<script type="importmap">
+{ "imports":
+  {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs",
+    "headtts": "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm"
+  }
+}
+</script>
+</head>
+<body>
+<header>
+    <div id="avatarWrap">
+        <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi" title="Tap to stop">
+        <div class="mouth"></div>
+    </div>
+    <h1>Lumi</h1>
+    <p>Ask me anything</p>
+    <div class="hbtns">
+        <button id="voiceToggle" title="Toggle voice">🔊</button>
+        <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Izzy, Hey Bea, Hey Quinn">🎧</button>
+        <button id="voicePickBtn" title="Pick voice">🎭</button>
+        <button id="callBtn" title="Video call">📹</button>
+        <button id="teamBtn" title="Lumi's team">👥</button>
+        <button id="spanishBtn" class="wide" title="Toggle Spanish mode">ES</button>
+        <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
+        <button id="exportBtn" title="Export chat">⬇</button>
+        <button id="clearBtn" title="Clear chat">🗑</button>
+    </div>
+</header>
+<div id="chat">
+    <div class="msg ai">Hi! I'm Lumi. What would you like to talk about?</div>
+</div>
+<div id="chips">
+    <button type="button" class="chip">Weather near me</button>
+    <button type="button" class="chip">Motivate me</button>
+    <button type="button" class="chip">Help me plan my day</button>
+</div>
+<form id="form">
+    <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
+    <button id="locBtn" type="button" title="Share location with next message">📍</button>
+    <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
+    <button id="send" type="submit">Send</button>
+</form>
+<div id="contact"><a href="#" id="contactBtn">Contact</a></div>
+<div id="teamOverlay">
+    <h2>👥 Lumi's Team</h2>
+    <div id="teamCards"></div>
+    <button id="meetStartBtn" type="button">🎬 Start team meeting</button>
+    <button id="teamClose" type="button">Close</button>
+</div>
+<div id="meetOverlay">
+    <h2>🎬 Team Meeting</h2>
+    <p id="meetHint">Tap an agent to direct your question — or tap Everyone and get all four takes.</p>
+    <p id="meet3dStatus"></p>
+    <div id="meetGrid"></div>
+    <div id="meetRow">
+        <div id="meetSelfWrap">
+            <video id="meetSelfVideo" autoplay muted playsinline></video>
+            <div id="meetSelfOff">🙂</div>
+        </div>
+        <button id="meetEveryone" type="button">🌟 Everyone answers</button>
+    </div>
+    <div id="meetCaption">Pick who answers, then ask away.</div>
+    <div id="meetForm">
+        <button id="meetMicBtn" type="button" title="Talk">🎤</button>
+        <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
+        <button id="meetSendBtn" type="button" title="Send">➤</button>
+        <button id="meetCamBtn" type="button" title="Toggle your camera">📷</button>
+        <button id="meetCloseBtn" type="button" title="Leave meeting">❌</button>
+    </div>
+</div>
+<div id="callOverlay">
+    <h2 id="callName">Lumi</h2>
+    <div id="callAvatarWrap">
+        <img id="callAvatar" src="lumi-avatar.webp" alt="Lumi">
+        <video id="callVideo" loop muted playsinline></video>
+        <div class="mouth"></div>
+    </div>
+    <div id="callCaption">Hi! I'm Lumi. What would you like to talk about?</div>
+    <div id="callBtns">
+        <button id="callMicBtn" type="button" title="Talk">🎤</button>
+        <button id="callSpeakerBtn" type="button" title="Toggle voice">🔊</button>
+        <button id="callCloseBtn" type="button" title="End call">❌</button>
+    </div>
+</div>
+<script>
+  // STEP 5: Replace this with your real Cloudflare Worker URL after you deploy it in Step 3.
+  // Example: const WORKER_URL = "https://my-ai-chat.your-name.workers.dev";
+  const WORKER_URL = "https://lumi-chat.tanyaelizabethsm.workers.dev/";
+  // STEP 6 (optional): Replace this with your Make.com webhook URL if you add the contact button.
+  const CONTACT_WEBHOOK_URL = "PASTE_YOUR_MAKE_WEBHOOK_URL_HERE";
+  const chat = document.getElementById('chat');
+  const form = document.getElementById('form');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const GREETING = "Hi! I'm Lumi. What would you like to talk about?";
+  // Lumi's agent team: each agent has its own persona (in the Worker), avatar, and animated video.
+  const AGENTS = {
+    lumi: { name: 'Lumi', emoji: '🌟', avatar: 'lumi-avatar.webp', video: 'lumi-video.mp4',
+      greeting: "Hi! I'm Lumi. What would you like to talk about?",
+      blurb: 'Your main AI assistant — research, writing, planning, everything.' },
+    izzy: { name: 'Izzy', emoji: '📧', avatar: 'izzy-avatar.webp', video: 'izzy-video.mp4',
+      greeting: "Hi, I'm Izzy 📧 — Lumi's email agent. Inbox zero is my love language. What are we writing today?",
+      blurb: 'Email agent — drafts, replies, subject lines, inbox triage.' },
+    bea: { name: 'Bea', emoji: '📅', avatar: 'bea-avatar.webp', video: 'bea-video.mp4',
+      greeting: "Hi, I'm Bea 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan. (And yes, you're taking lunch.)",
+      blurb: 'Booking agent — appointments, calendars, plans, reminders.' },
+    quinn: { name: 'Quinn', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
+      greeting: "Hey, I'm Quinn 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up. I deserve a raise, by the way.",
+      blurb: 'Social media agent — captions, hashtags, hooks, content ideas.' },
+  };
+  // Each agent keeps their OWN conversation history, so Quinn never sees
+  // Lumi's replies and stays in character.
+  function historyKey(id) { return 'lumi_history_' + (id || currentAgent); }
+  function loadHistory(id) {
+    let h = [];
+    try { h = JSON.parse(localStorage.getItem(historyKey(id)) || '[]'); } catch (e) { h = []; }
+    return h.filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')).slice(-40);
+  }
+  function saveHistory() {
+    try { localStorage.setItem(historyKey(), JSON.stringify(history.slice(-40))); } catch (e) {}
+  }
+  function renderHistory() {
+    chat.innerHTML = '';
+    if (!history.length) { addMsg(AGENTS[currentAgent].greeting, 'ai'); return; }
+    history.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'ai'));
+  }
+  let history = [];
+  let currentAgent = 'lumi';
+  try {
+    const saved = localStorage.getItem('lumi_agent');
+    if (saved && AGENTS[saved]) currentAgent = saved;
+  } catch (e) {}
+  // Each agent has their own designated voice, matched to their persona.
+  // Saved per agent in localStorage; the voice picker cycles the current agent's voice.
+  const AGENT_VOICE_PREFS = {
+    lumi:  [/samantha/i, /google us english female/i, /zira/i, /female/i],
+    izzy:  [/zira/i, /samantha/i, /google uk english female/i, /female/i],
+    bea:   [/google uk english female/i, /helena/i, /samantha/i, /female/i],
+    quinn: [/helena/i, /moira/i, /tessa/i, /samantha/i, /female/i],
+  };
+  const agentVoice = {};
+  let lumiVoice = null;
+  // Vocal character per agent: even on the same device voice, each agent
+  // sounds distinct. (iOS keeps pitch/rate at 1 — non-default values can go
+  // silent on some iOS versions.)
+  const AGENT_VOICE_STYLE = {
+    lumi:  { pitch: 1.0,  rate: 1.0  },
+    izzy:  { pitch: 0.82, rate: 1.18 },
+    bea:   { pitch: 1.12, rate: 0.88 },
+    quinn: { pitch: 1.28, rate: 1.3  },
+  };
+  function pickVoiceFor(agentId) {
+    if (!('speechSynthesis' in window)) return null;
+    const en = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    if (!en.length) return null;
+    try {
+      const saved = localStorage.getItem('lumi_voice_' + agentId);
+      if (saved !== null && saved !== '' && en[+saved]) return en[+saved];
+    } catch (e) {}
+    const taken = new Set(Object.keys(agentVoice).filter(k => k !== agentId && agentVoice[k]).map(k => agentVoice[k].name));
+    const prefs = AGENT_VOICE_PREFS[agentId] || [/female/i];
+    for (const pat of prefs) {
+      const v = en.find(v => pat.test(v.name || '') && !taken.has(v.name));
+      if (v) return v;
+    }
+    const free = en.find(v => !taken.has(v.name));
+    if (free) return free;
+    return en[Object.keys(AGENTS).indexOf(agentId) % en.length];
+  }
+  function refreshAgentVoices() {
+    Object.keys(AGENTS).forEach((id) => { agentVoice[id] = pickVoiceFor(id); });
+    lumiVoice = agentVoice[currentAgent] || null;
+  }
+  const headerTitle = document.querySelector('header h1');
+  const callName = document.getElementById('callName');
+  async function pullSharedHistory(id) {
+    // Shared memory lives in the Worker (KV) — every device sees the same
+    // conversation. Falls back to this device's local copy when offline.
+    try {
+      const r = await fetch(WORKER_URL + '?history=' + encodeURIComponent(id), { method: 'GET' });
+      const d = await r.json();
+      if (d && Array.isArray(d.messages) && d.messages.length) {
+        history = d.messages
+          .filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+          .slice(-40);
+        saveHistory();
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  async function applyAgent(id, announce) {
+    if (id !== currentAgent) { try { saveHistory(); } catch (e) {} }
+    currentAgent = id;
+    const a = AGENTS[id];
+    if (agentVoice[id] === undefined) agentVoice[id] = pickVoiceFor(id);
+    lumiVoice = agentVoice[id] || null;
+    history = loadHistory(id);
+    renderHistory();
+    try { localStorage.setItem('lumi_agent', id); } catch (e) {}
+    document.getElementById('lumiAvatar').src = a.avatar;
+    document.getElementById('lumiAvatar').alt = a.name;
+    document.getElementById('lumiAvatar').title = a.name + ' — tap to stop';
+    if (headerTitle) headerTitle.textContent = a.name;
+    if (callName) callName.textContent = a.name;
+    const ca = document.getElementById('callAvatar');
+    if (ca) { ca.src = a.avatar; ca.alt = a.name; }
+    document.querySelectorAll('.agentCard').forEach((c) => {
+      c.classList.toggle('active', c.dataset.agent === id);
+    });
+    if (announce) addMsg(a.greeting, 'ai');
+    // Quietly refresh from shared memory so this device sees conversations
+    // from her other devices too.
+    if (WORKER_URL.indexOf('PASTE_YOUR') === -1) {
+      pullSharedHistory(id).then((ok) => { if (ok) renderHistory(); });
+    }
+  }
+  // Build the team picker cards.
+  (function buildTeamCards() {
+    const wrap = document.getElementById('teamCards');
+    Object.keys(AGENTS).forEach((id) => {
+      const a = AGENTS[id];
+      const card = document.createElement('div');
+      card.className = 'agentCard';
+      card.dataset.agent = id;
+      card.innerHTML = '<img src="' + a.avatar + '" alt="' + a.name + '"><h3>' + a.emoji + ' ' + a.name + '</h3><p>' + a.blurb + '</p>' +
+        '<p class="vlabel">🎙 <span id="vlabel-' + id + '">voice</span> <button type="button" class="vprev" data-agent="' + id + '" title="Hear voice">🔊</button> <button type="button" class="vnext" data-agent="' + id + '" title="Change voice">🎭</button></p>';
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.vprev') || e.target.closest('.vnext')) return;
+        document.getElementById('teamOverlay').classList.remove('open');
+        if (id !== currentAgent) applyAgent(id, true);
+      });
+      wrap.appendChild(card);
+    });
+  })();
+  function refreshVoiceLabels() {
+    Object.keys(AGENTS).forEach((id) => {
+      const el = document.getElementById('vlabel-' + id);
+      if (el) el.textContent = (agentVoice[id] && agentVoice[id].name) ? agentVoice[id].name : 'default';
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const prev = e.target.closest('.vprev');
+    const next = e.target.closest('.vnext');
+    if (!prev && !next) return;
+    e.stopPropagation();
+    const id = (prev || next).dataset.agent;
+    const en = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    if (!en.length) return;
+    if (next) {
+      const pos = en.indexOf(agentVoice[id]);
+      const ni = (pos + 1) % en.length;
+      agentVoice[id] = en[ni];
+      try { localStorage.setItem('lumi_voice_' + id, String(ni)); } catch (err) {}
+      if (id === currentAgent) lumiVoice = en[ni];
+      refreshVoiceLabels();
+    }
+    // Preview in that agent's voice + vocal character.
+    const wasAgent = currentAgent;
+    currentAgent = id;
+    const keepVoice = lumiVoice;
+    lumiVoice = agentVoice[id];
+    voiceOn = true; voiceToggle.textContent = '🔊';
+    speak("Hi, I'm " + AGENTS[id].name + "!");
+    currentAgent = wasAgent;
+    lumiVoice = keepVoice;
+  });
+  const _origRefresh = refreshAgentVoices;
+  refreshAgentVoices = function () { _origRefresh(); refreshVoiceLabels(); };
+  document.getElementById('teamBtn').addEventListener('click', () => {
+    refreshVoiceLabels();
+    document.getElementById('teamOverlay').classList.add('open');
+  });
+  document.getElementById('teamClose').addEventListener('click', () => {
+    document.getElementById('teamOverlay').classList.remove('open');
+  });
+  history = loadHistory(currentAgent);
+  applyAgent(currentAgent, false);
+  // Lumi voice: read replies aloud with the browser's built-in speech synthesis.
+  let voiceOn = true;
+  let spanishOn = false;
+  const voiceToggle = document.getElementById('voiceToggle');
+  const lumiAvatar = document.getElementById('lumiAvatar');
+  let voiceIdx = null;
+  try {
+    const savedVoice = localStorage.getItem('lumi_voice_idx');
+    if (savedVoice !== null && savedVoice !== '') voiceIdx = parseInt(savedVoice, 10);
+  } catch (e) {}
+  function pickVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    if (spanishOn) {
+      lumiVoice =
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('es') && /female|paloma|helena|laura|paulina|monica|zira/i.test(v.name)) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('es')) ||
+        null;
+    } else if (voiceIdx !== null && !isNaN(voiceIdx) && voices[voiceIdx]) {
+      lumiVoice = voices[voiceIdx];
+    } else {
+      lumiVoice =
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en') && /female|zira|samantha|google uk english female/i.test(v.name)) ||
+        voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) ||
+        null;
+    }
+  }
+  pickVoice();
+  refreshAgentVoices();
+  if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = () => { pickVoice(); refreshAgentVoices(); };
+  }
+  // iOS audio unlock: iOS Safari needs the page to have received user
+  // interaction before speechSynthesis will talk. We used to prime the
+  // engine with a silent (volume 0) utterance on the first tap, but on some
+  // iOS versions a zero-volume utterance wedges the speech queue: everything
+  // spoken afterwards — even inside a tap handler — queues behind it forever
+  // and never plays, with no error. Total silence, exactly the reported bug.
+  // So the unlock is now gesture bookkeeping only: no silent speech.
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked || !('speechSynthesis' in window)) return;
+    audioUnlocked = true;
+    try {
+      // Force the voice list to load and make sure the engine isn't paused.
+      speechSynthesis.getVoices();
+      speechSynthesis.resume();
+    } catch (e) {}
+  }
+  ['touchend', 'click'].forEach(function (evt) {
+    document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+  });
+  // Remove emojis and markdown before speaking, so the voice never
+  // verbalizes them ("smiling face", "asterisk", ...).
+  function cleanForSpeech(t) {
+    return String(t || '')
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
+      .replace(/[*_#`~>|]/g, '')
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+  function speak(text) {
+    if (!voiceOn || !('speechSynthesis' in window)) return;
+    unlockAudio();
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+    // iOS quirk: cancel() on the same tick as speak() can swallow the
+    // utterance entirely (no error, no sound). Only cancel when something is
+    // actually queued, and give the engine a beat afterwards on iOS.
+    const doSpeak = () => {
+    window._lumiHeardStart = false;
+    const utter = new SpeechSynthesisUtterance(cleanForSpeech(text));
+    // On iOS, an explicitly-set voice can go silent on some versions —
+    // use the device default there. Elsewhere use the picked voice.
+    if (lumiVoice && !isIOS) utter.voice = lumiVoice;
+    const vstyle = AGENT_VOICE_STYLE[currentAgent] || { pitch: 1, rate: 1 };
+    // Rate is safe everywhere; non-default pitch goes silent on some iOS
+    // versions, so iOS keeps pitch at 1 and differs by rate + voice only.
+    utter.rate = vstyle.rate;
+    utter.pitch = isIOS ? 1 : vstyle.pitch;
+    utter.volume = 1;
+    const stopTalking = () => {
+      if (lumiAvatar) lumiAvatar.classList.remove('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.remove('talking');
+    };
+    utter.onend = stopTalking;
+    utter.onerror = (ev) => {
+      stopTalking();
+      // Surface the failure in chat so it can be diagnosed.
+      try {
+        addMsg('🔇 Voice error: ' + (ev && ev.error ? ev.error : 'unknown') + '. Check the silent switch and volume, then tap 🎭 again.', 'error');
+      } catch (e) {}
+    };
+    try { speechSynthesis.resume(); } catch (e) {}
+    speechSynthesis.speak(utter);
+    // Watchdog: if the engine never starts (swallowed utterance), say so
+    // plainly instead of failing silently.
+    const _speakWatch = setTimeout(function () {
+      try {
+        if (!speechSynthesis.speaking && !window._lumiHeardStart) {
+          addMsg('🔇 The voice engine did not start. Check the silent switch (it mutes Lumi on iPhone) and volume, then tap 🎭 again.', 'error');
+        }
+      } catch (e) {}
+    }, 2500);
+    utter.onstart = () => { window._lumiHeardStart = true; clearTimeout(_speakWatch);
+      if (lumiAvatar) lumiAvatar.classList.add('talking');
+      const callAvatar = document.getElementById('callAvatar');
+      if (callAvatar) callAvatar.classList.add('talking');
+      if (window.callMode) {
+        const cap = document.getElementById('callCaption');
+        if (cap) cap.textContent = text;
+      }
+    };
+    // iOS Safari sometimes pauses in the middle of long replies: keep the
+    // engine alive while it is speaking.
+    try {
+      if (window._lumiResumeTimer) clearInterval(window._lumiResumeTimer);
+      window._lumiResumeTimer = setInterval(function () {
+        try {
+          if (speechSynthesis.speaking) speechSynthesis.resume();
+          else clearInterval(window._lumiResumeTimer);
+        } catch (e) {}
+      }, 4000);
+    } catch (e) {}
+    }; // end doSpeak
+    if (isIOS && (speechSynthesis.speaking || speechSynthesis.pending)) {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      setTimeout(doSpeak, 120);
+    } else {
+      if (!isIOS) { try { speechSynthesis.cancel(); } catch (e) {} }
+      doSpeak();
+    }
+  }
+  // Speak AS a specific agent (team meetings: the speaker is not necessarily
+  // the currently selected agent). classicSpeakAs uses the device voice with
+  // that agent's own voice + vocal style, exactly like the voice previews do.
+  function classicSpeakAs(id, text) {
+    if (id === currentAgent || !AGENTS[id]) { speak(text); return; }
+    const wasAgent = currentAgent;
+    const keepVoice = lumiVoice;
+    currentAgent = id;
+    lumiVoice = agentVoice[id] || keepVoice;
+    speak(text);
+    // Restore after a beat: on iOS speak() defers, and it reads the speaking
+    // agent's style when the utterance actually starts.
+    setTimeout(() => { currentAgent = wasAgent; lumiVoice = keepVoice; }, 600);
+  }
+  // Preferred meeting speaker: the animated 3D avatar + neural voice
+  // (window.lumiAnimSpeak, defined by the TalkingHead module at the end of
+  // this page) when the 3D stage accepted the line; classic voice otherwise.
+  // HeadTTS is English-only, so Spanish mode stays on the device voice.
+  function speakForAgent(id, text) {
+    if (!voiceOn) return;
+    if (window.meetMode && !spanishOn && window.lumiAnimSpeak) {
+      try { if (window.lumiAnimSpeak(id, text)) return; } catch (e) {}
+    }
+    classicSpeakAs(id, text);
+  }
+  voiceToggle.addEventListener('click', () => {
+    voiceOn = !voiceOn;
+    voiceToggle.textContent = voiceOn ? '🔊' : '🔇';
+    if (!voiceOn && 'speechSynthesis' in window) speechSynthesis.cancel();
+  });
+  // Tap the avatar to stop Lumi mid-sentence.
+  lumiAvatar.addEventListener('click', () => {
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  });
+  function addMsg(text, cls) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+  let pendingLocation = null;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    unlockAudio();
+    let text = input.value.trim();
+    if (!text) return;
+    if (pendingLocation) {
+      text += ' [My location: ' + pendingLocation + ']';
+      pendingLocation = null;
+    }
+    addMsg(text, 'user');
+    history.push({ role: 'user', content: text });
+    input.value = '';
+    sendBtn.disabled = true;
+    if (WORKER_URL === "PASTE_YOUR_WORKER_URL_HERE") {
+      addMsg("Your chat page is ready, but the Worker URL is not connected yet (Step 5). Paste your Cloudflare Worker URL into WORKER_URL in index.html, then re-upload to GitHub.", 'error');
+      sendBtn.disabled = false;
+      return;
+    }
+    const thinking = addMsg("Thinking...", 'ai');
+    async function postOnce() {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, messages: history, agent: currentAgent })
+      });
+      return res.json();
+    }
+    try {
+      let data;
+      try {
+        data = await postOnce();
+      } catch (e) {
+        // One automatic retry — transient hiccups shouldn't surface to her.
+        await new Promise(r => setTimeout(r, 2000));
+        data = await postOnce();
+      }
+      const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
+      thinking.textContent = reply;
+      history.push({ role: 'assistant', content: reply });
+      saveHistory();
+      speak(reply);
+    } catch (err) {
+      thinking.textContent = "Sorry, I couldn't reach the Worker. Check your Worker URL and that the Worker is deployed.";
+    }
+    sendBtn.disabled = false;
+  });
+  document.getElementById('contactBtn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (CONTACT_WEBHOOK_URL === "PASTE_YOUR_MAKE_WEBHOOK_URL_HERE") {
+      alert("Contact button is not connected yet (Step 6, optional). Add your Make.com webhook URL to set it up.");
+    }
+    const email = prompt("What email should we reply to?");
+    const msg = prompt("What would you like to say?");
+    if (email && msg) {
+      await fetch(CONTACT_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, message: msg }) });
+      alert("Sent! Thank you.");
+    }
+  });
+  // Suggestion chips: tap one to fill the input and send.
+  document.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      input.value = chip.textContent;
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    });
+  });
+  // Clear chat button: confirm, then wipe chat, history and saved history.
+  document.getElementById('clearBtn').addEventListener('click', () => {
+    if (!confirm('Clear the chat history?')) return;
+    history = [];
+    try { localStorage.removeItem(historyKey()); } catch (e) {}
+    history = [];
+    renderHistory();
+  });
+  // Voice picker: cycle through the available English voices, saved in localStorage.
+  document.getElementById('voicePickBtn').addEventListener('click', () => {
+    if (!('speechSynthesis' in window)) {
+      addMsg('Voice output is not supported in this browser.', 'error');
+      return;
+    }
+    const all = speechSynthesis.getVoices();
+    const enVoices = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    if (!enVoices.length) {
+      addMsg('No English voices found on this device.', 'error');
+      return;
+    }
+    const pos = enVoices.indexOf(agentVoice[currentAgent]);
+    const next = enVoices[(pos + 1) % enVoices.length];
+    agentVoice[currentAgent] = next;
+    lumiVoice = next;
+    voiceIdx = all.indexOf(next);
+    // Tapping the voice button means she wants to hear it — make sure voice is on.
+    voiceOn = true;
+    voiceToggle.textContent = '🔊';
+    try { localStorage.setItem('lumi_voice_' + currentAgent, String(pos + 1 >= 0 ? (pos + 1) % enVoices.length : 0)); } catch (e) {}
+    addMsg('🎭 ' + AGENTS[currentAgent].name + ' voice: ' + next.name, 'ai');
+    speak("Hi, I'm " + AGENTS[currentAgent].name + "!");
+  });
+  // Spanish mode toggle.
+  let micRecognition = null;
+  document.getElementById('spanishBtn').addEventListener('click', () => {
+    spanishOn = !spanishOn;
+    document.getElementById('spanishBtn').classList.toggle('active', spanishOn);
+    history.push({ role: 'user', content: spanishOn ? '[System: respond in Spanish from now on]' : '[System: respond in English from now on]' });
+    saveHistory();
+    pickVoice();
+    if (micRecognition) micRecognition.lang = spanishOn ? 'es-MX' : 'en-US';
+    addMsg(spanishOn ? 'Modo español activado 🇪🇸' : 'English mode 🇺🇸', 'ai');
+  });
+  // Export chat as a .txt file.
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const lines = [];
+    chat.querySelectorAll('.msg').forEach((m) => {
+      lines.push((m.classList.contains('user') ? 'You' : AGENTS[currentAgent].name) + ': ' + m.textContent);
+    });
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fname = 'lumi-chat-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + '.txt';
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+  // Bigger text toggle, saved in localStorage.
+  const bigTextBtn = document.getElementById('bigTextBtn');
+  let bigText = false;
+  try { bigText = localStorage.getItem('lumi_bigtext') === '1'; } catch (e) {}
+  if (bigText) document.body.classList.add('big-text');
+  bigTextBtn.classList.toggle('active', bigText);
+  bigTextBtn.addEventListener('click', () => {
+    bigText = !bigText;
+    document.body.classList.toggle('big-text', bigText);
+    bigTextBtn.classList.toggle('active', bigText);
+    try { localStorage.setItem('lumi_bigtext', bigText ? '1' : '0'); } catch (e) {}
+  });
+  // Location button: attach coords to the next message.
+  const locBtn = document.getElementById('locBtn');
+  if (!('geolocation' in navigator)) {
+    locBtn.style.display = 'none';
+  } else {
+    locBtn.addEventListener('click', () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          pendingLocation = pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
+          addMsg('📍 Location ready — it will go with your next message.', 'ai');
+        },
+        () => { addMsg('Location not available.', 'error'); },
+        { timeout: 10000 }
+      );
+    });
+  }
+  // Voice input: talk instead of typing, using the browser's built-in SpeechRecognition.
+  // Also handles the "Hey Lumi" wake-word toggle (continuous listening).
+  (function () {
+    const micBtn = document.getElementById('micBtn');
+    const wakeToggle = document.getElementById('wakeToggle');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      micBtn.style.display = 'none';
+      if (wakeToggle) wakeToggle.style.display = 'none';
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    micRecognition = recognition;
+    recognition.lang = spanishOn ? 'es-MX' : 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    let listening = false;
+    let wakeOn = false;
+    let wakeHold = false;
+    const wakeRec = new SpeechRecognition();
+    wakeRec.continuous = true;
+    wakeRec.interimResults = true;
+    wakeRec.lang = 'en-US';
+    function startVoiceInput() {
+      if (listening) return;
+      try { recognition.start(); } catch (e) {}
+    }
+    function flashMic() {
+      micBtn.classList.remove('flash');
+      void micBtn.offsetWidth;
+      micBtn.classList.add('flash');
+      setTimeout(() => micBtn.classList.remove('flash'), 1600);
+    }
+    function startWake() {
+      if (wakeOn && !wakeHold) { try { wakeRec.start(); } catch (e) {} }
+    }
+    function stopWake() {
+      try { wakeRec.abort(); } catch (e) {}
+    }
+    micBtn.addEventListener('click', () => {
+      if (listening) {
+        recognition.stop();
+      } else {
+        startVoiceInput();
+      }
+    });
+    recognition.addEventListener('start', () => {
+      listening = true;
+      micBtn.classList.add('listening');
+    });
+    recognition.addEventListener('result', (e) => {
+      const transcript = e.results[0][0].transcript;
+      if (window.meetMode) {
+        document.getElementById('meetInput').value = transcript;
+        if (window.meetSendFromInput) window.meetSendFromInput();
+        return;
+      }
+      const input = document.getElementById('input');
+      input.value = transcript;
+      if (window.callMode && form.requestSubmit) form.requestSubmit();
+    });
+    const stopListening = () => {
+      listening = false;
+      micBtn.classList.remove('listening');
+      wakeHold = false;
+      startWake();
+    };
+    recognition.addEventListener('end', stopListening);
+    recognition.addEventListener('error', (e) => {
+      stopListening();
+      if (e.error === 'not-allowed') {
+        addMsg('The browser blocked the microphone. You may need to allow microphone access for this site.', 'error');
+      }
+    });
+    // Each agent has their own wake phrase — saying it switches to them first.
+    const WAKE_PHRASES = {
+      lumi: ['hey lumi'],
+      izzy: ['hey izzy', 'hey issy'],
+      bea: ['hey bea', 'hey bee', 'hey b'],
+      quinn: ['hey quinn', 'hey queen'],
+    };
+    function wakeAgentFor(phrase) {
+      const t = phrase.toLowerCase();
+      for (const id of Object.keys(WAKE_PHRASES)) {
+        if (WAKE_PHRASES[id].some(p => t.indexOf(p) !== -1)) return id;
+      }
+      return null;
+    }
+    wakeRec.addEventListener('result', (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const heard = e.results[i][0].transcript;
+        const id = wakeAgentFor(heard);
+        if (id) {
+          wakeHold = true;
+          stopWake();
+          flashMic();
+          // Talk to the agent she named: in a team meeting, direct the
+          // meeting; otherwise switch the main chat to them.
+          if (window.meetMode && window.meetSelectAgent) window.meetSelectAgent(id);
+          else if (id !== currentAgent) applyAgent(id, false);
+          startVoiceInput();
+          break;
+        }
+      }
+    });
+    wakeRec.addEventListener('end', () => { startWake(); });
+    wakeToggle.addEventListener('click', () => {
+      wakeOn = !wakeOn;
+      wakeToggle.classList.toggle('active', wakeOn);
+      if (wakeOn) {
+        wakeHold = false;
+        startWake();
+      } else {
+        stopWake();
+      }
+    });
+    // Expose the mic button's toggle so video-call mode can reuse the same voice input.
+    window.lumiToggleVoiceInput = () => micBtn.click();
+  })();
+  // Video-call mode: full-screen overlay with a giant animated avatar.
+  // Typing is hidden behind the overlay; tap the mic and talk, Lumi answers
+  // in voice plus an on-screen caption.
+  const callOverlay = document.getElementById('callOverlay');
+  const callCaption = document.getElementById('callCaption');
+  const callMicBtn = document.getElementById('callMicBtn');
+  const callSpeakerBtn = document.getElementById('callSpeakerBtn');
+  function latestAiText() {
+    const msgs = chat.querySelectorAll('.msg.ai');
+    return msgs.length ? msgs[msgs.length - 1].textContent : AGENTS[currentAgent].greeting;
+  }
+  function syncCallSpeaker() { callSpeakerBtn.textContent = voiceToggle.textContent; }
+  function openCall() {
+    window.callMode = true;
+    callCaption.textContent = latestAiText();
+    syncCallSpeaker();
+    // Show the agent's animated video if it has one, else the static avatar.
+    const a = AGENTS[currentAgent];
+    const cv = document.getElementById('callVideo');
+    const ca = document.getElementById('callAvatar');
+    if (a.video && cv) {
+      cv.src = a.video;
+      cv.style.display = 'block';
+      if (ca) ca.style.display = 'none';
+      cv.play().catch(() => {});
+    } else {
+      if (cv) { cv.pause(); cv.style.display = 'none'; cv.removeAttribute('src'); }
+      if (ca) ca.style.display = 'block';
+    }
+    if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
+    callOverlay.classList.add('open');
+  }
+  function closeCall() {
+    callOverlay.classList.remove('open');
+    window.callMode = false;
+    const cv = document.getElementById('callVideo');
+    if (cv) { cv.pause(); }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    lumiAvatar.classList.remove('talking');
+    const ca = document.getElementById('callAvatar');
+    if (ca) ca.classList.remove('talking');
+  }
+  document.getElementById('callBtn').addEventListener('click', openCall);
+  document.getElementById('callCloseBtn').addEventListener('click', closeCall);
+  callMicBtn.addEventListener('click', () => { if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput(); });
+  callSpeakerBtn.addEventListener('click', () => { voiceToggle.click(); syncCallSpeaker(); });
+  // Team meeting mode: 2x2 grid of the agents, tap one (or Everyone) to
+  // direct your question. Your camera preview is optional and stays on-device.
+  (function () {
+    const meetOverlay = document.getElementById('meetOverlay');
+    const meetGrid = document.getElementById('meetGrid');
+    const meetCaption = document.getElementById('meetCaption');
+    const meetInput = document.getElementById('meetInput');
+    const meetEveryone = document.getElementById('meetEveryone');
+    let meetAgent = 'lumi';
+    const tiles = {};
+    Object.keys(AGENTS).forEach((id) => {
+      const a = AGENTS[id];
+      const tile = document.createElement('button');
+      tile.type = 'button';
+      tile.className = 'meetTile' + (id === meetAgent ? ' selected' : '');
+      tile.dataset.agent = id;
+      const media = a.video
+        ? '<video loop muted playsinline preload="metadata" src="' + a.video + '"></video>'
+        : '<img class="mtile" src="' + a.avatar + '" alt="' + a.name + '">';
+      tile.innerHTML = media + '<div class="meetLabel">' + a.emoji + ' ' + a.name + '</div>';
+      tile.addEventListener('click', () => {
+        meetAgent = id;
+        meetEveryone.classList.remove('active');
+        Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
+        meetCaption.textContent = a.name + ' will answer next.';
+      });
+      meetGrid.appendChild(tile);
+      tiles[id] = tile;
+    });
+    window.meetSelectAgent = (id) => {
+      if (!AGENTS[id]) return;
+      meetAgent = id;
+      meetEveryone.classList.remove('active');
+      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
+      meetCaption.textContent = AGENTS[id].name + ' is listening...';
+    };
+    meetEveryone.addEventListener('click', () => {
+      const on = meetEveryone.classList.toggle('active');
+      meetAgent = on ? 'all' : 'lumi';
+      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', !on && k === 'lumi'));
+      meetCaption.textContent = on ? 'Everyone will weigh in.' : 'Lumi will answer next.';
+    });
+    function setSpeaking(id, on) {
+      if (tiles[id]) tiles[id].classList.toggle('speaking', !!on);
+    }
+    async function askAgent(id, text) {
+      setSpeaking(id, true);
+      meetCaption.textContent = AGENTS[id].name + ' is thinking...';
+      const mh = loadHistory(id);
+      async function meetPostOnce() {
+        const res = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, messages: mh, agent: id })
+        });
+        return res.json();
+      }
+      try {
+        let data;
+        try {
+          data = await meetPostOnce();
+        } catch (e) {
+          await new Promise(r => setTimeout(r, 2000));
+          data = await meetPostOnce();
+        }
+        const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
+        meetCaption.innerHTML = '<b>' + AGENTS[id].emoji + ' ' + AGENTS[id].name + ':</b> ' + reply.replace(/</g, '&lt;');
+        mh.push({ role: 'user', content: text });
+        mh.push({ role: 'assistant', content: reply });
+        try { localStorage.setItem(historyKey(id), JSON.stringify(mh.slice(-40))); } catch (e) {}
+        if (id === currentAgent) { history = mh; }
+        speakForAgent(id, reply);
+      } catch (err) {
+        meetCaption.textContent = "Couldn't reach " + AGENTS[id].name + '. Check your connection.';
+      }
+      // Visual speaking pulse sized to the reply; the 3D module also clears
+      // its own highlight when playback actually ends, whichever is later.
+      setTimeout(() => setSpeaking(id, false), Math.min(45000, Math.max(4000, reply.length * 85)));
+    }
+    let meetBusy = false;
+    async function meetSend() {
+      const text = meetInput.value.trim();
+      if (!text || meetBusy) return;
+      meetBusy = true;
+      meetInput.value = '';
+      if (meetAgent === 'all') {
+        for (const id of Object.keys(AGENTS)) {
+          await askAgent(id, '(Keep it to one or two sentences:) ' + text);
+        }
+      } else {
+        await askAgent(meetAgent, text);
+      }
+      meetBusy = false;
+    }
+    window.meetSendFromInput = () => { meetSend(); };
+    document.getElementById('meetSendBtn').addEventListener('click', meetSend);
+    meetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); meetSend(); } });
+    document.getElementById('meetMicBtn').addEventListener('click', () => {
+      if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput();
+    });
+    // Self camera (stays on-device; toggle on/off).
+    let meetStream = null;
+    const selfVideo = document.getElementById('meetSelfVideo');
+    const selfOff = document.getElementById('meetSelfOff');
+    const camBtn = document.getElementById('meetCamBtn');
+    function stopCam() {
+      if (meetStream) { meetStream.getTracks().forEach((t) => t.stop()); meetStream = null; }
+      selfVideo.srcObject = null;
+      selfVideo.style.display = 'none';
+      selfOff.style.display = 'flex';
+      camBtn.textContent = '📷';
+    }
+    camBtn.addEventListener('click', async () => {
+      if (meetStream) { stopCam(); return; }
+      try {
+        meetStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        selfVideo.srcObject = meetStream;
+        selfVideo.style.display = 'block';
+        selfOff.style.display = 'none';
+        camBtn.textContent = '📷❌';
+      } catch (e) {
+        meetCaption.textContent = 'Camera unavailable — the browser blocked it or this device has none.';
+      }
+    });
+    function openMeet() {
+      window.meetMode = true;
+      document.getElementById('teamOverlay').classList.remove('open');
+      meetOverlay.classList.add('open');
+      if (window.lumiAnimStart) window.lumiAnimStart();
+      Object.values(tiles).forEach((t) => {
+        const v = t.querySelector('video');
+        if (v) v.play().catch(() => {});
+      });
+    }
+    function closeMeet() {
+      meetOverlay.classList.remove('open');
+      window.meetMode = false;
+      if (window.lumiAnimStop) window.lumiAnimStop();
+      stopCam();
+      Object.values(tiles).forEach((t) => {
+        const v = t.querySelector('video');
+        if (v) v.pause();
+        t.classList.remove('speaking');
+      });
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+    }
+    document.getElementById('meetStartBtn').addEventListener('click', openMeet);
+    document.getElementById('meetCloseBtn').addEventListener('click', closeMeet);
+  })();
+</script>
+<script type="module">
+// ============================================================================
+// LUMI 3D TEAM (v1) — truly animated talking avatars for Team Meeting mode.
+// TalkingHead (met4citizen, MIT) renders a live 3D avatar per agent inside
+// their meeting tile; HeadTTS (Kokoro, in-browser) gives each agent her own
+// neural voice AND the viseme stream TalkingHead needs for real lip-sync.
+// Everything degrades gracefully: if the CDN, WebGL, or the TTS model can't
+// load on this device, the classic portrait/video tiles and the device
+// voices keep working exactly as before (see classicSpeakAs / speakForAgent
+// in the main script). Voice swap, stated plainly: in 3D mode the agents no
+// longer use the device speechSynthesis voices (Samantha/Zira/UK Female/
+// Helena) — those can't provide viseme timing. Each agent instead gets a
+// fixed Kokoro voice (below), with her speed carried over from
+// AGENT_VOICE_STYLE's rate. Spanish mode and everything outside the meeting
+// still use the classic device voices.
+// ============================================================================
+import { TalkingHead } from "talkinghead";
+import { HeadTTS } from "headtts";
+
+// Demo avatars hosted by the TalkingHead project itself (GitHub Pages,
+// CORS-enabled) — known-compatible: Mixamo rig + ARKit/Oculus visemes, with
+// the per-avatar tuning copied from the project's own siteconfig.js.
+// To self-host later, download the .glb files into this repo and point
+// these URLs at them; nothing else changes.
+const TH_AVATARS = "https://met4citizen.github.io/TalkingHead/avatars/";
+const AGENT_3D = {
+  lumi: {
+    url: TH_AVATARS + "brunette.glb", body: "F", avatarMood: "neutral",
+    voice: "af_heart", speed: 1.0 // Kokoro "Heart" — warm lead voice
+  },
+  izzy: {
+    url: TH_AVATARS + "avaturn.glb", body: "F", avatarMood: "neutral",
+    voice: "af_nicole", speed: 1.15, // bright + quick, like her 1.18 rate
+    retarget: {
+      Hips: { y: 0.03 }, Spine: { y: 0.02 }, Spine1: { y: 0.02, z: 0.01 },
+      Spine2: { y: 0.02, z: 0.01 }, Neck: { z: 0.02, y: 0.01 }, Head: { z: 0.02 },
+      LeftShoulder: { rx: -0.5 }, RightShoulder: { rx: -0.5 },
+      scaleToHipsLevel: 1.0
+    },
+    baseline: { headRotateX: -0.05, eyeBlinkLeft: 0.15, eyeBlinkRight: 0.15 }
+  },
+  bea: {
+    url: TH_AVATARS + "mpfb.glb", body: "F", avatarMood: "neutral",
+    voice: "bf_emma", speed: 0.9, // British female — nods to her UK voice pref
+    baseline: { headRotateX: -0.01, eyeBlinkLeft: 0.05, eyeBlinkRight: 0.05 },
+    modelDynamicBones: [
+      { "bone": "LeftBreast", "type": "point", "stiffness": 600, "damping": 20, "deltaLocal": [0, 0.01, 0], "deltaWorld": [0, -0.02, 0], "limits": [[-0.02, 0.02], [-0.02, 0.06], [-0.02, 0.02], [-0.5, 0.5]] },
+      { "bone": "RightBreast", "type": "point", "stiffness": 600, "damping": 20, "deltaLocal": [0, 0.01, 0], "deltaWorld": [0, -0.02, 0], "limits": [[-0.02, 0.02], [-0.02, 0.06], [-0.02, 0.02], [-0.5, 0.5]] },
+      { "bone": "Ponytail1", "type": "mix2", "stiffness": 100, "damping": 4, "limits": [null, null, [null, 0.02], null], "pivot": true },
+      { "bone": "Ponytail2", "type": "mix2", "stiffness": 150, "damping": 4, "limits": [null, null, [null, 0.01], null] },
+      { "bone": "Ponytail3", "type": "mix2", "stiffness": 200, "damping": 4, "limits": [null, null, [null, 0.01], null] }
+    ]
+  },
+  quinn: {
+    url: TH_AVATARS + "vroid.glb", body: "F", avatarMood: "happy",
+    voice: "af_sky", speed: 1.25, // energetic, like her 1.3 rate
+    baseline: { headRotateX: -0.1, eyeBlinkLeft: 0.05, eyeBlinkRight: 0.05 }
+  }
+};
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const statusEl = () => document.getElementById('meet3dStatus');
+function setStatus(t) { const el = statusEl(); if (el) el.textContent = t || ''; }
+
+// Audio contexts: each TalkingHead instance owns its context (created by
+// the library; the v1.7 constructor ignores any passed-in one). Following
+// the official HeadTTS demo, HeadTTS shares the first head's context so
+// there is one less live context and decode rates match.
+function firstHeadCtx() {
+  const h = heads.lumi || heads[Object.keys(heads)[0]];
+  return h ? h.audioCtx : null;
+}
+
+// ---- TalkingHead instances, one per meeting tile ---------------------------
+const heads = {};      // agentId -> TalkingHead instance
+const headState = {};  // agentId -> 'loading' | 'ready' | 'failed'
+let headsInitStarted = false;
+
+async function initHeads() {
+  if (headsInitStarted) return;
+  headsInitStarted = true;
+  setStatus('Loading 3D avatars…');
+  const ids = Object.keys(AGENT_3D);
+  await Promise.all(ids.map(async (id) => {
+    const tile = document.querySelector('.meetTile[data-agent="' + id + '"]');
+    if (!tile) { headState[id] = 'failed'; return; }
+    const stage = document.createElement('div');
+    stage.className = 'stage3d';
+    tile.appendChild(stage);
+    headState[id] = 'loading';
+    try {
+      const head = new TalkingHead(stage, {
+        ttsEndpoint: "N/A",      // speech comes from HeadTTS via speakAudio
+        lipsyncModules: [],      // visemes arrive with the audio; none needed
+        cameraView: "head",
+        cameraRotateEnable: false,
+        cameraPanEnable: false,
+        cameraZoomEnable: false,
+        mixerGainSpeech: 3,
+        modelFPS: 24
+      });
+      heads[id] = head;
+      const cfg = AGENT_3D[id];
+      const avatar = { url: cfg.url, body: cfg.body, avatarMood: cfg.avatarMood, lipsyncLang: 'en' };
+      if (cfg.baseline) avatar.baseline = cfg.baseline;
+      if (cfg.retarget) avatar.retarget = cfg.retarget;
+      if (cfg.modelDynamicBones) avatar.modelDynamicBones = cfg.modelDynamicBones;
+      await head.showAvatar(avatar, (ev) => {
+        if (ev && ev.lengthComputable) {
+          const pct = Math.min(100, Math.round(ev.loaded / ev.total * 100));
+          setStatus('Loading 3D avatar (' + id + ')… ' + pct + '%');
+        }
+      });
+      head.setView("head");
+      headState[id] = 'ready';
+      tile.classList.add('has3d');
+      const v = tile.querySelector('video');
+      if (v) v.pause(); // the classic clip is now just the fallback layer
+    } catch (e) {
+      console.log('3D avatar failed for ' + id, e);
+      headState[id] = 'failed';
+      try { stage.remove(); } catch (err) {}
+      if (heads[id]) { try { heads[id].stop(); } catch (err) {} delete heads[id]; }
+    }
+  }));
+  const readyCount = ids.filter(id => headState[id] === 'ready').length;
+  if (readyCount === ids.length) {
+    setStatus('✨ 3D avatars live — real voices, real lip-sync.');
+    setTimeout(() => { if (window.meetMode) setStatus(''); }, 6000);
+  } else if (readyCount > 0) {
+    setStatus('✨ 3D avatars live for ' + readyCount + ' of ' + ids.length + ' agents — the rest use the classic view.');
+  } else {
+    setStatus('3D avatars unavailable on this device/browser — classic view still works.');
+  }
+}
+
+// ---- HeadTTS: one synthesizer, per-agent voice setup ----------------------
+let headtts = null;
+let ttsState = 'idle'; // 'loading' | 'ready' | 'failed'
+let ttsPromise = null;
+let routeHead = null;  // head that incoming audio belongs to
+let routeGen = -1;     // session generation that owns routeHead
+let genWaiter = null;  // resolves when generation for current line finishes
+
+function ensureTTS() {
+  if (ttsPromise) return ttsPromise;
+  ttsState = 'loading';
+  ttsPromise = (async () => {
+    const ttsOpts = {
+      endpoints: ["webgpu", "wasm"],
+      languages: ["en-us"],
+      voices: Object.keys(AGENT_3D).map(k => AGENT_3D[k].voice),
+      // Imported from a CDN, so the worker + dictionaries must be absolute:
+      workerModule: "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs",
+      dictionaryURL: "https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/dictionaries/",
+      dtypeWebgpu: "q8", // ~1/3 the download of fp32, near-same quality
+      defaultVoice: AGENT_3D.lumi.voice,
+      defaultLanguage: "en-us",
+      defaultAudioEncoding: "wav"
+    };
+    const ctx = firstHeadCtx();
+    if (ctx) ttsOpts.audioCtx = ctx; // else HeadTTS creates its own
+    headtts = new HeadTTS(ttsOpts);
+    headtts.onmessage = (message) => {
+      if (message.type === 'audio') {
+        if (routeHead && routeGen === sessionGen) {
+          try { routeHead.speakAudio(message.data, {}); } catch (e) { console.log(e); }
+        }
+      } else if (message.type === 'error') {
+        console.log('HeadTTS synthesis error', message.data && message.data.error);
+        if (genWaiter) { const w = genWaiter; genWaiter = null; w(); }
+      }
+    };
+    headtts.onend = () => {
+      if (genWaiter) { const w = genWaiter; genWaiter = null; w(); }
+    };
+    headtts.onerror = (e) => { console.log('HeadTTS error', e); };
+    await headtts.connect(); // first call downloads + warms the Kokoro model
+    ttsState = 'ready';
+    return true;
+  })().catch((e) => {
+    console.log('HeadTTS unavailable', e);
+    ttsState = 'failed';
+    return false;
+  });
+  return ttsPromise;
+}
+
+// ---- Serialized animated speaking -----------------------------------------
+// Lines are spoken one at a time (the meeting asks agents sequentially), so
+// the single shared synthesizer + router above stays unambiguous.
+let sessionGen = 0;
+let speakChain = Promise.resolve();
+
+function classicFallback(id, text) {
+  if (typeof window.classicSpeakAs === 'function') window.classicSpeakAs(id, text);
+}
+
+async function doSpeak(id, text, gen) {
+  // Wait briefly if this agent's avatar is still loading.
+  const t0 = Date.now();
+  while (headState[id] === 'loading' && Date.now() - t0 < 25000) await sleep(300);
+  if (gen !== sessionGen) return;
+  const head = heads[id];
+  if (!head || headState[id] !== 'ready') { classicFallback(id, text); return; }
+
+  const ready = await Promise.race([
+    ensureTTS(),
+    sleep(30000).then(() => ttsState === 'ready')
+  ]);
+  if (gen !== sessionGen) return;
+  if (!ready || ttsState !== 'ready' || !headtts) { classicFallback(id, text); return; }
+
+  const tile = document.querySelector('.meetTile[data-agent="' + id + '"]');
+  if (tile) tile.classList.add('speaking');
+  try {
+    routeHead = head;
+    routeGen = gen;
+    headtts.setup({
+      voice: AGENT_3D[id].voice,
+      language: "en-us",
+      speed: AGENT_3D[id].speed,
+      audioEncoding: "wav"
+    });
+    const cleaned = (typeof window.cleanForSpeech === 'function') ? window.cleanForSpeech(text) : text;
+    const genDone = new Promise(r => { genWaiter = r; });
+    headtts.synthesize({ input: cleaned });
+    // Cap the generation wait by line length, then wait for the avatar to
+    // actually finish playing before the next agent's line starts.
+    await Promise.race([genDone, sleep(Math.min(60000, 8000 + cleaned.length * 120))]);
+    const maxWait = Math.min(90000, 4000 + cleaned.length * 110);
+    const start = Date.now();
+    while (gen === sessionGen && head.isSpeaking && Date.now() - start < maxWait) {
+      await sleep(250);
+    }
+  } catch (e) {
+    console.log('Animated speak failed for ' + id, e);
+  } finally {
+    if (tile) tile.classList.remove('speaking');
+    if (routeHead === head) { routeHead = null; routeGen = -1; }
+  }
+}
+
+// Called by speakForAgent (main script). Returns true synchronously when the
+// 3D path accepts the line; the chain itself falls back to the classic voice
+// if this agent's avatar or the TTS model turns out to be unavailable.
+window.lumiAnimSpeak = function (id, text) {
+  if (!AGENT_3D[id]) return false;
+  if (headState[id] === 'failed' || ttsState === 'failed') return false;
+  const gen = sessionGen;
+  speakChain = speakChain.then(() => doSpeak(id, text, gen)).catch(() => {});
+  return true;
+};
+
+// Meeting opened: warm everything up (first open pays the download cost).
+window.lumiAnimStart = function () {
+  // Let the overlay lay out first so the canvases get real tile sizes.
+  requestAnimationFrame(() => { setTimeout(() => {
+    initHeads();
+    ensureTTS();
+    Object.keys(heads).forEach(id => { try { heads[id].start(); } catch (e) {} });
+  }, 60); });
+};
+
+// Meeting closed: silence the avatars and freeze rendering.
+window.lumiAnimStop = function () {
+  sessionGen++;
+  speakChain = Promise.resolve();
+  routeHead = null;
+  routeGen = -1;
+  if (genWaiter) { const w = genWaiter; genWaiter = null; w(); }
+  Object.keys(heads).forEach(id => {
+    try { heads[id].stopSpeaking(); } catch (e) {}
+    try { heads[id].stop(); } catch (e) {}
+  });
+  document.querySelectorAll('.meetTile.speaking').forEach(t => t.classList.remove('speaking'));
+};
+
+// Pause rendering while the tab is hidden (pattern from the examples).
+document.addEventListener('visibilitychange', () => {
+  const vis = document.visibilityState === 'visible';
+  Object.keys(heads).forEach(id => {
+    try {
+      if (vis && window.meetMode) heads[id].start();
+      else heads[id].stop();
+    } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>
