@@ -1,0 +1,25 @@
+name: Restore original index.html
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore original index.html from a9f81f1
+        run: |
+          set -e
+          git show a9f81f1:index.html > index.html
+          test "$(wc -l < index.html)" -eq 990
+          grep -q "<title>My AI Chat</title>" index.html
+          if grep -q "TalkingHead" index.html; then echo "v2 content detected"; exit 1; fi
+          rm .github/workflows/restore-index.yml
+          git config user.name "tanyaesm13"
+          git config user.email "tanyaesm13@users.noreply.github.com"
+          git add -A
+          git commit -m "Restore original Lumi appearance (revert 3D avatar version)"
+          git push
