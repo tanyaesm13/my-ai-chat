@@ -103,6 +103,10 @@
     #popBubble { position: fixed; left: 50%; bottom: 108px; transform: translateX(-50%) translateY(12px) scale(0.9); max-width: 86vw; background: #1a1a1a; color: #fff; border: 2px solid #ff2e88; border-radius: 18px; padding: 10px 16px; font-size: 15px; line-height: 1.35; box-shadow: 0 8px 30px rgba(255,46,136,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1); z-index: 400; text-align: center; }
     #popBubble.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
     @media (prefers-reduced-motion: reduce) { #popBubble { transition: none; } }
+    /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
+    #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
+    #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #ff2e88; color: #fff; border: 2px solid #ff4da6; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(255,46,136,0.45); cursor: pointer; }
+    #audioUnlockChip.hide { display: none; }
 </style>
 </head>
 <body>
@@ -182,6 +186,66 @@
     </div>
 </div>
 <div id="popBubble" role="status"></div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.21-3</div>
+<div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
+<script>
+  // ================================================================
+  // LUMI BUILD BOOTSTRAP (build 2026.10.21-3) — deliberately a
+  // SEPARATE tiny script in front of the main app script, so the
+  // self-update check and the audio-unlock chip work even if the
+  // main script ever fails to load.
+  //  - Self-update: fetch this page's own source with cache:'no-store'
+  //    plus a cache-busting query; if the stamp it carries is newer
+  //    than the build actually running, hard-navigate ONCE to a
+  //    cache-busted URL (sessionStorage guard = no reload loop).
+  //  - Chip: records the first real user gesture (sticky activation is
+  //    what desktop Chrome/Edge require before ANY audio may play) and
+  //    hands it to the main script's audio primer when available.
+  // ================================================================
+  var LUMI_BUILD_STAMP = '2026.10.21-3';
+  window.__lumiBuildStamp = LUMI_BUILD_STAMP;
+  window.__lumiUserGestured = false;
+  (function () {
+    try {
+      var stampEl = document.getElementById('lumiBuildStamp');
+      if (stampEl) stampEl.textContent = 'build ' + LUMI_BUILD_STAMP;
+    } catch (e) {}
+    // --- audio unlock chip ---
+    try {
+      var chip = document.getElementById('audioUnlockChip');
+      var hideChip = function () { if (chip) chip.classList.add('hide'); };
+      if (window.navigator && navigator.userActivation && navigator.userActivation.hasBeenActive) hideChip();
+      var onGesture = function () {
+        window.__lumiUserGestured = true;
+        hideChip();
+        try { if (typeof window.__lumiPrimeAudio === 'function') window.__lumiPrimeAudio(); } catch (e) {}
+      };
+      ['pointerdown', 'click', 'touchend', 'keydown'].forEach(function (evt) {
+        document.addEventListener(evt, onGesture, { passive: true });
+      });
+      window.__lumiHideAudioChip = hideChip;
+    } catch (e) {}
+    // --- self-update check ---
+    try {
+      if (!window.fetch || !/^https?:$/.test(location.protocol)) return;
+      var checkUrl = location.pathname + '?lumi_build_check=' + Date.now();
+      setTimeout(function () {
+        try {
+          fetch(checkUrl, { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (txt) {
+            var m = /LUMI_BUILD_STAMP\s*=\s*'([^']+)'/.exec(txt || '');
+            if (!m) return;
+            var latest = m[1];
+            if (latest === LUMI_BUILD_STAMP) return;
+            var guardKey = 'lumi_selfupdate_' + latest;
+            try { if (sessionStorage.getItem(guardKey)) return; sessionStorage.setItem(guardKey, '1'); } catch (e) {}
+            var clean = location.pathname + '?lumi_v=' + encodeURIComponent(latest);
+            location.replace(clean);
+          }).catch(function () {});
+        } catch (e) {}
+      }, 900);
+    } catch (e) {}
+  })();
+</script>
 <script>
   // STEP 5: Replace this with your real Cloudflare Worker URL after you deploy it in Step 3.
   // Example: const WORKER_URL = "https://my-ai-chat.your-name.workers.dev";
@@ -448,6 +512,12 @@
   // the app is never left voiceless.
   // ================================================================
   var cloudAudio = null, cloudCtx = null, cloudAnalyser = null, cloudObjUrl = null, cloudPlaySeq = 0, cloudCaption = '';
+  // DESKTOP FIX (build 2026.10.21-3): a second, DIRECT <audio> element that is
+  // NOT routed through WebAudio. If the AudioContext is suspended (desktop
+  // autoplay policy) the graph path is silent BY DESIGN, so speech must be
+  // able to bypass the graph entirely and still animate the mouth from the
+  // speech-activity envelope (the .talking class drives mouthTick's fallback).
+  var directAudio = null;
   function setTalkingUI(on) {
     if (lumiAvatar) lumiAvatar.classList.toggle('talking', !!on);
     var ca = document.getElementById('callAvatar');
@@ -457,41 +527,89 @@
       if (cap && cloudCaption) cap.textContent = cloudCaption;
     }
   }
-  function ensureCloudAudio() {
-    if (cloudAudio) { if (cloudCtx && cloudCtx.state === 'suspended') { try { cloudCtx.resume(); } catch (e) {} } return true; }
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return false;
+  function animSetAnalyser(node) { try { if (window.LumiAnim && node) LumiAnim.setAnalyser(node); } catch (e) {} }
+  function animClearAnalyser() { try { if (window.LumiAnim) LumiAnim.clearAnalyser(); } catch (e) {} }
+  function cloudDone() { setTalkingUI(false); animClearAnalyser(); }
+  function ensureDirectAudio() {
+    if (directAudio) return true;
     try {
-      cloudCtx = new AC();
-      cloudAudio = new Audio();
-      cloudAudio.crossOrigin = 'anonymous'; // Worker sends CORS *; required so the analyser hears real samples
-      cloudAudio.preload = 'auto';
-      var srcNode = cloudCtx.createMediaElementSource(cloudAudio);
-      cloudAnalyser = cloudCtx.createAnalyser();
-      cloudAnalyser.fftSize = 2048;
-      srcNode.connect(cloudAnalyser);
-      cloudAnalyser.connect(cloudCtx.destination);
-      cloudAudio.addEventListener('play', function () {
-        setTalkingUI(true);
-        if (window.LumiAnim && cloudAnalyser) LumiAnim.setAnalyser(cloudAnalyser);
-      });
-      var done = function () { setTalkingUI(false); if (window.LumiAnim) LumiAnim.clearAnalyser(); };
-      cloudAudio.addEventListener('ended', done);
-      cloudAudio.addEventListener('error', done);
+      directAudio = new Audio();
+      directAudio.preload = 'auto';
+      directAudio.addEventListener('play', function () { animClearAnalyser(); setTalkingUI(true); });
+      directAudio.addEventListener('ended', cloudDone);
+      directAudio.addEventListener('error', cloudDone);
       return true;
     } catch (e) { return false; }
+  }
+  function ensureCloudAudio() {
+    // Returns true when SOME playback path exists (graph or direct). Creating
+    // the AudioContext is attempted, but a failure here must never silence
+    // the app -- the direct element still plays, and speakCloud picks the
+    // graph only when the context is verifiably 'running'.
+    if (!cloudAudio) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        try {
+          cloudCtx = new AC();
+          cloudAudio = new Audio();
+          cloudAudio.crossOrigin = 'anonymous'; // Worker sends CORS *; required so the analyser hears real samples
+          cloudAudio.preload = 'auto';
+          var srcNode = cloudCtx.createMediaElementSource(cloudAudio);
+          cloudAnalyser = cloudCtx.createAnalyser();
+          cloudAnalyser.fftSize = 2048;
+          srcNode.connect(cloudAnalyser);
+          cloudAnalyser.connect(cloudCtx.destination);
+          cloudAudio.addEventListener('play', function () {
+            setTalkingUI(true);
+            animSetAnalyser(cloudAnalyser);
+          });
+          cloudAudio.addEventListener('ended', cloudDone);
+          cloudAudio.addEventListener('error', cloudDone);
+        } catch (e) { cloudAudio = null; cloudCtx = null; cloudAnalyser = null; }
+      }
+    }
+    if (cloudCtx && cloudCtx.state === 'suspended') { try { var rp = cloudCtx.resume(); if (rp && rp.catch) rp.catch(function () {}); } catch (e) {} }
+    return !!(cloudAudio || ensureDirectAudio());
+  }
+  // Called from REAL user-gesture handlers only (registered below and via the
+  // bootstrap script's window.__lumiPrimeAudio hook): this is the one moment
+  // desktop Chrome/Edge allow an AudioContext to start 'running'. Priming
+  // here -- instead of lazily after two network round-trips, which is what
+  // the pre-fix code did -- is the actual desktop-audio fix.
+  function primeCloudAudio() {
+    try { unlockAudio(); } catch (e) {}
+    try { ensureCloudAudio(); } catch (e) {}
+    try { if (window.__lumiHideAudioChip) window.__lumiHideAudioChip(); } catch (e) {}
+  }
+  window.__lumiPrimeAudio = primeCloudAudio;
+  ['pointerdown', 'click', 'touchend', 'keydown'].forEach(function (evt) {
+    document.addEventListener(evt, function () { try { primeCloudAudio(); } catch (e) {} }, { passive: true });
+  });
+  function resumeCtxWithTimeout(ms) {
+    // resume() without user activation may never settle on desktop Chrome;
+    // never let speech hang on it -- race it and move on.
+    if (!cloudCtx) return Promise.resolve(false);
+    if (cloudCtx.state === 'running') return Promise.resolve(true);
+    var attempt;
+    try { attempt = cloudCtx.resume(); } catch (e) { return Promise.resolve(false); }
+    if (!attempt || typeof attempt.then !== 'function') return Promise.resolve(cloudCtx.state === 'running');
+    return Promise.race([
+      attempt.then(function () { return cloudCtx.state === 'running'; }, function () { return false; }),
+      new Promise(function (resolve) { setTimeout(function () { resolve(cloudCtx.state === 'running'); }, ms); })
+    ]);
   }
   function stopCloudSpeech() {
     cloudPlaySeq++;
     try { if (cloudAudio) { cloudAudio.pause(); cloudAudio.removeAttribute('src'); cloudAudio.load(); } } catch (e) {}
+    try { if (directAudio) { directAudio.pause(); directAudio.removeAttribute('src'); directAudio.load(); } } catch (e) {}
     setTalkingUI(false);
-    if (window.LumiAnim) LumiAnim.clearAnalyser();
+    animClearAnalyser();
   }
   async function speakCloud(text, agentId) {
-    if (!ensureCloudAudio()) return false;
     var seq = ++cloudPlaySeq;
     var ctrl = ('AbortController' in window) ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 9000) : 0;
+    var blob;
     try {
       var res = await fetch(WORKER_URL + 'tts', {
         method: 'POST',
@@ -503,14 +621,35 @@
       if (!res.ok) return false;
       var ct = res.headers.get('Content-Type') || '';
       if (ct.indexOf('audio') !== 0) return false;
-      var blob = await res.blob();
-      if (seq !== cloudPlaySeq) return true; // a newer reply already took over
-      if (cloudObjUrl) URL.revokeObjectURL(cloudObjUrl);
-      cloudObjUrl = URL.createObjectURL(blob);
-      cloudCaption = text;
-      cloudAudio.src = cloudObjUrl;
-      if (cloudCtx && cloudCtx.state === 'suspended') { try { await cloudCtx.resume(); } catch (e) {} }
-      await cloudAudio.play();
+      blob = await res.blob();
+    } catch (e) { if (timer) clearTimeout(timer); return false; }
+    if (seq !== cloudPlaySeq) return true; // a newer reply already took over
+    if (!ensureCloudAudio()) return false;
+    if (cloudObjUrl) URL.revokeObjectURL(cloudObjUrl);
+    cloudObjUrl = URL.createObjectURL(blob);
+    cloudCaption = text;
+    // Graph path ONLY when the context is verifiably running; a suspended
+    // context would swallow the sound while play() still "succeeds" (the
+    // original desktop bug: no error, no fallback, total silence).
+    var graphReady = false;
+    try { graphReady = !!(cloudAudio && cloudAnalyser && cloudCtx && (await resumeCtxWithTimeout(700)) && cloudCtx.state === 'running'); } catch (e) { graphReady = false; }
+    if (seq !== cloudPlaySeq) return true;
+    if (graphReady) {
+      try {
+        cloudAudio.src = cloudObjUrl;
+        await cloudAudio.play();
+        return true;
+      } catch (e) { /* fall through to the direct element */ }
+    }
+    if (seq !== cloudPlaySeq) return true;
+    // Direct path: plain element playback (audible regardless of the
+    // AudioContext), mouth animated from the speech-activity envelope.
+    if (!ensureDirectAudio()) return false;
+    try {
+      animClearAnalyser();
+      directAudio.src = cloudObjUrl;
+      await directAudio.play();
+      setTalkingUI(true);
       return true;
     } catch (e) { return false; }
   }
@@ -519,7 +658,7 @@
     unlockAudio();
     stopCloudSpeech();
     if (spanishOn) { speakDevice(text, agentId); return; } // device Spanish voices until a Spanish cloud voice is picked
-    speakCloud(text, agentId).then(function (ok) { if (!ok) speakDevice(text, agentId); });
+    speakCloud(text, agentId).then(function (ok) { if (!ok) { animClearAnalyser(); speakDevice(text, agentId); } });
   }
   function speakDevice(text, agentId) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
@@ -1368,19 +1507,29 @@
     }
 
     // ---------- start / stop ----------
+    var mouthTimerOn = false;
+    function startMouth() {
+      if (mouthTimerOn) return;
+      mouthTimerOn = true;
+      every(function () { try { mouthTick(); } catch (e) {} }, 50);
+    }
     function startAll() {
+      // Error armor (build 2026.10.21-3): each cosmetic subsystem starts
+      // behind its own try/catch -- a failure in any one of them can never
+      // take down the others, the chat, or the layout.
+      startMouth();
       if (!motionOn) return;
-      breathe($('avatarWrap'), false);
-      document.querySelectorAll('.agentCard img').forEach(function (img) { breathe(img, false); });
-      document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); });
-      blinkChain($('avatarWrap'));
-      blinkChain($('callAvatarWrap'));
-      every(mouthTick, 50);
-      every(stageTick, 3400);
-      schedulePop();
-      scheduleTileWiggle();
+      try { breathe($('avatarWrap'), false); } catch (e) {}
+      try { document.querySelectorAll('.agentCard img').forEach(function (img) { breathe(img, false); }); } catch (e) {}
+      try { document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); }); } catch (e) {}
+      try { blinkChain($('avatarWrap')); } catch (e) {}
+      try { blinkChain($('callAvatarWrap')); } catch (e) {}
+      try { every(stageTick, 3400); } catch (e) {}
+      try { schedulePop(); } catch (e) {}
+      try { scheduleTileWiggle(); } catch (e) {}
     }
     function stopAll() {
+      mouthTimerOn = false;
       anims.forEach(function (a) { try { a.cancel(); } catch (e) {} });
       anims = [];
       timers.forEach(function (id) { clearTimeout(id); clearInterval(id); });
@@ -1400,9 +1549,9 @@
         try { analyser = node; analyserData = new Uint8Array(node.fftSize || 2048); analyserFreq = new Uint8Array(node.frequencyBinCount || 1024); } catch (e) {}
       },
       clearAnalyser: function () { analyser = null; analyserData = null; analyserFreq = null; },
-      setExpression: setExpression,
-      popIn: function (agentId) { popIn(agentId || currentAgent, true); },
-      blink: function () { blinkWrap($('avatarWrap')); blinkWrap($('callAvatarWrap')); }
+      setExpression: function (name) { try { setExpression(name); } catch (e) {} },
+      popIn: function (agentId) { try { popIn(agentId || currentAgent, true); } catch (e) {} },
+      blink: function () { try { blinkWrap($('avatarWrap')); } catch (e) {} try { blinkWrap($('callAvatarWrap')); } catch (e) {} }
     };
 
     // ---------- wire into existing flows without changing their behavior ----------
@@ -1459,10 +1608,12 @@
     });
 
     // ---------- boot ----------
-    rigFace($('avatarWrap'), currentAgent);
-    rigFace($('callAvatarWrap'), currentAgent);
-    paintBtn();
-    startAll();
+    // Error armor: if ANY animation boot step throws, the app (chat, voice,
+    // layout) must still be fully alive -- this layer is decoration only.
+    try { rigFace($('avatarWrap'), currentAgent); } catch (e) {}
+    try { rigFace($('callAvatarWrap'), currentAgent); } catch (e) {}
+    try { paintBtn(); } catch (e) {}
+    try { startAll(); } catch (e) { try { startMouth(); } catch (e2) {} }
   })();
 
 </script>
