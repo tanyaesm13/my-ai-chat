@@ -439,7 +439,89 @@
       .replace(/\s{2,}/g, ' ')
       .trim();
   }
-  function speak(text) {
+  // ================================================================
+  // PHASE 2 VOICE: real per-agent voices from the Worker's /tts route.
+  // One real audio track per reply -> WebAudio AnalyserNode -> the
+  // LumiAnim mouth (window.LumiAnim.setAnalyser): true lip-sync, one
+  // clock for sound and picture. If /tts is unavailable for ANY reason,
+  // speak() falls back to the original device voice (speakDevice) —
+  // the app is never left voiceless.
+  // ================================================================
+  var cloudAudio = null, cloudCtx = null, cloudAnalyser = null, cloudObjUrl = null, cloudPlaySeq = 0, cloudCaption = '';
+  function setTalkingUI(on) {
+    if (lumiAvatar) lumiAvatar.classList.toggle('talking', !!on);
+    var ca = document.getElementById('callAvatar');
+    if (ca) ca.classList.toggle('talking', !!on);
+    if (on && window.callMode) {
+      var cap = document.getElementById('callCaption');
+      if (cap && cloudCaption) cap.textContent = cloudCaption;
+    }
+  }
+  function ensureCloudAudio() {
+    if (cloudAudio) { if (cloudCtx && cloudCtx.state === 'suspended') { try { cloudCtx.resume(); } catch (e) {} } return true; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    try {
+      cloudCtx = new AC();
+      cloudAudio = new Audio();
+      cloudAudio.crossOrigin = 'anonymous'; // Worker sends CORS *; required so the analyser hears real samples
+      cloudAudio.preload = 'auto';
+      var srcNode = cloudCtx.createMediaElementSource(cloudAudio);
+      cloudAnalyser = cloudCtx.createAnalyser();
+      cloudAnalyser.fftSize = 2048;
+      srcNode.connect(cloudAnalyser);
+      cloudAnalyser.connect(cloudCtx.destination);
+      cloudAudio.addEventListener('play', function () {
+        setTalkingUI(true);
+        if (window.LumiAnim && cloudAnalyser) LumiAnim.setAnalyser(cloudAnalyser);
+      });
+      var done = function () { setTalkingUI(false); if (window.LumiAnim) LumiAnim.clearAnalyser(); };
+      cloudAudio.addEventListener('ended', done);
+      cloudAudio.addEventListener('error', done);
+      return true;
+    } catch (e) { return false; }
+  }
+  function stopCloudSpeech() {
+    cloudPlaySeq++;
+    try { if (cloudAudio) { cloudAudio.pause(); cloudAudio.removeAttribute('src'); cloudAudio.load(); } } catch (e) {}
+    setTalkingUI(false);
+    if (window.LumiAnim) LumiAnim.clearAnalyser();
+  }
+  async function speakCloud(text, agentId) {
+    if (!ensureCloudAudio()) return false;
+    var seq = ++cloudPlaySeq;
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 9000) : 0;
+    try {
+      var res = await fetch(WORKER_URL + 'tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent: agentId || currentAgent, text: cleanForSpeech(text), lang: spanishOn ? 'es' : 'en' }),
+        signal: ctrl ? ctrl.signal : undefined
+      });
+      if (timer) clearTimeout(timer);
+      if (!res.ok) return false;
+      var ct = res.headers.get('Content-Type') || '';
+      if (ct.indexOf('audio') !== 0) return false;
+      var blob = await res.blob();
+      if (seq !== cloudPlaySeq) return true; // a newer reply already took over
+      if (cloudObjUrl) URL.revokeObjectURL(cloudObjUrl);
+      cloudObjUrl = URL.createObjectURL(blob);
+      cloudCaption = text;
+      cloudAudio.src = cloudObjUrl;
+      if (cloudCtx && cloudCtx.state === 'suspended') { try { await cloudCtx.resume(); } catch (e) {} }
+      await cloudAudio.play();
+      return true;
+    } catch (e) { return false; }
+  }
+  function speak(text, agentId) {
+    if (!voiceOn) return;
+    unlockAudio();
+    stopCloudSpeech();
+    if (spanishOn) { speakDevice(text, agentId); return; } // device Spanish voices until a Spanish cloud voice is picked
+    speakCloud(text, agentId).then(function (ok) { if (!ok) speakDevice(text, agentId); });
+  }
+  function speakDevice(text, agentId) {
     if (!voiceOn || !('speechSynthesis' in window)) return;
     unlockAudio();
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
@@ -451,8 +533,10 @@
     const utter = new SpeechSynthesisUtterance(cleanForSpeech(text));
     // On iOS, an explicitly-set voice can go silent on some versions —
     // use the device default there. Elsewhere use the picked voice.
-    if (lumiVoice && !isIOS) utter.voice = lumiVoice;
-    const vstyle = AGENT_VOICE_STYLE[currentAgent] || { pitch: 1, rate: 1 };
+    const aid = agentId || currentAgent;
+    const picked = (aid === currentAgent) ? lumiVoice : pickVoiceFor(aid);
+    if (picked && !isIOS) utter.voice = picked;
+    const vstyle = AGENT_VOICE_STYLE[aid] || { pitch: 1, rate: 1 };
     // Rate is safe everywhere; non-default pitch goes silent on some iOS
     // versions, so iOS keeps pitch at 1 and differs by rate + voice only.
     utter.rate = vstyle.rate;
@@ -514,10 +598,11 @@
   voiceToggle.addEventListener('click', () => {
     voiceOn = !voiceOn;
     voiceToggle.textContent = voiceOn ? '🔊' : '🔇';
-    if (!voiceOn && 'speechSynthesis' in window) speechSynthesis.cancel();
+    if (!voiceOn) { stopCloudSpeech(); if ('speechSynthesis' in window) speechSynthesis.cancel(); }
   });
   // Tap the avatar to stop Lumi mid-sentence.
   lumiAvatar.addEventListener('click', () => {
+    stopCloudSpeech();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   });
   function addMsg(text, cls) {
@@ -552,7 +637,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, messages: history, agent: currentAgent })
+        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}))
       });
       return res.json();
     }
@@ -667,6 +752,23 @@
     bigTextBtn.classList.toggle('active', bigText);
     try { localStorage.setItem('lumi_bigtext', bigText ? '1' : '0'); } catch (e) {}
   });
+  // GPS (phase 2): once T shares her location (the 📍 button), keep fresh
+  // coords and send them as structured {lat, lon} with every chat request,
+  // so the team answers weather / "near me" for where she actually IS.
+  let myCoords = null;
+  try { const _lc = JSON.parse(localStorage.getItem('lumi_coords') || 'null'); if (_lc && isFinite(_lc.lat) && isFinite(_lc.lon)) myCoords = _lc; } catch (e) {}
+  function refreshLocation() {
+    if (!('geolocation' in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        myCoords = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) };
+        try { localStorage.setItem('lumi_coords', JSON.stringify(myCoords)); } catch (e) {}
+      },
+      () => {},
+      { maximumAge: 600000, timeout: 9000 }
+    );
+  }
+  try { if (localStorage.getItem('lumi_loc') === 'on') refreshLocation(); } catch (e) {}
   // Location button: attach coords to the next message.
   const locBtn = document.getElementById('locBtn');
   if (!('geolocation' in navigator)) {
@@ -676,6 +778,8 @@
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           pendingLocation = pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
+          myCoords = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) };
+          try { localStorage.setItem('lumi_loc', 'on'); localStorage.setItem('lumi_coords', JSON.stringify(myCoords)); } catch (e) {}
           addMsg('📍 Location ready — it will go with your next message.', 'ai');
         },
         () => { addMsg('Location not available.', 'error'); },
@@ -839,6 +943,7 @@
     window.callMode = false;
     const cv = document.getElementById('callVideo');
     if (cv) { cv.pause(); }
+    stopCloudSpeech();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     lumiAvatar.classList.remove('talking');
     const ca = document.getElementById('callAvatar');
@@ -901,7 +1006,7 @@
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, messages: mh, agent: id })
+          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}))
         });
         return res.json();
       }
@@ -919,7 +1024,7 @@
         mh.push({ role: 'assistant', content: reply });
         try { localStorage.setItem(historyKey(id), JSON.stringify(mh.slice(-40))); } catch (e) {}
         if (id === currentAgent) { history = mh; }
-        speak(reply);
+        speak(reply, id);
       } catch (err) {
         meetCaption.textContent = "Couldn't reach " + AGENTS[id].name + '. Check your connection.';
       }
@@ -989,6 +1094,7 @@
         if (v) v.pause();
         t.classList.remove('speaking');
       });
+      stopCloudSpeech();
       if ('speechSynthesis' in window) speechSynthesis.cancel();
     }
     document.getElementById('meetStartBtn').addEventListener('click', openMeet);
@@ -1009,7 +1115,7 @@
   //     fake per-syllable sync.
   //   window.LumiAnim.setExpression('happy'|'thinking'|'neutral')
   //   window.LumiAnim.popIn(agentId)
-  // Speech output itself is unchanged (speechSynthesis via speak()).
+  // Speech output (phase 2): real /tts audio via speak(); its AnalyserNode feeds this engine (setAnalyser) for true lip-sync. speechSynthesis remains only as the fallback voice.
   // ================================================================
   (function () {
     'use strict';
@@ -1137,7 +1243,7 @@
     }
 
     // ---------- speech-driven mouth ----------
-    var analyser = null, analyserData = null, mouthLevel = 0.12, wasSpeaking = false;
+    var analyser = null, analyserData = null, analyserFreq = null, mouthLevel = 0.12, mouthWidth = 1, widthTarget = 1, wasSpeaking = false;
     function speechActive() {
       try { if (window.speechSynthesis && speechSynthesis.speaking) return true; } catch (e) {}
       var la = $('lumiAvatar'); if (la && la.classList.contains('talking')) return true;
@@ -1149,7 +1255,7 @@
       var m = wrap.querySelector('.mouth');
       if (!m || m.style.display === 'none') return;
       m.style.opacity = show ? '1' : '0';
-      if (show) m.style.transform = 'translate(-50%,-50%) scaleY(' + level.toFixed(3) + ')';
+      if (show) m.style.transform = 'translate(-50%,' + (-50 + (level - 0.12) * 2.4).toFixed(2) + '%) scale(' + mouthWidth.toFixed(3) + ',' + level.toFixed(3) + ')'; // jaw drop + width + a whisper of head-bob, all from the same envelope
     }
     function mouthTick() {
       var active = speechActive();
@@ -1157,13 +1263,39 @@
       if (!active && wasSpeaking) later(function () { if (!speechActive()) setExpression('neutral'); }, 1200);
       wasSpeaking = active;
       var target = 0.12;
+      widthTarget = 1;
       if (analyser && analyserData) {
         try {
           analyser.getByteTimeDomainData(analyserData);
           var sum = 0;
           for (var i = 0; i < analyserData.length; i += 16) { var d = (analyserData[i] - 128) / 128; sum += d * d; }
           var rms = Math.sqrt(sum / (analyserData.length / 16));
-          target = Math.max(0.1, Math.min(1.15, rms * 4.2));
+          // Phase 2 — TRUE lip-sync. Frequency-band analysis adapted from
+          // the wawa-lipsync pattern (MIT License, (c) wass08 —
+          // github.com/wass08/wawa-lipsync): speech split into formant and
+          // fricative bands, classified per frame. Reimplemented for a
+          // flat portrait: low/mid energy opens the JAW, fricative energy
+          // narrows the mouth (s/f shapes), low-band weight widens it
+          // slightly (round oo shapes). The RMS gate + the EMA smoothing
+          // below keep it from flickering — the mouth now follows the
+          // real audio waveform: sound and picture share ONE clock.
+          if (analyserFreq && analyser.context) {
+            analyser.getByteFrequencyData(analyserFreq);
+            var binHz = analyser.context.sampleRate / analyser.fftSize;
+            var bandAvg = function (lo, hi) {
+              var a = Math.max(0, Math.floor(lo / binHz)), b = Math.min(analyserFreq.length - 1, Math.ceil(hi / binHz)), sm = 0, n = 0;
+              for (var j = a; j <= b; j++) { sm += analyserFreq[j]; n++; }
+              return n ? (sm / n) / 255 : 0;
+            };
+            var lowE = bandAvg(50, 400), midE = bandAvg(400, 1500), hiE = bandAvg(1500, 4000), fricE = bandAvg(4000, 8000);
+            if (rms < 0.012) { target = 0.1; widthTarget = 1; }
+            else {
+              target = Math.max(0.12, Math.min(1.2, 0.12 + lowE * 1.5 + midE * 1.1));
+              widthTarget = Math.max(0.8, Math.min(1.1, 1.04 - fricE * 0.55 - hiE * 0.15 + lowE * 0.12));
+            }
+          } else {
+            target = Math.max(0.1, Math.min(1.15, rms * 4.2));
+          }
         } catch (e) { analyser = null; }
       } else if (active) {
         var t = Date.now() / 1000;
@@ -1172,6 +1304,7 @@
         target = 0.18 + Math.min(1, v) * 0.95 * gate;
       }
       mouthLevel += (target - mouthLevel) * 0.45;
+      mouthWidth += (widthTarget - mouthWidth) * 0.35;
       var callOpen = $('callOverlay') && $('callOverlay').classList.contains('open');
       mouthFor($('avatarWrap'), mouthLevel, active && !callOpen);
       mouthFor($('callAvatarWrap'), mouthLevel, active && !!callOpen);
@@ -1264,9 +1397,9 @@
     // ---------- public hooks (phase 2: real audio analyser + expressions) ----------
     window.LumiAnim = {
       setAnalyser: function (node) {
-        try { analyser = node; analyserData = new Uint8Array(node.fftSize || 2048); } catch (e) {}
+        try { analyser = node; analyserData = new Uint8Array(node.fftSize || 2048); analyserFreq = new Uint8Array(node.frequencyBinCount || 1024); } catch (e) {}
       },
-      clearAnalyser: function () { analyser = null; analyserData = null; },
+      clearAnalyser: function () { analyser = null; analyserData = null; analyserFreq = null; },
       setExpression: setExpression,
       popIn: function (agentId) { popIn(agentId || currentAgent, true); },
       blink: function () { blinkWrap($('avatarWrap')); blinkWrap($('callAvatarWrap')); }
