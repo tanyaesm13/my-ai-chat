@@ -16,14 +16,12 @@
     header { padding: 16px; text-align: center; background: #000000; border-bottom: 3px solid #ff2e88; }
     header h1 { margin: 0; font-size: 20px; color: #ff4da6; }
     header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
-    #avatarWrap { position: relative; display: inline-block; margin: 0 auto 8px; animation: float 3s ease-in-out infinite; }
+    #avatarWrap { position: relative; display: inline-block; margin: 0 auto 8px; }
     #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; display: block; cursor: pointer; }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     #lumiAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 18px #ff2e88; }
     @keyframes talkPulse { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.06) rotate(-1.5deg); } }
-    .mouth { position: absolute; left: 50%; bottom: 16%; width: 26%; aspect-ratio: 2 / 1; transform: translateX(-50%) scaleY(0.4); background: rgba(15,0,8,0.92); border-radius: 50%; opacity: 0; pointer-events: none; }
-    #lumiAvatar.talking + .mouth, #callAvatar.talking + .mouth { opacity: 1; animation: mouthTalk 0.45s ease-in-out infinite; }
-    @keyframes mouthTalk { 0%,100% { transform: translateX(-50%) scaleY(0.35); } 50% { transform: translateX(-50%) scaleY(1.1); } }
+    .mouth { position: absolute; left: 50.5%; top: 67.8%; width: 17%; aspect-ratio: 2.4 / 1; transform: translate(-50%,-50%) scaleY(0.15); background: radial-gradient(ellipse at center, rgba(43,10,22,0.95) 55%, rgba(43,10,22,0.45) 100%); border-radius: 50%; opacity: 0; transition: opacity 0.15s ease; pointer-events: none; z-index: 3; }
     .hbtns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
     .hbtns button { background: none; border: 1px solid #ff2e88; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; padding: 0; color: #fff; }
     .hbtns button.wide { width: auto; border-radius: 18px; padding: 0 10px; font-size: 13px; font-weight: 700; }
@@ -52,7 +50,7 @@
     #callOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
     #callOverlay.open { display: flex; }
     #callName { margin: 0; font-size: 22px; color: #ff4da6; }
-    #callAvatarWrap { position: relative; display: inline-block; animation: float 4s ease-in-out infinite; }
+    #callAvatarWrap { position: relative; display: inline-block; transition: transform 1.8s cubic-bezier(.34,.68,.3,1); }
     #callAvatar { width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; display: block; }
     #callAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 30px #ff2e88; }
     #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
@@ -96,6 +94,15 @@
     #meetCamBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
     #meetCloseBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
     #meetStartBtn { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 10px 22px; font-size: 15px; cursor: pointer; margin-top: 4px; }
+    /* === Phase 1 living-animation layer (driven by the LumiAnim engine) === */
+    #callOverlay { overflow: hidden; }
+    .meetTile .meetLabel { z-index: 3; }
+    .agentCard { position: relative; }
+    .lid { position: absolute; border-radius: 50%; transform: scaleY(0); transform-origin: 50% 0%; pointer-events: none; z-index: 2; opacity: 0.97; }
+    .brow { position: absolute; height: 2.4%; border-radius: 999px; background: rgba(25,15,30,0.55); opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; z-index: 2; }
+    #popBubble { position: fixed; left: 50%; bottom: 108px; transform: translateX(-50%) translateY(12px) scale(0.9); max-width: 86vw; background: #1a1a1a; color: #fff; border: 2px solid #ff2e88; border-radius: 18px; padding: 10px 16px; font-size: 15px; line-height: 1.35; box-shadow: 0 8px 30px rgba(255,46,136,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1); z-index: 400; text-align: center; }
+    #popBubble.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    @media (prefers-reduced-motion: reduce) { #popBubble { transition: none; } }
 </style>
 </head>
 <body>
@@ -109,6 +116,7 @@
     <div class="hbtns">
         <button id="voiceToggle" title="Toggle voice">🔊</button>
         <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Izzy, Hey Bea, Hey Quinn">🎧</button>
+        <button id="motionBtn" class="active" title="Toggle character motion">🕺</button>
         <button id="voicePickBtn" title="Pick voice">🎭</button>
         <button id="callBtn" title="Video call">📹</button>
         <button id="teamBtn" title="Lumi's team">👥</button>
@@ -173,6 +181,7 @@
         <button id="callCloseBtn" type="button" title="End call">❌</button>
     </div>
 </div>
+<div id="popBubble" role="status"></div>
 <script>
   // STEP 5: Replace this with your real Cloudflare Worker URL after you deploy it in Step 3.
   // Example: const WORKER_URL = "https://my-ai-chat.your-name.workers.dev";
@@ -985,6 +994,344 @@
     document.getElementById('meetStartBtn').addEventListener('click', openMeet);
     document.getElementById('meetCloseBtn').addEventListener('click', closeMeet);
   })();
+
+  // ================================================================
+  // LUMI ANIMATION ENGINE — Phase 1: living avatars on the ORIGINAL art.
+  // Identity lock: this layer only MOVES the existing pictures (CSS/WAAPI
+  // transforms + skin-tone eyelid/brow overlays + a speech-driven mouth
+  // overlay). It never redraws, swaps, or restyles a face.
+  // Phase-2 hooks kept open on purpose:
+  //   window.LumiAnim.setAnalyser(analyserNode) — when a real audio track
+  //     (cloud TTS <audio>) exists, feed its AnalyserNode here and the
+  //     mouth switches from the speech-activity envelope to TRUE audio
+  //     amplitude. Until then the mouth follows speech activity (speaking
+  //     state + a syllable-rate envelope) — an honest approximation, not
+  //     fake per-syllable sync.
+  //   window.LumiAnim.setExpression('happy'|'thinking'|'neutral')
+  //   window.LumiAnim.popIn(agentId)
+  // Speech output itself is unchanged (speechSynthesis via speak()).
+  // ================================================================
+  (function () {
+    'use strict';
+    // Per-agent face rig, measured on the shipped 1600x1600 art
+    // (percent of the square image; the app shows the full square).
+    var RIG = {
+      lumi:  { skin: '#82c8dd', mouthIn: 'rgba(43,10,22,0.95)',
+               eyes: [ { x: 38.0, y: 52.0, w: 16.5, h: 11 }, { x: 62.5, y: 52.0, w: 16.5, h: 11 } ],
+               mouth: { x: 50.5, y: 67.8, w: 17 } },
+      izzy:  { skin: '#52bdc3', mouthIn: 'rgba(46,16,18,0.95)',
+               eyes: [ { x: 36.4, y: 44.7, w: 23, h: 18 }, { x: 64.8, y: 44.7, w: 23, h: 18 } ],
+               mouth: { x: 50.5, y: 60.6, w: 15 } },
+      bea:   { skin: '#ae8cd1', mouthIn: 'rgba(52,18,32,0.95)',
+               eyes: [ { x: 35.7, y: 48.0, w: 18, h: 16 }, { x: 65.3, y: 48.0, w: 18, h: 16 } ],
+               mouth: { x: 50.9, y: 61.0, w: 15 } },
+      quinn: { skin: '#fa6847', mouthIn: 'rgba(74,22,16,0.95)',
+               eyes: [ { x: 34.6, y: 53.0, w: 20, h: 19 }, { x: 67.3, y: 53.0, w: 20, h: 19 } ],
+               mouth: { x: 51.4, y: 70.7, w: 16 } }
+    };
+    var POP_LINES = {
+      lumi:  [ "Oh hey, I didn't see you there ✨", "Right here if you need me, T 💫", "Still orbiting your inbox… kidding. Mostly." ],
+      izzy:  [ "Oh hey, I didn't see you there 📧", "Inbox zero is a lifestyle ✉️", "Psst — your drafts miss you." ],
+      bea:   [ "Oh hey, I didn't see you there 📅", "You look like someone with a plan ✨", "Lunch. Is. Scheduled. No debates." ],
+      quinn: [ "Oh hey, I didn't see you there 📣", "This is your sign to post the thing 👀", "Caption idea brewing… stand back." ]
+    };
+    function $(id) { return document.getElementById(id); }
+    var reduced = false;
+    try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var motionOn = !reduced;
+    try { var sv = localStorage.getItem('lumi_motion'); if (sv !== null) motionOn = (sv === '1'); } catch (e) {}
+    var anims = [], timers = [];
+    function track(a) { if (a) anims.push(a); return a; }
+    function later(fn, ms) { var id = setTimeout(fn, ms); timers.push(id); return id; }
+    function every(fn, ms) { var id = setInterval(fn, ms); timers.push(id); return id; }
+    function rnd(a, b) { return a + Math.random() * (b - a); }
+
+    // ---------- idle breathing ----------
+    function breathe(el, big) {
+      if (!el) return;
+      var dx = rnd(-2.5, 2.5).toFixed(1), dy = big ? rnd(4, 7) : rnd(2, 4), r = rnd(-0.9, 0.9).toFixed(2);
+      track(el.animate([
+        { transform: 'translate(0px,0px) scale(1) rotate(0deg)' },
+        { transform: 'translate(' + dx + 'px,' + (-dy) + 'px) scale(' + (big ? 1.035 : 1.02) + ') rotate(' + r + 'deg)' }
+      ], { duration: rnd(2400, 3800), iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' }));
+    }
+    function hop(el, h) {
+      if (!el || !motionOn) return;
+      track(el.animate([
+        { transform: 'translateY(0px) scale(1,1)' },
+        { transform: 'translateY(' + (-(h || 14)) + 'px) scale(0.98,1.03)', offset: 0.35 },
+        { transform: 'translateY(0px) scale(1.05,0.93)', offset: 0.68 },
+        { transform: 'translateY(-4px) scale(1,1)', offset: 0.85 },
+        { transform: 'translateY(0px) scale(1,1)' }
+      ], { duration: 620, easing: 'ease-out' }));
+    }
+    function wiggle(el) {
+      if (!el || !motionOn) return;
+      track(el.animate([
+        { transform: 'rotate(0deg)' }, { transform: 'rotate(-4deg)', offset: 0.25 },
+        { transform: 'rotate(4deg)', offset: 0.55 }, { transform: 'rotate(-2deg)', offset: 0.8 },
+        { transform: 'rotate(0deg)' }
+      ], { duration: 480, easing: 'ease-in-out' }));
+    }
+
+    // ---------- face rig: eyelids, brows, mouth placement ----------
+    function rigFace(wrap, agentId) {
+      if (!wrap) return;
+      var rig = RIG[agentId] || RIG.lumi;
+      wrap.querySelectorAll('.lid,.brow').forEach(function (n) { n.remove(); });
+      rig.eyes.forEach(function (eye) {
+        var lid = document.createElement('div');
+        lid.className = 'lid';
+        lid.style.left = (eye.x - eye.w / 2) + '%';
+        lid.style.top = (eye.y - eye.h / 2) + '%';
+        lid.style.width = eye.w + '%';
+        lid.style.height = eye.h + '%';
+        lid.style.background = rig.skin;
+        wrap.appendChild(lid);
+        var brow = document.createElement('div');
+        brow.className = 'brow';
+        brow.style.left = (eye.x - eye.w * 0.42) + '%';
+        brow.style.top = (eye.y - eye.h / 2 - 3.6) + '%';
+        brow.style.width = (eye.w * 0.84) + '%';
+        wrap.appendChild(brow);
+      });
+      var mouth = wrap.querySelector('.mouth');
+      if (mouth) {
+        mouth.style.left = rig.mouth.x + '%';
+        mouth.style.top = rig.mouth.y + '%';
+        mouth.style.width = rig.mouth.w + '%';
+        mouth.style.background = 'radial-gradient(ellipse at center, ' + rig.mouthIn + ' 55%, rgba(30,8,16,0.45) 100%)';
+      }
+      wrap._riggedFor = agentId;
+    }
+    function blinkWrap(wrap) {
+      if (!wrap || !motionOn) return;
+      wrap.querySelectorAll('.lid').forEach(function (lid) {
+        if (lid.style.display === 'none') return;
+        track(lid.animate([
+          { transform: 'scaleY(0)' }, { transform: 'scaleY(1)', offset: 0.45 },
+          { transform: 'scaleY(1)', offset: 0.6 }, { transform: 'scaleY(0)' }
+        ], { duration: 190, easing: 'ease-in-out' }));
+      });
+    }
+    function blinkChain(wrap) {
+      if (!wrap || wrap._blinkOn) return;
+      wrap._blinkOn = true;
+      (function tick() {
+        if (!motionOn) { wrap._blinkOn = false; return; }
+        blinkWrap(wrap);
+        later(tick, rnd(2400, 5600));
+      })();
+    }
+
+    // ---------- expressions (transforms/overlays only — art untouched) ----------
+    function setExpression(name) {
+      [$('avatarWrap'), $('callAvatarWrap')].forEach(function (wrap) {
+        if (!wrap) return;
+        wrap.querySelectorAll('.brow').forEach(function (b, i) {
+          if (name === 'happy') { b.style.opacity = '1'; b.style.transform = 'translateY(-22%) rotate(' + (i === 0 ? -4 : 4) + 'deg)'; }
+          else if (name === 'thinking') { b.style.opacity = '1'; b.style.transform = 'translateY(10%) rotate(' + (i === 0 ? 7 : -7) + 'deg)'; }
+          else { b.style.opacity = '0'; b.style.transform = ''; }
+        });
+      });
+    }
+
+    // ---------- speech-driven mouth ----------
+    var analyser = null, analyserData = null, mouthLevel = 0.12, wasSpeaking = false;
+    function speechActive() {
+      try { if (window.speechSynthesis && speechSynthesis.speaking) return true; } catch (e) {}
+      var la = $('lumiAvatar'); if (la && la.classList.contains('talking')) return true;
+      var ca = $('callAvatar'); if (ca && ca.classList.contains('talking')) return true;
+      return false;
+    }
+    function mouthFor(wrap, level, show) {
+      if (!wrap) return;
+      var m = wrap.querySelector('.mouth');
+      if (!m || m.style.display === 'none') return;
+      m.style.opacity = show ? '1' : '0';
+      if (show) m.style.transform = 'translate(-50%,-50%) scaleY(' + level.toFixed(3) + ')';
+    }
+    function mouthTick() {
+      var active = speechActive();
+      if (active && !wasSpeaking) setExpression('happy');
+      if (!active && wasSpeaking) later(function () { if (!speechActive()) setExpression('neutral'); }, 1200);
+      wasSpeaking = active;
+      var target = 0.12;
+      if (analyser && analyserData) {
+        try {
+          analyser.getByteTimeDomainData(analyserData);
+          var sum = 0;
+          for (var i = 0; i < analyserData.length; i += 16) { var d = (analyserData[i] - 128) / 128; sum += d * d; }
+          var rms = Math.sqrt(sum / (analyserData.length / 16));
+          target = Math.max(0.1, Math.min(1.15, rms * 4.2));
+        } catch (e) { analyser = null; }
+      } else if (active) {
+        var t = Date.now() / 1000;
+        var v = Math.abs(Math.sin(t * 9.1) * 0.55 + Math.sin(t * 15.7 + 1.3) * 0.3 + Math.sin(t * 4.3 + 0.5) * 0.25);
+        var gate = (Math.sin(t * 0.9) > -0.75) ? 1 : 0.25; // natural micro-pauses
+        target = 0.18 + Math.min(1, v) * 0.95 * gate;
+      }
+      mouthLevel += (target - mouthLevel) * 0.45;
+      var callOpen = $('callOverlay') && $('callOverlay').classList.contains('open');
+      mouthFor($('avatarWrap'), mouthLevel, active && !callOpen);
+      mouthFor($('callAvatarWrap'), mouthLevel, active && !!callOpen);
+    }
+
+    // ---------- playful pop-ins ----------
+    function showBubble(text) {
+      var b = $('popBubble');
+      if (!b || !text) return;
+      b.textContent = text;
+      b.classList.add('show');
+      later(function () { b.classList.remove('show'); }, 3400);
+    }
+    function popIn(agentId, greet) {
+      if (!motionOn) return;
+      hop($('avatarWrap'), 16);
+      setExpression('happy');
+      later(function () { if (!speechActive()) setExpression('neutral'); }, 2000);
+      if (greet) {
+        var lines = POP_LINES[agentId] || POP_LINES.lumi;
+        showBubble(lines[Math.floor(Math.random() * lines.length)]);
+      }
+    }
+    function schedulePop() {
+      later(function () {
+        if (!motionOn) return;
+        var ae = document.activeElement;
+        var typing = ae && (ae.id === 'input' || ae.id === 'meetInput');
+        if (!document.hidden && !typing && !speechActive()) popIn(currentAgent, true);
+        if (motionOn) schedulePop();
+      }, rnd(55000, 95000));
+    }
+    function scheduleTileWiggle() {
+      every(function () {
+        if (!motionOn || document.hidden) return;
+        var tiles = document.querySelectorAll('.meetTile');
+        if (!tiles.length) return;
+        var tile = tiles[Math.floor(Math.random() * tiles.length)];
+        if (tile) wiggle(tile);
+      }, 18000);
+    }
+
+    // ---------- call-mode stage choreography: glide + step toward/back ----------
+    var stageSteps = [
+      'translate(0px,0px) scale(1)',
+      'translate(-16vw,1vh) scale(0.92)',
+      'translate(-4vw,-1vh) scale(0.97)',
+      'translate(14vw,1vh) scale(0.94)',
+      'translate(3vw,0px) scale(1.16)',
+      'translate(0px,0px) scale(1.05)',
+      'translate(0px,0px) scale(1)'
+    ];
+    var stageIdx = 0;
+    function stageTick() {
+      var ov = $('callOverlay');
+      if (!ov || !ov.classList.contains('open')) return;
+      var wrap = $('callAvatarWrap');
+      if (!wrap) return;
+      stageIdx = (stageIdx + 1) % stageSteps.length;
+      wrap.style.transform = stageSteps[stageIdx];
+    }
+
+    // ---------- start / stop ----------
+    function startAll() {
+      if (!motionOn) return;
+      breathe($('avatarWrap'), false);
+      document.querySelectorAll('.agentCard img').forEach(function (img) { breathe(img, false); });
+      document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); });
+      blinkChain($('avatarWrap'));
+      blinkChain($('callAvatarWrap'));
+      every(mouthTick, 50);
+      every(stageTick, 3400);
+      schedulePop();
+      scheduleTileWiggle();
+    }
+    function stopAll() {
+      anims.forEach(function (a) { try { a.cancel(); } catch (e) {} });
+      anims = [];
+      timers.forEach(function (id) { clearTimeout(id); clearInterval(id); });
+      timers = [];
+      [$('avatarWrap'), $('callAvatarWrap')].forEach(function (w) {
+        if (w) { w.style.transform = ''; w._blinkOn = false; }
+      });
+      mouthFor($('avatarWrap'), 0.12, false);
+      mouthFor($('callAvatarWrap'), 0.12, false);
+      var b = $('popBubble'); if (b) b.classList.remove('show');
+      setExpression('neutral');
+    }
+
+    // ---------- public hooks (phase 2: real audio analyser + expressions) ----------
+    window.LumiAnim = {
+      setAnalyser: function (node) {
+        try { analyser = node; analyserData = new Uint8Array(node.fftSize || 2048); } catch (e) {}
+      },
+      clearAnalyser: function () { analyser = null; analyserData = null; },
+      setExpression: setExpression,
+      popIn: function (agentId) { popIn(agentId || currentAgent, true); },
+      blink: function () { blinkWrap($('avatarWrap')); blinkWrap($('callAvatarWrap')); }
+    };
+
+    // ---------- wire into existing flows without changing their behavior ----------
+    if (typeof applyAgent === 'function') {
+      var _applyAgent = applyAgent;
+      applyAgent = async function (id, announce) {
+        await _applyAgent(id, announce);
+        rigFace($('avatarWrap'), id);
+        rigFace($('callAvatarWrap'), id);
+        if (announce) popIn(id, false);
+      };
+    }
+    if (typeof openCall === 'function') {
+      var _openCall = openCall;
+      openCall = function () {
+        _openCall();
+        var cv = $('callVideo');
+        var videoShown = cv && cv.style.display !== 'none';
+        var wrap = $('callAvatarWrap');
+        if (wrap) {
+          wrap.style.transform = '';
+          stageIdx = 0;
+          // The pre-rendered video has its own baked-in face motion; the
+          // overlays only ride the still photo.
+          wrap.querySelectorAll('.lid,.brow').forEach(function (n) { n.style.display = videoShown ? 'none' : ''; });
+          var m = wrap.querySelector('.mouth');
+          if (m) m.style.display = videoShown ? 'none' : '';
+        }
+        popIn(currentAgent, false);
+      };
+    }
+    if (typeof closeCall === 'function') {
+      var _closeCall = closeCall;
+      closeCall = function () {
+        _closeCall();
+        var wrap = $('callAvatarWrap');
+        if (wrap) wrap.style.transform = '';
+      };
+    }
+    var formEl = $('form');
+    if (formEl) formEl.addEventListener('submit', function () { setExpression('thinking'); });
+    var teamCards = $('teamCards');
+    if (teamCards) teamCards.addEventListener('click', function (e) {
+      var img = e.target.closest ? e.target.closest('.agentCard img') : null;
+      if (img) wiggle(img);
+    });
+    var mb = $('motionBtn');
+    function paintBtn() { if (mb) { mb.classList.toggle('active', motionOn); mb.textContent = motionOn ? '🕺' : '🧍'; } }
+    if (mb) mb.addEventListener('click', function () {
+      motionOn = !motionOn;
+      try { localStorage.setItem('lumi_motion', motionOn ? '1' : '0'); } catch (e) {}
+      paintBtn();
+      if (motionOn) startAll(); else stopAll();
+    });
+
+    // ---------- boot ----------
+    rigFace($('avatarWrap'), currentAgent);
+    rigFace($('callAvatarWrap'), currentAgent);
+    paintBtn();
+    startAll();
+  })();
+
 </script>
 </body>
 </html>
