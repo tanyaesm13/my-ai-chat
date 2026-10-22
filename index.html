@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>My AI Chat</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#ff2e88">
@@ -71,9 +74,11 @@
     .agentCard .vlabel button { background: none; border: none; padding: 2px 6px; font-size: 14px; cursor: pointer; }
     #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
     /* Team meeting mode: 2x2 agent grid + self camera + captions. */
-    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
-    #meetOverlay.open { display: flex; }
-    #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #ff4da6; }
+    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+    #meetOverlay.open { display: block; }
+    #meetScroll { position: relative; z-index: 1; width: 100%; padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(104px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
+    #meetScroll > * { margin: 0 auto 10px; }
+    #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #ff4da6; text-align: center; }
     #meetHint { margin: 0; font-size: 13px; color: #bbb; text-align: center; }
     #meetGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; }
     .meetTile { position: relative; border-radius: 16px; overflow: hidden; border: 3px solid #333; background: #111; cursor: pointer; aspect-ratio: 1; padding: 0; }
@@ -114,20 +119,41 @@
     #camPip { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
-    #meetStars { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-    #meetOverlay > *:not(#meetStars) { position: relative; z-index: 1; }
-    /* === Meeting layout fix (build 2026.10.22-3): with 8 agents the meeting
-       column outgrew phone screens and the TOP frames (Lumi, Luz) were
-       clipped/unreachable — the overlay's flex children could shrink and
-       squish instead of growing the scroll area, and there was no safe-area
-       padding under the notch. Children now keep their natural height
-       (flex-shrink: 0) so the overlay scrolls the whole column top to
-       bottom; tiles go compact on narrow screens; the ask-bar sticks to
-       the bottom so the input + buttons stay reachable while scrolling. */
-    #meetOverlay > *:not(#meetStars) { flex-shrink: 0; }
-    #meetOverlay > #meetForm { position: sticky; bottom: 0; z-index: 2; background: rgba(0,0,0,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); }
+    #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    /* === Meeting rebuild v2 (build 2026.10.22-4): owner-tested truth
+       beat the lab — on her phone (Huawei P30, installed PWA) the -3
+       meeting still would not scroll AT ALL and looked unchanged. Two
+       fixes. (1) SCROLL: the -3 design made the FLEX overlay itself
+       the scroller; flex-column scroll containers are the fragile
+       pattern on older mobile engines. The overlay is now a plain
+       BLOCK scroller (touch-action: pan-y, overscroll contained) and
+       the content flows inside #meetScroll in normal block layout —
+       the combination that scrolls on every engine. The ask-bar is
+       pinned to the overlay's bottom OUTSIDE the scroll flow, so it
+       is always reachable. (2) VIEWS: below the heading she can pick
+       "All together" (the 8-box grid) or "One by one" — a slide view
+       with one MUCH bigger profile card, swipe / arrow navigation,
+       and Chat + Call buttons right on the card. */
+    #meetOverlay > #meetForm { position: absolute; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(0,0,0,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); }
+    #meetViewBar { display: flex; gap: 8px; width: 100%; max-width: 520px; }
+    #meetViewBar button { flex: 1; padding: 10px 6px; border-radius: 20px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    #meetViewBar button.active { background: #ff2e88; }
+    #meetSlide { width: 100%; max-width: 520px; }
+    #meetCard { background: #141414; border: 2px solid #333; border-radius: 20px; padding: 14px 12px 12px; text-align: center; touch-action: pan-y; }
+    #meetCardMedia img, #meetCardMedia video { width: min(74vw, 330px); aspect-ratio: 1; object-fit: cover; border-radius: 16px; border: 3px solid #ff2e88; display: block; margin: 0 auto; background: #111; }
+    #meetCardName { font-size: 22px; font-weight: 800; color: #fff; margin-top: 10px; }
+    #meetCardBlurb { font-size: 14px; color: #ccc; line-height: 1.4; margin-top: 4px; min-height: 20px; }
+    #meetCardBtns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+    #meetCardBtns button { border-radius: 20px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; padding: 10px 16px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    #meetCardBtns button.primary { background: #ff2e88; }
+    #meetCardCount { font-size: 12px; color: #999; margin-top: 10px; }
+    #meetNav { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    #meetNav > button { width: 56px; height: 44px; border-radius: 22px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; font-size: 18px; cursor: pointer; }
+    #meetDots { display: flex; gap: 6px; }
+    #meetDots span { width: 9px; height: 9px; border-radius: 50%; background: #444; display: block; }
+    #meetDots span.on { background: #ff2e88; }
     @media (max-width: 560px) {
-      #meetOverlay { gap: 8px; }
+      #meetScroll > * { margin-bottom: 8px; }
       #meetOverlay h2 { font-size: 18px; }
       #meetHint { font-size: 12px; }
       #meetGrid { gap: 8px; }
@@ -185,9 +211,32 @@
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
+    <div id="meetScroll">
     <h2>🎬 Team Meeting</h2>
-    <p id="meetHint">Tap an agent to direct your question — or tap Everyone and get all four takes.</p>
+    <p id="meetHint">Tap an agent to direct your question — or tap Everyone and hear from the whole team.</p>
+    <div id="meetViewBar">
+        <button id="meetViewGridBtn" type="button" class="active">👥 All together</button>
+        <button id="meetViewSlideBtn" type="button">🖼️ One by one</button>
+    </div>
     <div id="meetGrid"></div>
+    <div id="meetSlide" hidden>
+        <div id="meetCard">
+            <div id="meetCardMedia"></div>
+            <div id="meetCardName"></div>
+            <div id="meetCardBlurb"></div>
+            <div id="meetCardBtns">
+                <button id="meetCardChat" type="button">💬 Chat</button>
+                <button id="meetCardCall" type="button" class="primary">📹 Call</button>
+                <button id="meetCardAsk" type="button">🎤 Ask here</button>
+            </div>
+            <div id="meetCardCount"></div>
+        </div>
+        <div id="meetNav">
+            <button id="meetPrevBtn" type="button" aria-label="Previous agent">◀</button>
+            <div id="meetDots"></div>
+            <button id="meetNextBtn" type="button" aria-label="Next agent">▶</button>
+        </div>
+    </div>
     <div id="meetRow">
         <div id="meetSelfWrap">
             <video id="meetSelfVideo" autoplay muted playsinline></video>
@@ -196,6 +245,7 @@
         <button id="meetEveryone" type="button">🌟 Everyone answers</button>
     </div>
     <div id="meetCaption">Pick who answers, then ask away.</div>
+    </div>
     <div id="meetForm">
         <button id="meetMicBtn" type="button" title="Talk">🎤</button>
         <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
@@ -221,11 +271,11 @@
 </div>
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-3</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-4</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-3) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-4) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -237,7 +287,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-3';
+  var LUMI_BUILD_STAMP = '2026.10.22-4';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -260,12 +310,20 @@
       });
       window.__lumiHideAudioChip = hideChip;
     } catch (e) {}
-    // --- self-update check ---
+    // --- self-update check (build 2026.10.22-4: also re-checks when
+    // the app returns to the foreground — an installed PWA can resume
+    // the SAME in-memory page for days without ever reloading, so a
+    // load-only check left her running an old build after a fix had
+    // already shipped; she reported "looks the same" on a live -3) ---
     try {
       if (!window.fetch || !/^https?:$/.test(location.protocol)) return;
-      var checkUrl = location.pathname + '?lumi_build_check=' + Date.now();
-      setTimeout(function () {
+      var lastUpdateCheck = 0;
+      var checkForUpdate = function () {
+        var now = Date.now();
+        if (now - lastUpdateCheck < 30000) return;
+        lastUpdateCheck = now;
         try {
+          var checkUrl = location.pathname + '?lumi_build_check=' + now;
           fetch(checkUrl, { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (txt) {
             var m = /LUMI_BUILD_STAMP\s*=\s*'([^']+)'/.exec(txt || '');
             if (!m) return;
@@ -277,7 +335,10 @@
             location.replace(clean);
           }).catch(function () {});
         } catch (e) {}
-      }, 900);
+      };
+      setTimeout(checkForUpdate, 900);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) checkForUpdate(); });
+      window.addEventListener('focus', checkForUpdate);
     } catch (e) {}
   })();
 </script>
@@ -1348,6 +1409,95 @@
       Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
       meetCaption.textContent = AGENTS[id].name + ' is listening...';
     };
+    // --- One-by-one slide view (build 2026.10.22-4, owner spec: "I
+    // want to be able to scroll through them and slide one by one and
+    // see their profile a lot bigger each of them"). A big single
+    // profile card with swipe / arrow navigation; Chat and Call start
+    // right from the card through the same flows as everywhere else,
+    // and Ask-here aims the meeting's question box at her. ---
+    const meetSlideEl = document.getElementById('meetSlide');
+    const meetCardMedia = document.getElementById('meetCardMedia');
+    const meetCardName = document.getElementById('meetCardName');
+    const meetCardBlurb = document.getElementById('meetCardBlurb');
+    const meetCardCount = document.getElementById('meetCardCount');
+    const meetDotsEl = document.getElementById('meetDots');
+    const viewGridBtn = document.getElementById('meetViewGridBtn');
+    const viewSlideBtn = document.getElementById('meetViewSlideBtn');
+    const agentIds = Object.keys(AGENTS);
+    let slideIdx = 0;
+    agentIds.forEach(() => { meetDotsEl.appendChild(document.createElement('span')); });
+    function renderSlide() {
+      const id = agentIds[slideIdx];
+      const a = AGENTS[id];
+      meetCardMedia.innerHTML = a.video
+        ? '<video loop muted playsinline autoplay preload="metadata" src="' + a.video + '"></video>'
+        : '<img src="' + a.avatar + '" alt="' + a.name + '">';
+      meetCardName.textContent = a.emoji + ' ' + a.name;
+      meetCardBlurb.textContent = a.blurb;
+      meetCardCount.textContent = (slideIdx + 1) + ' of ' + agentIds.length;
+      Array.prototype.forEach.call(meetDotsEl.children, (dot, i) => dot.classList.toggle('on', i === slideIdx));
+      window.meetSelectAgent(id);
+    }
+    function slideGo(delta) {
+      slideIdx = (slideIdx + delta + agentIds.length) % agentIds.length;
+      renderSlide();
+    }
+    function setMeetView(slide) {
+      meetSlideEl.hidden = !slide;
+      meetGrid.style.display = slide ? 'none' : '';
+      viewGridBtn.classList.toggle('active', !slide);
+      viewSlideBtn.classList.toggle('active', slide);
+      if (slide) {
+        const cur = agentIds.indexOf(meetAgent);
+        slideIdx = cur >= 0 ? cur : 0;
+        renderSlide();
+      } else {
+        const v = meetCardMedia.querySelector('video');
+        if (v) v.pause();
+      }
+    }
+    window.meetSetView = setMeetView;
+    viewGridBtn.addEventListener('click', () => setMeetView(false));
+    viewSlideBtn.addEventListener('click', () => setMeetView(true));
+    document.getElementById('meetPrevBtn').addEventListener('click', () => slideGo(-1));
+    document.getElementById('meetNextBtn').addEventListener('click', () => slideGo(1));
+    (function () {
+      const card = document.getElementById('meetCard');
+      let sx = 0, sy = 0, tracking = false;
+      card.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; tracking = true; }
+      }, { passive: true });
+      card.addEventListener('touchend', (e) => {
+        if (!tracking) return;
+        tracking = false;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) slideGo(dx < 0 ? 1 : -1);
+      }, { passive: true });
+      let px = 0, pDown = false;
+      card.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { px = e.clientX; pDown = true; } });
+      card.addEventListener('pointerup', (e) => {
+        if (!pDown) return;
+        pDown = false;
+        const dx = e.clientX - px;
+        if (Math.abs(dx) > 48) slideGo(dx < 0 ? 1 : -1);
+      });
+    })();
+    document.getElementById('meetCardAsk').addEventListener('click', () => {
+      window.meetSelectAgent(agentIds[slideIdx]);
+      try { meetInput.focus(); } catch (e) {}
+    });
+    document.getElementById('meetCardChat').addEventListener('click', () => {
+      const id = agentIds[slideIdx];
+      closeMeet();
+      if (id !== currentAgent) applyAgent(id, true);
+    });
+    document.getElementById('meetCardCall').addEventListener('click', () => {
+      const id = agentIds[slideIdx];
+      closeMeet();
+      if (id !== currentAgent) applyAgent(id, false);
+      openCall();
+    });
     meetEveryone.addEventListener('click', () => {
       const on = meetEveryone.classList.toggle('active');
       meetAgent = on ? 'all' : 'lumi';
