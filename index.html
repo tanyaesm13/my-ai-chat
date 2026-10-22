@@ -120,7 +120,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-9): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-10): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -243,6 +243,65 @@
       .chip { padding: 6px 12px; }
       #form { padding-top: 8px; padding-bottom: 8px; }
     }
+
+    /* === Orientation settle (build 2026.10.22-10): owner order
+       Oct 22, 2026 — when the tablet rotates, the WHOLE app must
+       settle into its vertical version when vertical and its
+       horizontal version when horizontal, every control visible
+       and reachable both ways. Diagnosis, measured on the -9 bytes
+       at 768x1024 / 1024x768: the app had NO orientation rules at
+       all — the only adaptive queries were max-width:560px (small
+       phones) and max-height:500px (short landscape phones), so a
+       landscape tablet received the portrait phone column verbatim.
+       The 226px header stack ate 29% of the 768px height, the chat
+       was squeezed to 51%, Lumi stayed an 85px medallion centered
+       in a wide empty band, the call avatar stayed 240px in both
+       orientations (sized off vw only), and the team picker and
+       meeting kept their 520px phone caps — half the width dead
+       margin while the picker still overflowed vertically, its
+       Close button 283px below the fold. The avatar ARTWORK needs
+       nothing and is untouched (locked): every portrait is square
+       (1600x1600 webp, 960x960 video) in an object-fit:cover frame,
+       upright in any orientation. This is a layout fix only.
+       (1) TABLET LANDSCAPE MAIN SCREEN becomes a side rail: Lumi,
+       her name, tagline and buttons live in a 300px left rail with
+       a 150px portrait; chat, chips, the ask bar and the contact
+       line stack in the wide column beside her, so the conversation
+       gets the full height AND the remaining width, and the fixed
+       pop bubble / audio chip re-center over the chat column.
+       (2) TABLET CALL STAGE, both orientations: the call avatar is
+       sized off vmin — the smaller screen dimension — so her stage
+       is the same generous size whichever way the tablet is held
+       (300px cap, up from 240px), and the caption yields a little
+       height (24vh) so name + avatar + caption + buttons fit a
+       768px-tall landscape screen without scrolling.
+       (3) TABLET LANDSCAPE PICKER + MEETING: the 520px phone caps
+       lift to 900px and both grids go four-across — the whole team
+       is visible at once, the picker's Close button lands on
+       screen with no scrolling, and the meeting's scroll shrinks
+       by ~600px. PORTRAIT IS UNTOUCHED (the owner already called
+       the vertical tablet perfect) and PHONES ARE UNTOUCHED: the
+       landscape query needs min-width 900px + min-height 560px
+       and the call-stage query needs min-width 700px, so every
+       phone size keeps the -9 layout byte-for-byte. === */
+    @media (min-width: 700px) and (min-height: 560px) {
+      #callAvatar, #callVideo { width: min(52vmin, 300px); height: min(52vmin, 300px); }
+      #callCaption { max-height: 24vh; }
+    }
+    @media (orientation: landscape) and (min-width: 900px) and (min-height: 560px) {
+      body { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto; grid-template-areas: "rail chat" "rail chips" "rail form" "rail contact"; }
+      header { grid-area: rail; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: none; border-right: 3px solid #ff2e88; }
+      #chat { grid-area: chat; min-width: 0; }
+      #chips { grid-area: chips; }
+      #form { grid-area: form; }
+      #contact { grid-area: contact; }
+      #lumiAvatar { width: 150px; height: 150px; }
+      #popBubble, #audioUnlockChip { left: calc(300px + (100vw - 300px) / 2); }
+      #teamCards { max-width: 900px; grid-template-columns: repeat(4, 1fr); }
+      #meetGrid { max-width: 900px; grid-template-columns: repeat(4, 1fr); }
+      #meetCaption, #meetViewBar, #meetRosterBar, #meetSlide, #meetRow { max-width: 900px; }
+      #meetOverlay > #meetForm { max-width: 900px; }
+    }
 </style>
 </head>
 <body>
@@ -355,11 +414,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-9</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-10</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-9) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-10) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -371,7 +430,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-9';
+  var LUMI_BUILD_STAMP = '2026.10.22-10';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1988,7 +2047,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-9, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-10, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
