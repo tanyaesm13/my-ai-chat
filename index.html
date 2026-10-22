@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-20): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-21): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -568,11 +568,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-20</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-21</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-20) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-21) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -584,7 +584,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-20';
+  var LUMI_BUILD_STAMP = '2026.10.22-21';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1142,7 +1142,10 @@
     if (!voiceOn) return Promise.resolve(false);
     unlockAudio();
     stopCloudSpeech();
-    if (spanishOn) return speakDevice(text, agentId); // device Spanish voices until a Spanish cloud voice is picked
+    // Spanish included (build 2026.10.22-21): no device-voice
+    // short-circuit — speakCloud sends lang:'es' to the Worker,
+    // which holds a per-agent Spanish voice; the device voice
+    // remains the fallback if the cloud voice cannot start.
     return speakCloud(text, agentId).then(function (ok) {
       if (ok) return true;
       animClearAnalyser();
@@ -1554,7 +1557,12 @@
       }
       const input = document.getElementById('input');
       input.value = transcript;
-      if (window.callMode && form.requestSubmit) form.requestSubmit();
+      // Hands-free chat (build 2026.10.22-21, owner ask): a finished
+      // dictation in plain chat SENDS, exactly like the meeting and
+      // the call already did — no extra tap on Send. (Call mode
+      // rides the same submit.)
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
     });
     const stopListening = () => {
       listening = false;
@@ -1853,6 +1861,36 @@
     const meetEveryone = document.getElementById('meetEveryone');
     let meetAgent = 'lumi';
     const tiles = {};
+    // SHARED MEETING THREAD (build 2026.10.22-21, owner order Oct 22,
+    // 2026: "The agents need to hear each other and conversate WITH
+    // EACH OTHER"). Until now every agent answered from her OWN
+    // private history alone, so in Everyone mode each reply started
+    // cold and nobody could pick up another agent's point. Now the
+    // room keeps ONE speaker-tagged transcript — T's turns and every
+    // agent's replies, appended as the meeting runs — and a trimmed
+    // copy rides with every ask as the `meeting` field (the Worker
+    // reads it into its MEETTHREAD block) so a reply can answer,
+    // agree with, or build on whoever just spoke. Her per-agent
+    // history still rides underneath, untouched; the thread is
+    // meeting-scoped and resets when the meeting closes.
+    const MEET_THREAD_MAX_TURNS = 24;
+    const MEET_THREAD_TURN_CHARS = 500;
+    let meetThread = [];
+    function meetThreadAdd(speakerName, text) {
+      const clean = String(text || '').replace(/\s+/g, ' ').trim();
+      if (!clean) return;
+      meetThread.push({ who: speakerName, text: clean.slice(0, MEET_THREAD_TURN_CHARS) });
+      if (meetThread.length > MEET_THREAD_MAX_TURNS) meetThread = meetThread.slice(-MEET_THREAD_MAX_TURNS);
+    }
+    function meetThreadText() {
+      if (!meetThread.length) return '';
+      return meetThread.map((t) => t.who + ': ' + t.text).join('\n');
+    }
+    window.LumiMeetThread = {
+      turns: () => meetThread.slice(),
+      text: meetThreadText,
+      clear: () => { meetThread = []; },
+    };
     // TAP-TO-TALK (build 2026.10.22-15, owner ask Oct 22, 2026:
     // "when I tap on an agent I want them to be able to verbally
     // respond to me in the team meeting"). Tapping her face IS
@@ -2146,6 +2184,7 @@
         mhP.push({ role: 'assistant', content: replyP });
         try { localStorage.setItem(historyKey(id), JSON.stringify(mhP.slice(-40))); } catch (e) {}
         if (id === currentAgent) { history = mhP; }
+        meetThreadAdd(AGENTS[id].name, replyP);
         speakInMeeting(replyP, id, meetCaption.innerHTML);
         return;
       }
@@ -2154,7 +2193,7 @@
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
+          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
         });
         return res.json();
       }
@@ -2172,6 +2211,7 @@
         mh.push({ role: 'assistant', content: reply });
         try { localStorage.setItem(historyKey(id), JSON.stringify(mh.slice(-40))); } catch (e) {}
         if (id === currentAgent) { history = mh; }
+        meetThreadAdd(AGENTS[id].name, reply);
         speakInMeeting(reply, id, meetCaption.innerHTML);
       } catch (err) {
         meetCaption.textContent = "Couldn't reach " + AGENTS[id].name + '. Check your connection.';
@@ -2183,9 +2223,15 @@
       if (!text || meetBusy) return;
       meetBusy = true;
       meetInput.value = '';
+      meetThreadAdd('T', text);
       if (meetAgent === 'all') {
+        let firstInRound = true;
         for (const id of roomIds()) {
-          await askAgent(id, '(Keep it to one or two sentences:) ' + text);
+          const lead = firstInRound
+            ? '(Keep it to one or two sentences:) '
+            : '(Keep it to one or two sentences. The meeting so far rides with this message — if a teammate just made a point, feel free to answer her, agree, or build on it before adding your own:) ';
+          firstInRound = false;
+          await askAgent(id, lead + text);
         }
       } else {
         await askAgent(meetAgent, text);
@@ -2235,6 +2281,7 @@
     function closeMeet() {
       meetOverlay.classList.remove('open');
       window.meetMode = false;
+      meetThread = []; // the next meeting starts a fresh conversation
       if (window.LumiCam) LumiCam.stopIfOwner('meet');
       Object.values(tiles).forEach((t) => {
         const v = t.querySelector('video');
@@ -2340,7 +2387,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-20, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-21, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
