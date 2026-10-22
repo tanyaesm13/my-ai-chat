@@ -119,7 +119,7 @@
     <p>Ask me anything</p>
     <div class="hbtns">
         <button id="voiceToggle" title="Toggle voice">🔊</button>
-        <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Izzy, Hey Bea, Hey Quinn">🎧</button>
+        <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Luz, Hey Sol, Hey Stella">🎧</button>
         <button id="motionBtn" class="active" title="Toggle character motion">🕺</button>
         <button id="voicePickBtn" title="Pick voice">🎭</button>
         <button id="callBtn" title="Video call">📹</button>
@@ -262,14 +262,14 @@
     lumi: { name: 'Lumi', emoji: '🌟', avatar: 'lumi-avatar.webp', video: 'lumi-video.mp4',
       greeting: "Hi! I'm Lumi. What would you like to talk about?",
       blurb: 'Your main AI assistant — research, writing, planning, everything.' },
-    izzy: { name: 'Izzy', emoji: '📧', avatar: 'izzy-avatar.webp', video: 'izzy-video.mp4',
-      greeting: "Hi, I'm Izzy 📧 — Lumi's email agent. Inbox zero is my love language. What are we writing today?",
+    izzy: { name: 'Luz', emoji: '📧', avatar: 'izzy-avatar.webp', video: 'izzy-video.mp4',
+      greeting: "Hi, I'm Luz 📧 — Lumi's email agent. Inbox zero is my love language. What are we writing today?",
       blurb: 'Email agent — drafts, replies, subject lines, inbox triage.' },
-    bea: { name: 'Bea', emoji: '📅', avatar: 'bea-avatar.webp', video: 'bea-video.mp4',
-      greeting: "Hi, I'm Bea 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan. (And yes, you're taking lunch.)",
+    bea: { name: 'Sol', emoji: '📅', avatar: 'bea-avatar.webp', video: 'bea-video.mp4',
+      greeting: "Hi, I'm Sol 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan. (And yes, you're taking lunch.)",
       blurb: 'Booking agent — appointments, calendars, plans, reminders.' },
-    quinn: { name: 'Quinn', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
-      greeting: "Hey, I'm Quinn 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up. I deserve a raise, by the way.",
+    quinn: { name: 'Stella', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
+      greeting: "Hey, I'm Stella 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up. I deserve a raise, by the way.",
       blurb: 'Social media agent — captions, hashtags, hooks, content ideas.' },
   };
   // Each agent keeps their OWN conversation history, so Quinn never sees
@@ -1003,9 +1003,9 @@
     // Each agent has their own wake phrase — saying it switches to them first.
     const WAKE_PHRASES = {
       lumi: ['hey lumi'],
-      izzy: ['hey izzy', 'hey issy'],
-      bea: ['hey bea', 'hey bee', 'hey b'],
-      quinn: ['hey quinn', 'hey queen'],
+      izzy: ['hey luz', 'hey loose'],
+      bea: ['hey sol', 'hey soul'],
+      quinn: ['hey stella'],
     };
     function wakeAgentFor(phrase) {
       const t = phrase.toLowerCase();
