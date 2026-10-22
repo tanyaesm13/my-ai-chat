@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-14): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-15): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -451,7 +451,7 @@
     <canvas id="meetStars"></canvas>
     <div id="meetScroll">
     <h2>🎬 Team Meeting</h2>
-    <p id="meetHint">Tap an agent to direct your question — or tap Everyone and hear from the whole team.</p>
+    <p id="meetHint">Tap an agent and she'll answer you out loud — or tap Everyone and hear from the whole team.</p>
     <div id="meetViewBar">
         <button id="meetViewGridBtn" type="button" class="active">👥 All together</button>
         <button id="meetViewSlideBtn" type="button">🖼️ One by one</button>
@@ -515,11 +515,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-14</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-15</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-14) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-15) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -531,7 +531,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-14';
+  var LUMI_BUILD_STAMP = '2026.10.22-15';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1792,6 +1792,25 @@
     const meetEveryone = document.getElementById('meetEveryone');
     let meetAgent = 'lumi';
     const tiles = {};
+    // TAP-TO-TALK (build 2026.10.22-15, owner ask Oct 22, 2026:
+    // "when I tap on an agent I want them to be able to verbally
+    // respond to me in the team meeting"). Tapping her face IS
+    // talking to her: she answers OUT LOUD, in her own voice, with
+    // her introduction — through the same speakInMeeting path as a
+    // typed answer, so the tile pulse follows real audio (voice
+    // truth bus) and a voiceless device gets the honest badge + her
+    // words as text in the caption. She never talks over herself:
+    // a re-tap while she is mid-sentence just keeps the selection.
+    // The gate is untouched — speak() routes gated agents to the
+    // device voice and never fetches /tts for them.
+    function meetTapRespond(id) {
+      const a = AGENTS[id];
+      if (!a) return;
+      if (speechNow() === id) return;
+      meetCaption.innerHTML = '<b>' + a.emoji + ' ' + a.name + ':</b> ' + a.greeting.replace(/</g, '&lt;');
+      speakInMeeting(a.greeting, id, meetCaption.innerHTML);
+    }
+    window.meetTapRespond = meetTapRespond;
     Object.keys(AGENTS).forEach((id) => {
       const a = AGENTS[id];
       const tile = document.createElement('button');
@@ -1806,7 +1825,7 @@
         meetAgent = id;
         meetEveryone.classList.remove('active');
         Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
-        meetCaption.textContent = a.name + ' will answer next.';
+        meetTapRespond(id);
       });
       meetGrid.appendChild(tile);
       tiles[id] = tile;
@@ -1974,6 +1993,7 @@
         const t = e.changedTouches[0];
         const dx = t.clientX - sx, dy = t.clientY - sy;
         if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) slideGo(dx < 0 ? 1 : -1);
+        else if (Math.abs(dx) <= 10 && Math.abs(dy) <= 10 && !(e.target && e.target.closest && e.target.closest('button'))) meetTapRespond(roomIds()[slideIdx]);
       }, { passive: true });
       let px = 0, pDown = false;
       card.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { px = e.clientX; pDown = true; } });
@@ -1982,6 +2002,7 @@
         pDown = false;
         const dx = e.clientX - px;
         if (Math.abs(dx) > 48) slideGo(dx < 0 ? 1 : -1);
+        else if (Math.abs(dx) <= 10 && !(e.target && e.target.closest && e.target.closest('button'))) meetTapRespond(roomIds()[slideIdx]);
       });
     })();
     document.getElementById('meetCardAsk').addEventListener('click', () => {
@@ -2258,7 +2279,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-14, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-15, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
