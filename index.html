@@ -120,7 +120,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-7): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-8): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus one occasional shooting streak from the meeting-stars
@@ -151,6 +151,12 @@
     #meetViewBar { display: flex; gap: 8px; width: 100%; max-width: 520px; }
     #meetViewBar button { flex: 1; padding: 10px 6px; border-radius: 20px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
     #meetViewBar button.active { background: #ff2e88; }
+    #meetRosterBar { width: 100%; max-width: 520px; }
+    #meetRosterLabel { font-size: 13px; color: #ffb3d1; text-align: center; margin-bottom: 6px; }
+    #meetRosterChips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .rosterChip { padding: 8px 12px; min-height: 38px; border-radius: 18px; border: 2px solid #ff2e88; background: #ff2e88; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .rosterChip.out { background: #1a1a1a; color: #999; border-color: #555; }
+    .rosterChip:disabled { opacity: 0.55; cursor: default; }
     #meetSlide { width: 100%; max-width: 520px; }
     #meetCard { background: #141414; border: 2px solid #333; border-radius: 20px; padding: 14px 12px 12px; text-align: center; touch-action: pan-y; }
     #meetCardMedia img, #meetCardMedia video { width: min(74vw, 330px); aspect-ratio: 1; object-fit: cover; border-radius: 16px; border: 3px solid #ff2e88; display: block; margin: 0 auto; background: #111; }
@@ -178,7 +184,7 @@
       #meetEveryone { font-size: 14px; }
     }
 
-    /* === Device-fit hardening (build 2026.10.22-7): ONE responsive
+    /* === Device-fit hardening (build 2026.10.22-8): ONE responsive
        codebase — no per-device forks; the app measures the screen it
        finds itself on. Proven on the device matrix (iPhone SE
        375x667, iPhone 12/13/14 390x844, iPhone 15 Pro Max 430x932,
@@ -290,6 +296,10 @@
         <button id="meetViewGridBtn" type="button" class="active">👥 All together</button>
         <button id="meetViewSlideBtn" type="button">🖼️ One by one</button>
     </div>
+    <div id="meetRosterBar">
+        <div id="meetRosterLabel">👥 Who's in the meeting? Tap a name to add or remove her.</div>
+        <div id="meetRosterChips"></div>
+    </div>
     <div id="meetGrid"></div>
     <div id="meetSlide" hidden>
         <div id="meetCard">
@@ -344,11 +354,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-7</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-8</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-7) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-8) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -360,7 +370,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-7';
+  var LUMI_BUILD_STAMP = '2026.10.22-8';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1589,8 +1599,77 @@
       meetGrid.appendChild(tile);
       tiles[id] = tile;
     });
+    // --- Meeting roster (build 2026.10.22-8, owner ask Oct 22, 2026):
+    // she chooses who is IN the room. Default: everyone in, exactly
+    // like before. The chip bar toggles membership live; the grid,
+    // the slide view and the ask routing all honor the roster; the
+    // last agent in can never be removed (one-on-one is the floor).
+    // Persisted per device as the lumi_meet_roster pref. ---
+    const agentIdsAll = Object.keys(AGENTS);
+    const rosterSet = new Set(agentIdsAll);
+    try {
+      const savedRoster = JSON.parse(localStorage.getItem('lumi_meet_roster') || 'null');
+      if (Array.isArray(savedRoster)) {
+        const valid = savedRoster.filter((x) => AGENTS[x]);
+        if (valid.length) { rosterSet.clear(); valid.forEach((x) => rosterSet.add(x)); }
+      }
+    } catch (e) {}
+    const meetRosterChips = document.getElementById('meetRosterChips');
+    const rosterChips = {};
+    function roomIds() { return agentIdsAll.filter((id) => rosterSet.has(id)); }
+    function saveRoster() {
+      try { localStorage.setItem('lumi_meet_roster', JSON.stringify(roomIds())); } catch (e) {}
+    }
+    function applyRoster() {
+      agentIdsAll.forEach((id) => {
+        if (tiles[id]) tiles[id].style.display = rosterSet.has(id) ? '' : 'none';
+        const chip = rosterChips[id];
+        if (chip) {
+          const inRoom = rosterSet.has(id);
+          chip.classList.toggle('out', !inRoom);
+          chip.disabled = inRoom && rosterSet.size <= 1;
+          chip.textContent = (inRoom ? '✓ ' : '+ ') + AGENTS[id].emoji + ' ' + AGENTS[id].name;
+        }
+      });
+      if (meetAgent !== 'all' && !rosterSet.has(meetAgent)) {
+        const first = roomIds()[0];
+        if (first) {
+          meetAgent = first;
+          meetEveryone.classList.remove('active');
+          Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === first));
+        }
+      }
+    }
+    function toggleRoster(id) {
+      if (!AGENTS[id]) return;
+      const leaving = rosterSet.has(id);
+      if (leaving && rosterSet.size <= 1) return; // never empty the room
+      if (leaving) rosterSet.delete(id); else rosterSet.add(id);
+      saveRoster();
+      applyRoster();
+      renderDots();
+      if (!meetSlideEl.hidden) renderSlide();
+      meetCaption.textContent = AGENTS[id].name + (leaving ? ' left the meeting.' : ' joined the meeting! 🎉');
+    }
+    agentIdsAll.forEach((id) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'rosterChip';
+      chip.dataset.agent = id;
+      chip.addEventListener('click', () => toggleRoster(id));
+      meetRosterChips.appendChild(chip);
+      rosterChips[id] = chip;
+    });
+    applyRoster();
+    window.meetRoster = {
+      ids: roomIds,
+      has: (id) => rosterSet.has(id),
+      size: () => rosterSet.size,
+      toggle: toggleRoster,
+    };
     window.meetSelectAgent = (id) => {
       if (!AGENTS[id]) return;
+      if (!rosterSet.has(id)) return;
       meetAgent = id;
       meetEveryone.classList.remove('active');
       Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
@@ -1612,21 +1691,31 @@
     const viewSlideBtn = document.getElementById('meetViewSlideBtn');
     const agentIds = Object.keys(AGENTS);
     let slideIdx = 0;
-    agentIds.forEach(() => { meetDotsEl.appendChild(document.createElement('span')); });
+    function renderDots() {
+      meetDotsEl.innerHTML = '';
+      roomIds().forEach(() => { meetDotsEl.appendChild(document.createElement('span')); });
+    }
+    renderDots();
     function renderSlide() {
-      const id = agentIds[slideIdx];
+      const room = roomIds();
+      if (!room.length) return;
+      if (slideIdx >= room.length) slideIdx = room.length - 1;
+      if (slideIdx < 0) slideIdx = 0;
+      const id = room[slideIdx];
       const a = AGENTS[id];
       meetCardMedia.innerHTML = a.video
         ? '<video loop muted playsinline autoplay preload="metadata" src="' + a.video + '"></video>'
         : '<img src="' + a.avatar + '" alt="' + a.name + '">';
       meetCardName.textContent = a.emoji + ' ' + a.name;
       meetCardBlurb.textContent = a.blurb;
-      meetCardCount.textContent = (slideIdx + 1) + ' of ' + agentIds.length;
+      meetCardCount.textContent = (slideIdx + 1) + ' of ' + room.length;
       Array.prototype.forEach.call(meetDotsEl.children, (dot, i) => dot.classList.toggle('on', i === slideIdx));
       window.meetSelectAgent(id);
     }
     function slideGo(delta) {
-      slideIdx = (slideIdx + delta + agentIds.length) % agentIds.length;
+      const n = roomIds().length;
+      if (!n) return;
+      slideIdx = (slideIdx + delta + n) % n;
       renderSlide();
     }
     function setMeetView(slide) {
@@ -1635,7 +1724,7 @@
       viewGridBtn.classList.toggle('active', !slide);
       viewSlideBtn.classList.toggle('active', slide);
       if (slide) {
-        const cur = agentIds.indexOf(meetAgent);
+        const cur = roomIds().indexOf(meetAgent);
         slideIdx = cur >= 0 ? cur : 0;
         renderSlide();
       } else {
@@ -1671,25 +1760,26 @@
       });
     })();
     document.getElementById('meetCardAsk').addEventListener('click', () => {
-      window.meetSelectAgent(agentIds[slideIdx]);
+      window.meetSelectAgent(roomIds()[slideIdx]);
       try { meetInput.focus(); } catch (e) {}
     });
     document.getElementById('meetCardChat').addEventListener('click', () => {
-      const id = agentIds[slideIdx];
+      const id = roomIds()[slideIdx];
       closeMeet();
       if (id !== currentAgent) applyAgent(id, true);
     });
     document.getElementById('meetCardCall').addEventListener('click', () => {
-      const id = agentIds[slideIdx];
+      const id = roomIds()[slideIdx];
       closeMeet();
       if (id !== currentAgent) applyAgent(id, false);
       openCall();
     });
     meetEveryone.addEventListener('click', () => {
       const on = meetEveryone.classList.toggle('active');
-      meetAgent = on ? 'all' : 'lumi';
-      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', !on && k === 'lumi'));
-      meetCaption.textContent = on ? 'Everyone will weigh in.' : 'Lumi will answer next.';
+      const first = roomIds()[0] || 'lumi';
+      meetAgent = on ? 'all' : first;
+      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', !on && k === first));
+      meetCaption.textContent = on ? 'Everyone will weigh in.' : AGENTS[first].name + ' will answer next.';
     });
     function setSpeaking(id, on) {
       if (tiles[id]) tiles[id].classList.toggle('speaking', !!on);
@@ -1746,7 +1836,7 @@
       meetBusy = true;
       meetInput.value = '';
       if (meetAgent === 'all') {
-        for (const id of Object.keys(AGENTS)) {
+        for (const id of roomIds()) {
           await askAgent(id, '(Keep it to one or two sentences:) ' + text);
         }
       } else {
@@ -1897,7 +1987,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-7, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-8, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
