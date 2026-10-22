@@ -6,12 +6,12 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Lumi's Galaxy Network</title>
+<title>Lumi</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#171a3b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lumi Galaxy">
+<meta name="apple-mobile-web-app-title" content="Lumi">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-22): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-23): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -399,18 +399,20 @@
  /* === LOGO + PWA (build 2026.10.22-14): the official Constellation L
        lockup in the header (artwork unaltered, scaled only) and the
        install hint bar. Owner, Oct 22, 2026: the logo "until I decide
-       to change it"; the page saves to home screens as "Lumi Galaxy". === */
- /* LOGO SIZE (build 2026.10.22-16): owner — the 250px lockup was
-       "a little too big" in 1:1 chat, dwarfing the agent; now a
-       tiny top mark so the AVATAR takes up most of the space.
-       Artwork still unaltered, scaled only. */
- #brandLogo { display: block; margin: 0 auto; width: min(380px, 84%); height: auto; }
+       to change it"; the page saved to home screens as "Lumi Galaxy" until build -23 separated the brands (personal app = "Lumi"). === */
+ /* HOME HERO (build 2026.10.22-23): BRAND SEPARATION (owner,
+       Oct 22, 2026) — the personal app wears LUMI'S PROFILE PHOTO,
+       never the Galaxy constellation-L logo; that mark belongs to
+       the Network website only. Her portrait (lumi-avatar.webp,
+       the locked asset, unaltered) is the Home hero: round like a
+       profile photo, cyan ring + glow, over the -19 home sky. */
+ #homeHero { display: block; margin: 0 auto; width: min(230px, 58%); aspect-ratio: 1 / 1; object-fit: cover; border-radius: 50%; border: 3px solid #72edfa; box-shadow: 0 0 28px rgba(114,237,250,0.45); }
  #installBar { position: fixed; top: 0; left: 0; right: 0; z-index: 95; display: flex; align-items: center; gap: 10px; background: #242746; border-bottom: 2px solid #72edfa; color: #fff; padding: 10px 14px; font-size: 14px; line-height: 1.45; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
  #installBar[hidden] { display: none; }
  #installBar .ibText { flex: 1; }
  #installBar .ibText b { color: #72edfa; }
  #installBarClose { flex: 0 0 auto; background: #72edfa; color: #171a3b; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 15px; cursor: pointer; }
- @media (max-height: 500px) { #brandLogo { width: 168px; } }
+ @media (max-height: 500px) { #homeHero { width: 132px; } }
 
 
  /* === HOME PAGE (build 2026.10.22-18): owner — the Galaxy logo
@@ -449,9 +451,9 @@
 </head>
 <body class="onHome">
 <div id="homeView">
-    <img id="brandLogo" src="lumis-galaxy-network-logo.png" alt="Lumi's Galaxy Network">
+    <img id="homeHero" src="lumi-avatar.webp" alt="Lumi">
     <h2 id="homeHi">Hi, I'm Lumi 🌙</h2>
-    <p id="homeWelcome">Welcome to Lumi's Galaxy Network — your whole team is here. Talk with one of us, or bring everybody together.</p>
+    <p id="homeWelcome">Welcome home — your whole team is here. Talk with one of us, or bring everybody together.</p>
     <div id="homeBtns">
         <button id="homeChatBtn" type="button">💬 Chat with Lumi</button>
         <button id="homeTeamBtn" type="button">👥 Meet the team</button>
@@ -478,7 +480,7 @@
         <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
         <button id="exportBtn" title="Export chat">⬇</button>
         <button id="clearBtn" title="Clear chat">🗑</button>
-        <button id="installBtn" title="Save Lumi Galaxy to your home screen">📲</button>
+        <button id="installBtn" title="Save Lumi to your home screen">📲</button>
     </div>
 </header>
 <div id="chat">
@@ -572,11 +574,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-22</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-23</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-22) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-23) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -588,7 +590,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-22';
+  var LUMI_BUILD_STAMP = '2026.10.22-23';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2501,7 +2503,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-22, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-23, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
@@ -3121,7 +3123,7 @@
 </script>
 
 <div id="installBar" hidden>
-  <div class="ibText">📲 <b>Save Lumi Galaxy to your home screen:</b> on iPhone/iPad tap <b>Share</b> then <b>Add to Home Screen</b>; on Android tap the browser <b>menu</b> then <b>Install app / Add to Home screen</b>.</div>
+  <div class="ibText">📲 <b>Save Lumi to your home screen:</b> on iPhone/iPad tap <b>Share</b> then <b>Add to Home Screen</b>; on Android tap the browser <b>menu</b> then <b>Install app / Add to Home screen</b>.</div>
   <button id="installBarClose" title="Dismiss" aria-label="Dismiss install hint">✕</button>
 </div>
 <script>

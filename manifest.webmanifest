@@ -1,7 +1,7 @@
 {
-  "name": "Lumi's Galaxy Network",
-  "short_name": "Lumi Galaxy",
-  "description": "Lumi's Galaxy Network — your Lumi assistant team, saved like an app.",
+  "name": "Lumi",
+  "short_name": "Lumi",
+  "description": "Lumi — your personal AI assistant team, saved like an app.",
   "id": ".",
   "start_url": ".",
   "scope": ".",
