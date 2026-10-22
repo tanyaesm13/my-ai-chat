@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-21): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-22): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -441,6 +441,10 @@
       screens keep the app's light sky exactly as before. === */
  #homeSky { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: none; }
  body.onHome #homeSky { display: block; }
+ /* === CONVERSATION MODE (build 2026.10.22-22): while the mic
+       is staying open for a conversation, the button wears a
+       soft cyan ring so she can SEE it is still hers to talk to. === */
+ #micBtn.convo { box-shadow: 0 0 0 3px rgba(114,237,250,.55), 0 0 14px rgba(114,237,250,.35); }
 </style>
 </head>
 <body class="onHome">
@@ -568,11 +572,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-21</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-22</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-21) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-22) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -584,7 +588,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-21';
+  var LUMI_BUILD_STAMP = '2026.10.22-22';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1477,9 +1481,37 @@
     let wakeFails = 0;
     let wakeAbortStreak = 0;
     let wakeRec = freshWakeRec();
+    // Dictation start is SUPERVISED (build 2026.10.22-22): on
+    // Android the wake session and the dictation session share
+    // ONE speech engine, and a start() issued while the wake
+    // session is still tearing down throws InvalidStateError.
+    // The old code swallowed that throw — dictation never
+    // started, wakeHold never cleared, and the whole voice path
+    // looked dead in the field. Now a refused start retries with
+    // backoff; if the engine still refuses, the hold is RELEASED
+    // and wake re-arms so she can simply try again.
+    let dictStartFails = 0;
+    let dictStartTimer = null;
     function startVoiceInput() {
       if (listening) return;
-      try { recognition.start(); } catch (e) {}
+      convoOn = true;
+      convoContext = convoContextNow();
+      try {
+        recognition.start();
+        dictStartFails = 0;
+      } catch (e) {
+        dictStartFails++;
+        if (dictStartFails <= 4) {
+          clearTimeout(dictStartTimer);
+          dictStartTimer = setTimeout(startVoiceInput, 150 * dictStartFails);
+        } else {
+          dictStartFails = 0;
+          convoOn = false;
+          wakeHold = false;
+          flashMic();
+          startWake();
+        }
+      }
     }
     function flashMic() {
       micBtn.classList.remove('flash');
@@ -1522,41 +1554,96 @@
     // is playing, wake stays down -- no self-trigger from the
     // speaker and no mic fight on Android -- and it resumes right
     // after playback ends.
+    let speechSince = 0;
     window.__lumiSpeechHook = function (on) {
       speechHold = !!on;
       if (speechHold) {
+        speechSince = Date.now();
         clearWakeTimer();
         if (wakeRunning) { try { wakeRec.abort(); } catch (e) {} }
       } else {
+        speechSince = 0;
+        convoSpeechDoneAt = Date.now();
         scheduleWake(500);
+        pumpConvo();
       }
     };
+    // Speech-hold reaper (build 2026.10.22-22): if a hold ever
+    // sticks (a playback 'ended' that never arrives), wake must
+    // not stay muted forever — after 90s it force-clears.
+    const SPEECH_HOLD_MAX_MS = 90000;
+    setInterval(() => {
+      if (speechHold && speechSince && (Date.now() - speechSince > SPEECH_HOLD_MAX_MS)) {
+        try { console.warn('[LumiVoice] speech hold stuck — force-clearing so wake can re-arm.'); } catch (e) {}
+        window.__lumiSpeechHook(false);
+      }
+    }, 5000);
+    // CONVERSATION MODE — the mic STAYS OPEN (build 2026.10.22-22,
+    // owner order: the mic must stay open during a conversation
+    // so she can keep talking naturally — not one-shot). Once she
+    // starts talking (wake word or a mic tap), dictation re-opens
+    // by itself after each reply finishes speaking, so the
+    // exchange flows turn by turn with no re-waking and no
+    // re-tapping. It closes when she taps the mic off, after
+    // three silent tries, on a mic denial, or when the view she
+    // started in closes.
+    let convoOn = false;
+    let convoContext = 'chat';
+    let convoSentAt = 0;
+    let convoSpeechDoneAt = 0;
+    let emptyDictStreak = 0;
+    let dictGotResult = false;
+    let convoTimer = null;
+    function convoContextNow() { return window.meetMode ? 'meet' : (window.callMode ? 'call' : 'chat'); }
+    function pumpConvo() {
+      if (!convoOn || listening || speechHold) return;
+      if (convoContextNow() !== convoContext) { convoOn = false; return; }
+      // Wait for the reply she is owed: reopen once its speech
+      // has ended, or after a 4s grace if the reply made no sound
+      // (voice off, nothing to say) — never talk over the agent,
+      // never leave her speaking to a closed mic.
+      if (convoSentAt && convoSpeechDoneAt < convoSentAt && (Date.now() - convoSentAt < 4000)) {
+        clearTimeout(convoTimer);
+        convoTimer = setTimeout(pumpConvo, 600);
+        return;
+      }
+      clearTimeout(convoTimer);
+      convoTimer = setTimeout(() => { if (convoOn && !listening && !speechHold) startVoiceInput(); }, 350);
+    }
+    window.LumiConvo = { on: () => convoOn, context: () => convoContext, stop: () => { convoOn = false; } };
+    setInterval(() => { try { micBtn.classList.toggle('convo', convoOn); } catch (e) {} }, 700);
     // Test/diagnostic hook, same pattern as LumiCam / LumiSky.
     window.LumiWake = {
       state: function () {
-        return { on: wakeOn, running: wakeRunning, hold: wakeHold, speech: speechHold, denied: wakeDenied, fails: wakeFails };
+        return { on: wakeOn, running: wakeRunning, hold: wakeHold, speech: speechHold, denied: wakeDenied, fails: wakeFails, convo: convoOn, speechSince: speechSince };
       }
     };
     micBtn.addEventListener('click', () => {
       if (listening) {
+        convoOn = false; // a deliberate tap OFF: the mic closes
         recognition.stop();
       } else {
         startVoiceInput();
       }
     });
     recognition.addEventListener('start', () => {
+      dictGotResult = false;
       listening = true;
       micBtn.classList.add('listening');
     });
     recognition.addEventListener('result', (e) => {
       const transcript = e.results[0][0].transcript;
+      dictGotResult = true;
+      emptyDictStreak = 0;
       if (window.meetMode) {
         document.getElementById('meetInput').value = transcript;
+        convoSentAt = Date.now();
         if (window.meetSendFromInput) window.meetSendFromInput();
         return;
       }
       const input = document.getElementById('input');
       input.value = transcript;
+      convoSentAt = Date.now();
       // Hands-free chat (build 2026.10.22-21, owner ask): a finished
       // dictation in plain chat SENDS, exactly like the meeting and
       // the call already did — no extra tap on Send. (Call mode
@@ -1568,10 +1655,19 @@
       listening = false;
       micBtn.classList.remove('listening');
       wakeHold = false;
+      if (convoOn && !dictGotResult) {
+        emptyDictStreak++;
+        if (emptyDictStreak >= 3) {
+          convoOn = false;
+          if (!window.meetMode) { try { addMsg('🎙️ Mic closed — tap the mic or use your wake word when you are ready to talk again.', 'ai'); } catch (e) {} }
+        }
+      }
       startWake();
+      if (convoOn) pumpConvo();
     };
     recognition.addEventListener('end', stopListening);
     recognition.addEventListener('error', (e) => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') convoOn = false;
       stopListening();
       if (e.error === 'not-allowed') {
         addMsg('The browser blocked the microphone. You may need to allow microphone access for this site.', 'error');
@@ -1579,13 +1675,13 @@
     });
     // Each agent has their own wake phrase — saying it switches to them first.
     const WAKE_PHRASES = {
-      lumi: ['hey lumi'],
-      izzy: ['hey luz', 'hey loose'],
-      bea: ['hey sol', 'hey soul'],
-      quinn: ['hey stella'],
-      cielo: ['hey cielo'],
-      astra: ['hey astra'],
-      alba: ['hey alba'],
+      lumi: ['hey lumi', 'hey loomy', 'hey loom'],
+      izzy: ['hey luz', 'hey loose', 'hey luiz', 'hey luce'],
+      bea: ['hey sol', 'hey soul', 'hey sal'],
+      quinn: ['hey stella', 'hey stela', 'hey stellar'],
+      cielo: ['hey cielo', 'hey cello', 'hey sielo'],
+      astra: ['hey astra', 'hey astro'],
+      alba: ['hey alba', 'hey alva'],
       vega: ['hey vega'],
     };
     function wakeAgentFor(phrase) {
@@ -1672,6 +1768,7 @@
     }
     wakeToggle.addEventListener('click', () => {
       wakeOn = !wakeOn;
+      try { localStorage.setItem('lumi_wake', wakeOn ? '1' : '0'); } catch (e) {}
       wakeToggle.classList.toggle('active', wakeOn);
       if (wakeOn) {
         wakeHold = false;
@@ -1682,6 +1779,23 @@
         stopWake();
       }
     });
+    // Wake preference PERSISTS (build 2026.10.22-22): if she
+    // turned wake on, it stays on across reloads — the toggle
+    // lights at load and the recognizer arms on her first tap or
+    // keypress (a mic start with no gesture can be refused cold).
+    try {
+      if (localStorage.getItem('lumi_wake') === '1') {
+        wakeOn = true;
+        wakeToggle.classList.add('active');
+        const armOnGesture = () => {
+          document.removeEventListener('pointerdown', armOnGesture);
+          document.removeEventListener('keydown', armOnGesture);
+          if (wakeOn && !wakeRunning) startWake();
+        };
+        document.addEventListener('pointerdown', armOnGesture);
+        document.addEventListener('keydown', armOnGesture);
+      }
+    } catch (e) {}
     // Expose the mic button's toggle so video-call mode can reuse the same voice input.
     window.lumiToggleVoiceInput = () => micBtn.click();
   })();
@@ -2387,7 +2501,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-21, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-22, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
