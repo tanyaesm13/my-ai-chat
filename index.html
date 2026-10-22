@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-19): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-20): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -568,11 +568,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-19</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-20</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-19) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-20) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -584,7 +584,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-19';
+  var LUMI_BUILD_STAMP = '2026.10.22-20';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -662,7 +662,7 @@
       greeting: "Hi, I'm Sol 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan. (And yes, you're taking lunch.)",
       blurb: 'Booking agent — appointments, calendars, plans, reminders.' },
     quinn: { name: 'Stella', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
-      greeting: "Hey, I'm Stella 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up. I deserve a raise, by the way.",
+      greeting: "Hey, I'm Stella 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up.",
       blurb: 'Social media agent — captions, hashtags, hooks, content ideas.' },
     cielo: { name: 'Cielo', emoji: '🌦️', avatar: 'cielo-avatar.webp',
       greeting: "¡Hola! I'm Cielo 🌦️ — your meteorologist. I keep watch over the skies for you, especially here in Laredo. Ask me about the weather anytime.",
@@ -685,7 +685,15 @@
   // LOCALLY with the honest in-character notes below and never sends.
   // The moment the Worker knows an id, delete it from this set and she
   // goes fully live — her own server memory, cloud voice, and vision.
-  const PENDING_AGENTS = { cielo: true, astra: true, alba: true, vega: true };
+  // WAKE THE FOUR (build 2026.10.22-20, owner order Oct 22 ~9:51 AM
+  // CDT): the Worker now knows all eight — personas deployed, per-agent
+  // LUMI_MEMORY KV history ("history:" + agent), real /tts voices — so
+  // the gate is EMPTY. Cielo, Astra, Alba and Vega take the identical
+  // memory path as the original four: lumi_history_<id> (last 40)
+  // POSTed as messages, merged with KV on the Worker, saved back, and
+  // pullSharedHistory on every switch. PENDING_LINES/pendingReply stay
+  // as dead code so a future agent can be gated by re-adding her id.
+  const PENDING_AGENTS = {};
   const PENDING_LINES = {
     cielo: [
       "¡Hola! I'm Cielo 🌦️ — I'm still waking up, T: my weather brain connects with the next update, and then I'll be watching the skies over Laredo for you around the clock. For a forecast right now, ask Lumi — she can look it up. And honestly? I can't check the sky until I'm connected, and I won't ever guess at weather.",
@@ -2332,7 +2340,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-19, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-20, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
