@@ -107,6 +107,15 @@
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
     #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #ff2e88; color: #fff; border: 2px solid #ff4da6; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(255,46,136,0.45); cursor: pointer; }
     #audioUnlockChip.hide { display: none; }
+
+    /* === Camera self-view + meeting shooting stars (build 2026.10.22-1) === */
+    #camPipWrap { display: none; position: fixed; right: 12px; bottom: 92px; width: 104px; aspect-ratio: 3/4; border-radius: 14px; overflow: hidden; border: 2px solid #ff2e88; background: #111; z-index: 400; box-shadow: 0 4px 18px rgba(0,0,0,0.55); }
+    #camPipWrap.on { display: block; }
+    #camPip { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+    #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
+    #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
+    #meetStars { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+    #meetOverlay > *:not(#meetStars) { position: relative; z-index: 1; }
 </style>
 </head>
 <body>
@@ -141,6 +150,7 @@
 <form id="form">
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="locBtn" type="button" title="Share location with next message">📍</button>
+    <button id="camBtn" type="button" title="Turn your camera on or off — while it is on, the team can see you">📷</button>
     <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
     <button id="send" type="submit">Send</button>
 </form>
@@ -152,6 +162,7 @@
     <button id="teamClose" type="button">Close</button>
 </div>
 <div id="meetOverlay">
+    <canvas id="meetStars"></canvas>
     <h2>🎬 Team Meeting</h2>
     <p id="meetHint">Tap an agent to direct your question — or tap Everyone and get all four takes.</p>
     <div id="meetGrid"></div>
@@ -182,15 +193,17 @@
     <div id="callBtns">
         <button id="callMicBtn" type="button" title="Talk">🎤</button>
         <button id="callSpeakerBtn" type="button" title="Toggle voice">🔊</button>
+        <button id="callCamBtn" type="button" title="Toggle your camera">📷</button>
         <button id="callCloseBtn" type="button" title="End call">❌</button>
     </div>
 </div>
+<div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.21-3</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-1</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.21-3) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-1) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -202,7 +215,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.21-3';
+  var LUMI_BUILD_STAMP = '2026.10.22-1';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -776,7 +789,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}))
+        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
       });
       return res.json();
     }
@@ -1045,6 +1058,116 @@
     // Expose the mic button's toggle so video-call mode can reuse the same voice input.
     window.lumiToggleVoiceInput = () => micBtn.click();
   })();
+  // ================================================================
+  // CAMERA — real two-way video call (build 2026.10.22-1, owner ask
+  // Oct 22, 2026): T's own camera as a picture-in-picture self-view,
+  // plus a fresh still every ~8 seconds that rides along with her
+  // chat messages, so whichever assistant she is talking to — Lumi,
+  // Luz, Sol or Stella, in a one-on-one call, the team meeting, or
+  // plain chat — can actually SEE her and react like a video call.
+  // One stream feeds every preview (chat PiP, call view, meeting
+  // self-tile). PRIVACY (same posture as GPS): frames live in memory
+  // only, the newest replaces the last, and they are NEVER stored —
+  // no localStorage, no chat history, nothing saved anywhere. The
+  // camera is OFF by default; turning it off stops the tracks at
+  // once. Video only — her mic stays with the existing voice input.
+  // ================================================================
+  (function () {
+    'use strict';
+    var stream = null, timer = null, latestFrame = null, owner = null, starting = false;
+    var sinks = [], listeners = [];
+    var pipWrap = document.getElementById('camPipWrap');
+    var pip = document.getElementById('camPip');
+    if (pip) sinks.push(pip);
+    function paint() {
+      var on = !!stream;
+      if (pipWrap) pipWrap.classList.toggle('on', on);
+      ['camBtn', 'callCamBtn'].forEach(function (id) {
+        var b = document.getElementById(id);
+        if (b) { b.classList.toggle('on', on); b.textContent = on ? '📷❌' : '📷'; }
+      });
+    }
+    function emit() {
+      paint();
+      listeners.forEach(function (fn) { try { fn(); } catch (e) {} });
+    }
+    function note(msg) {
+      try {
+        var meet = document.getElementById('meetOverlay');
+        var call = document.getElementById('callOverlay');
+        if (meet && meet.classList.contains('open')) { document.getElementById('meetCaption').textContent = msg; return; }
+        if (call && call.classList.contains('open')) { document.getElementById('callCaption').textContent = msg; return; }
+        addMsg(msg, 'ai');
+      } catch (e) {}
+    }
+    function capture() {
+      if (!stream || !pip || !pip.videoWidth) return;
+      try {
+        var w = pip.videoWidth, h = pip.videoHeight;
+        var scale = Math.min(1, 512 / w);
+        var c = document.createElement('canvas');
+        c.width = Math.max(2, Math.round(w * scale));
+        c.height = Math.max(2, Math.round(h * scale));
+        var ctx = c.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(pip, 0, 0, c.width, c.height);
+        var d = c.toDataURL('image/jpeg', 0.72);
+        if (d && d.length > 100) latestFrame = d;
+      } catch (e) {}
+    }
+    function start(o) {
+      // Already on: keep the ORIGINAL owner, so a call that opens while
+      // she already had her camera on does not claim it (and will not
+      // switch it off when the call ends).
+      if (stream) return Promise.resolve(true);
+      if (starting) return Promise.resolve(false);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        note('This browser or device has no camera available here — you can still talk and type like always.');
+        return Promise.resolve(false);
+      }
+      starting = true;
+      return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }).then(function (s) {
+        starting = false;
+        stream = s; owner = o || 'chat';
+        sinks.forEach(function (v) { try { v.srcObject = s; } catch (e) {} });
+        capture();
+        timer = setInterval(capture, 8000);
+        emit();
+        return true;
+      }).catch(function () {
+        starting = false;
+        note('Camera unavailable — the browser blocked it or this device has none. You can still talk and type like always.');
+        return false;
+      });
+    }
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (stream) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} stream = null; }
+      sinks.forEach(function (v) { try { v.srcObject = null; } catch (e) {} });
+      latestFrame = null; owner = null;
+      emit();
+    }
+    window.LumiCam = {
+      isOn: function () { return !!stream; },
+      frame: function () { return latestFrame; },
+      start: start,
+      stop: stop,
+      stopIfOwner: function (o) { if (stream && owner === o) stop(); },
+      toggle: function (o) { if (stream) stop(); else start(o || 'chat'); },
+      bind: function (videoEl) {
+        if (videoEl && sinks.indexOf(videoEl) === -1) {
+          sinks.push(videoEl);
+          try { videoEl.srcObject = stream; } catch (e) {}
+        }
+      },
+      onChange: function (fn) { if (typeof fn === 'function') listeners.push(fn); }
+    };
+    var cb = document.getElementById('camBtn');
+    if (cb) cb.addEventListener('click', function () { window.LumiCam.toggle('chat'); });
+    var ccb = document.getElementById('callCamBtn');
+    if (ccb) ccb.addEventListener('click', function () { window.LumiCam.toggle('call'); });
+    paint();
+  })();
   // Video-call mode: full-screen overlay with a giant animated avatar.
   // Typing is hidden behind the overlay; tap the mic and talk, Lumi answers
   // in voice plus an on-screen caption.
@@ -1076,9 +1199,14 @@
     }
     if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
     callOverlay.classList.add('open');
+    // One-on-one call = camera on (owner ask Oct 22): she sees herself in
+    // the corner PiP and this assistant can see her. If she already had
+    // the camera on elsewhere, it simply stays on.
+    if (window.LumiCam) LumiCam.start('call');
   }
   function closeCall() {
     callOverlay.classList.remove('open');
+    if (window.LumiCam) LumiCam.stopIfOwner('call');
     window.callMode = false;
     const cv = document.getElementById('callVideo');
     if (cv) { cv.pause(); }
@@ -1145,7 +1273,7 @@
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}))
+          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
         });
         return res.json();
       }
@@ -1191,30 +1319,26 @@
     document.getElementById('meetMicBtn').addEventListener('click', () => {
       if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput();
     });
-    // Self camera (stays on-device; toggle on/off).
-    let meetStream = null;
+    // Self camera — unified with the app-wide camera (LumiCam, build
+    // 2026.10.22-1): ONE stream feeds this preview, the chat PiP and the
+    // one-on-one call view, and while it is on, a fresh still rides along
+    // with each message so the team can actually see T. Frames live in
+    // memory only and are never stored (see the LumiCam block above).
     const selfVideo = document.getElementById('meetSelfVideo');
     const selfOff = document.getElementById('meetSelfOff');
     const camBtn = document.getElementById('meetCamBtn');
-    function stopCam() {
-      if (meetStream) { meetStream.getTracks().forEach((t) => t.stop()); meetStream = null; }
-      selfVideo.srcObject = null;
-      selfVideo.style.display = 'none';
-      selfOff.style.display = 'flex';
-      camBtn.textContent = '📷';
+    function syncMeetCam() {
+      const on = !!(window.LumiCam && LumiCam.isOn());
+      selfVideo.style.display = on ? 'block' : 'none';
+      selfOff.style.display = on ? 'none' : 'flex';
+      camBtn.textContent = on ? '📷❌' : '📷';
     }
-    camBtn.addEventListener('click', async () => {
-      if (meetStream) { stopCam(); return; }
-      try {
-        meetStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-        selfVideo.srcObject = meetStream;
-        selfVideo.style.display = 'block';
-        selfOff.style.display = 'none';
-        camBtn.textContent = '📷❌';
-      } catch (e) {
-        meetCaption.textContent = 'Camera unavailable — the browser blocked it or this device has none.';
-      }
-    });
+    if (window.LumiCam) {
+      LumiCam.bind(selfVideo);
+      LumiCam.onChange(syncMeetCam);
+      syncMeetCam();
+    }
+    camBtn.addEventListener('click', () => { if (window.LumiCam) LumiCam.toggle('meet'); });
     function openMeet() {
       window.meetMode = true;
       document.getElementById('teamOverlay').classList.remove('open');
@@ -1227,7 +1351,7 @@
     function closeMeet() {
       meetOverlay.classList.remove('open');
       window.meetMode = false;
-      stopCam();
+      if (window.LumiCam) LumiCam.stopIfOwner('meet');
       Object.values(tiles).forEach((t) => {
         const v = t.querySelector('video');
         if (v) v.pause();
@@ -1239,6 +1363,98 @@
     document.getElementById('meetStartBtn').addEventListener('click', openMeet);
     document.getElementById('meetCloseBtn').addEventListener('click', closeMeet);
   })();
+
+  // ================================================================
+  // SHOOTING STARS — team meeting mode only (build 2026.10.22-1,
+  // owner ask Oct 22, 2026): "very, very soft shooting stars... just
+  // a couple, because they are from the sky." One gentle streak every
+  // ~7-14 seconds behind the team — never a shower, low opacity, slow.
+  // Runs only while the meeting is open, honors the motion toggle
+  // (persisted lumi_motion pref, same source as the animation engine)
+  // and prefers-reduced-motion, and pauses when the tab is hidden.
+  // ================================================================
+  (function () {
+    'use strict';
+    var canvas = document.getElementById('meetStars');
+    var overlay = document.getElementById('meetOverlay');
+    if (!canvas || !overlay) return;
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    var stars = [], raf = 0, nextAt = 0, running = false;
+    function motionAllowed() {
+      try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
+      try { var sv = localStorage.getItem('lumi_motion'); if (sv !== null) return sv === '1'; } catch (e) {}
+      return true;
+    }
+    function size() {
+      var r = overlay.getBoundingClientRect();
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.max(2, Math.round(r.width * dpr));
+      canvas.height = Math.max(2, Math.round(r.height * dpr));
+    }
+    function spawn(now) {
+      var W = canvas.width, H = canvas.height;
+      var ang = Math.PI * (0.78 + Math.random() * 0.1);
+      var s = {
+        x: W * (0.35 + Math.random() * 0.6),
+        y: H * (0.04 + Math.random() * 0.3),
+        vx: Math.cos(ang), vy: Math.abs(Math.sin(ang)) * 0.55,
+        born: now,
+        life: 1000 + Math.random() * 500,
+        dist: W * (0.22 + Math.random() * 0.12),
+        tail: W * 0.09
+      };
+      var m = Math.sqrt(s.vx * s.vx + s.vy * s.vy); s.vx /= m; s.vy /= m;
+      stars.push(s);
+      nextAt = now + 6500 + Math.random() * 7500;
+    }
+    function frame(now) {
+      if (!running) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (now >= nextAt && stars.length < 2) spawn(now);
+      stars = stars.filter(function (s) { return now - s.born < s.life; });
+      stars.forEach(function (s) {
+        var p = (now - s.born) / s.life;
+        var ease = 1 - Math.pow(1 - p, 2);
+        var dist = s.dist * ease;
+        var hx = s.x + s.vx * dist, hy = s.y + s.vy * dist;
+        var fade = Math.sin(Math.PI * Math.min(1, p));
+        var tail = s.tail * fade;
+        var tx = hx - s.vx * tail, ty = hy - s.vy * tail;
+        var g = ctx.createLinearGradient(tx, ty, hx, hy);
+        g.addColorStop(0, 'rgba(255,255,255,0)');
+        g.addColorStop(1, 'rgba(235,244,255,' + (0.5 * fade).toFixed(3) + ')');
+        ctx.strokeStyle = g;
+        ctx.lineWidth = Math.max(1, canvas.width / 900);
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(hx, hy); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,' + (0.55 * fade).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(hx, hy, Math.max(1, canvas.width / 700), 0, Math.PI * 2); ctx.fill();
+      });
+      raf = requestAnimationFrame(frame);
+    }
+    function shouldRun() {
+      return overlay.classList.contains('open') && motionAllowed() && !document.hidden;
+    }
+    function tick() {
+      var want = shouldRun();
+      if (want && !running) {
+        running = true;
+        size();
+        if (!nextAt) nextAt = performance.now() + 1800;
+        raf = requestAnimationFrame(frame);
+      } else if (!want && running) {
+        running = false;
+        if (raf) cancelAnimationFrame(raf);
+        stars = [];
+        try { ctx.clearRect(0, 0, canvas.width, canvas.height); } catch (e) {}
+      }
+    }
+    setInterval(tick, 1000);
+    window.addEventListener('resize', function () { if (running) size(); });
+    window.LumiStars = { active: function () { return running; }, count: function () { return stars.length; } };
+  })();
+
 
   // ================================================================
   // LUMI ANIMATION ENGINE — Phase 1: living avatars on the ORIGINAL art.
