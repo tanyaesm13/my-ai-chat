@@ -71,7 +71,7 @@
     .agentCard .vlabel button { background: none; border: none; padding: 2px 6px; font-size: 14px; cursor: pointer; }
     #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
     /* Team meeting mode: 2x2 agent grid + self camera + captions. */
-    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; flex-direction: column; align-items: center; gap: 10px; padding: 14px; overflow-y: auto; }
+    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); overflow-y: auto; -webkit-overflow-scrolling: touch; }
     #meetOverlay.open { display: flex; }
     #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #ff4da6; }
     #meetHint { margin: 0; font-size: 13px; color: #bbb; text-align: center; }
@@ -116,6 +116,28 @@
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
     #meetOverlay > *:not(#meetStars) { position: relative; z-index: 1; }
+    /* === Meeting layout fix (build 2026.10.22-3): with 8 agents the meeting
+       column outgrew phone screens and the TOP frames (Lumi, Luz) were
+       clipped/unreachable — the overlay's flex children could shrink and
+       squish instead of growing the scroll area, and there was no safe-area
+       padding under the notch. Children now keep their natural height
+       (flex-shrink: 0) so the overlay scrolls the whole column top to
+       bottom; tiles go compact on narrow screens; the ask-bar sticks to
+       the bottom so the input + buttons stay reachable while scrolling. */
+    #meetOverlay > *:not(#meetStars) { flex-shrink: 0; }
+    #meetOverlay > #meetForm { position: sticky; bottom: 0; z-index: 2; background: rgba(0,0,0,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); }
+    @media (max-width: 560px) {
+      #meetOverlay { gap: 8px; }
+      #meetOverlay h2 { font-size: 18px; }
+      #meetHint { font-size: 12px; }
+      #meetGrid { gap: 8px; }
+      .meetTile { aspect-ratio: 4 / 3; border-width: 2px; border-radius: 12px; }
+      .meetTile .meetLabel { font-size: 12px; padding: 4px 2px; }
+      #meetSelfWrap, #meetSelfVideo, #meetSelfOff { width: 64px; height: 64px; }
+      #meetSelfOff { font-size: 24px; }
+      #meetCaption { min-height: 52px; font-size: 14px; padding: 10px 12px; }
+      #meetEveryone { font-size: 14px; }
+    }
 </style>
 </head>
 <body>
@@ -199,11 +221,11 @@
 </div>
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-1</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-3</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-1) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-3) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -215,7 +237,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-2';
+  var LUMI_BUILD_STAMP = '2026.10.22-3';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
