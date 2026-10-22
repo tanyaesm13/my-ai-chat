@@ -6,121 +6,121 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>My AI Chat</title>
+<title>Lumi's Galaxy Network</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff2e88">
+<meta name="theme-color" content="#171a3b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lumi">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #000000; color: #fff; display: flex; flex-direction: column; height: 100dvh; }
-    header { padding: 16px; text-align: center; background: #000000; border-bottom: 3px solid #ff2e88; }
-    header h1 { margin: 0; font-size: 20px; color: #ff4da6; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #0f1126; color: #fff; display: flex; flex-direction: column; height: 100dvh; }
+    header { padding: 16px; text-align: center; background: #0f1126; border-bottom: 3px solid #72edfa; }
+    header h1 { margin: 0; font-size: 20px; color: #9c89f4; }
     header p { margin: 4px 0 0; opacity: 0.85; font-size: 14px; }
     #avatarWrap { position: relative; display: inline-block; margin: 0 auto 8px; }
-    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #ff2e88; object-fit: cover; display: block; cursor: pointer; }
+    #lumiAvatar { width: 84px; height: 84px; border-radius: 50%; border: 3px solid #72edfa; object-fit: cover; display: block; cursor: pointer; }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-    #lumiAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 18px #ff2e88; }
+    #lumiAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 18px #72edfa; }
     @keyframes talkPulse { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.06) rotate(-1.5deg); } }
-    .mouth { position: absolute; left: 50.5%; top: 67.8%; width: 17%; aspect-ratio: 2.4 / 1; transform: translate(-50%,-50%) scaleY(0.15); background: radial-gradient(ellipse at center, rgba(43,10,22,0.95) 55%, rgba(43,10,22,0.45) 100%); border-radius: 50%; opacity: 0; transition: opacity 0.15s ease; pointer-events: none; z-index: 3; }
+    .mouth { position: absolute; left: 50.5%; top: 67.8%; width: 17%; aspect-ratio: 2.4 / 1; transform: translate(-50%,-50%) scaleY(0.15); background: radial-gradient(ellipse at center, rgba(26,18,54,0.95) 55%, rgba(26,18,54,0.45) 100%); border-radius: 50%; opacity: 0; transition: opacity 0.15s ease; pointer-events: none; z-index: 3; }
     .hbtns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
-    .hbtns button { background: none; border: 1px solid #ff2e88; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; padding: 0; color: #fff; }
+    .hbtns button { background: none; border: 1px solid #72edfa; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; padding: 0; color: #fff; }
     .hbtns button.wide { width: auto; border-radius: 18px; padding: 0 10px; font-size: 13px; font-weight: 700; }
-    .hbtns button.active { background: #ff2e88; }
-    #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #000000; }
+    .hbtns button.active { background: #72edfa; }
+    #chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #0f1126; }
     .msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; line-height: 1.4; white-space: pre-wrap; }
-    .user { align-self: flex-end; background: #ff2e88; color: #fff; }
-    .ai { align-self: flex-start; background: #1a1a1a; border: 1px solid #ff2e88; }
+    .user { align-self: flex-end; background: #72edfa; color: #fff; }
+    .ai { align-self: flex-start; background: #1a1a1a; border: 1px solid #72edfa; }
     .error { align-self: center; background: #7f1d1d; font-size: 13px; }
-    #chips { display: flex; gap: 8px; padding: 10px 12px 0; background: #000000; justify-content: center; flex-wrap: wrap; }
-    .chip { padding: 8px 14px; border-radius: 18px; border: 1px solid #ff2e88; background: #1a1a1a; color: #ff4da6; font-size: 13px; cursor: pointer; }
-    .chip:active { background: #ff2e88; color: #fff; }
-    #form { display: flex; gap: 8px; padding: 12px; background: #000000; border-top: 2px solid #ff2e88; }
-    #input { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111111; color: #fff; font-size: 16px; }
-    button { padding: 12px 20px; border-radius: 24px; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; }
+    #chips { display: flex; gap: 8px; padding: 10px 12px 0; background: #0f1126; justify-content: center; flex-wrap: wrap; }
+    .chip { padding: 8px 14px; border-radius: 18px; border: 1px solid #72edfa; background: #1a1a1a; color: #9c89f4; font-size: 13px; cursor: pointer; }
+    .chip:active { background: #72edfa; color: #fff; }
+    #form { display: flex; gap: 8px; padding: 12px; background: #0f1126; border-top: 2px solid #72edfa; }
+    #input { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #72edfa; background: #111111; color: #fff; font-size: 16px; }
+    button { padding: 12px 20px; border-radius: 24px; border: none; background: #72edfa; color: #fff; font-size: 16px; cursor: pointer; }
       button:disabled { opacity: 0.6; }
-    #micBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
-    #micBtn.listening { background: #ff4da6; box-shadow: 0 0 12px #ff2e88; }
+    #micBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #72edfa; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    #micBtn.listening { background: #9c89f4; box-shadow: 0 0 12px #72edfa; }
     #micBtn.flash { animation: micFlash 0.5s ease-in-out 3; }
-    @keyframes micFlash { 0%,100% { box-shadow: 0 0 0 #ff2e88; } 50% { box-shadow: 0 0 18px #ff2e88; background: #ff4da6; } }
-    #locBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #ff2e88; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
-    #contact { text-align: center; padding: 8px; font-size: 13px; background: #000000; }
-    #contact a { color: #ff4da6; }
+    @keyframes micFlash { 0%,100% { box-shadow: 0 0 0 #72edfa; } 50% { box-shadow: 0 0 18px #72edfa; background: #9c89f4; } }
+    #locBtn { padding: 12px 14px; border-radius: 50%; border: none; background: #72edfa; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    #contact { text-align: center; padding: 8px; font-size: 13px; background: #0f1126; }
+    #contact a { color: #9c89f4; }
     body.big-text #chat { font-size: 125%; }
     /* Video-call mode: full-screen overlay with a giant animated avatar. */
-    #callOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
+    #callOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.97); z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px; }
     #callOverlay.open { display: flex; }
-    #callName { margin: 0; font-size: 22px; color: #ff4da6; }
+    #callName { margin: 0; font-size: 22px; color: #9c89f4; }
     #callAvatarWrap { position: relative; display: inline-block; transition: transform 1.8s cubic-bezier(.34,.68,.3,1); }
-    #callAvatar { width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; display: block; }
-    #callAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 30px #ff2e88; }
-    #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
+    #callAvatar { width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #72edfa; object-fit: cover; display: block; }
+    #callAvatar.talking { animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 30px #72edfa; }
+    #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #72edfa; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
     #callBtns { display: flex; gap: 20px; }
-    #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #ff2e88; color: #fff; padding: 0; }
+    #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #72edfa; color: #fff; padding: 0; }
     /* Agent team picker */
-    #teamOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+    #teamOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
     #teamOverlay.open { display: flex; }
-    #teamOverlay h2 { margin: 0; font-size: 20px; color: #ff4da6; }
+    #teamOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
     #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
-    .agentCard { background: #1a1a1a; border: 2px solid #ff2e88; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
-    .agentCard.active { background: #ff2e88; }
-    .agentCard img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4da6; }
+    .agentCard { background: #1a1a1a; border: 2px solid #72edfa; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
+    .agentCard.active { background: #72edfa; }
+    .agentCard img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2px solid #9c89f4; }
     .agentCard h3 { margin: 8px 0 4px; font-size: 16px; }
     .agentCard p { margin: 0; font-size: 12px; opacity: 0.85; line-height: 1.35; }
-    #teamClose { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    #teamClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     .agentCard .vlabel { margin-top: 8px; font-size: 12px; opacity: 0.9; }
     .agentCard .vlabel button { background: none; border: none; padding: 2px 6px; font-size: 14px; cursor: pointer; }
-    #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #ff2e88; object-fit: cover; }
+    #callVideo { display: none; width: min(64vw, 240px); height: min(64vw, 240px); border-radius: 50%; border: 4px solid #72edfa; object-fit: cover; }
     /* Team meeting mode: 2x2 agent grid + self camera + captions. */
-    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.97); z-index: 300; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+    #meetOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.97); z-index: 300; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
     #meetOverlay.open { display: block; }
     #meetScroll { position: relative; z-index: 1; width: 100%; padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(104px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
     #meetScroll > * { margin: 0 auto 10px; }
-    #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #ff4da6; text-align: center; }
+    #meetOverlay h2 { margin: 4px 0 0; font-size: 20px; color: #9c89f4; text-align: center; }
     #meetHint { margin: 0; font-size: 13px; color: #bbb; text-align: center; }
     #meetGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; }
     .meetTile { position: relative; border-radius: 16px; overflow: hidden; border: 3px solid #333; background: #111; cursor: pointer; aspect-ratio: 1; padding: 0; }
     .meetTile video, .meetTile img.mtile { width: 100%; height: 100%; object-fit: cover; display: block; }
     .meetTile .meetLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 4px; background: rgba(0,0,0,0.68); color: #fff; font-size: 14px; text-align: center; }
-    .meetTile.selected { border-color: #ff2e88; }
-    .meetTile.speaking { border-color: #ff2e88; animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 24px #ff2e88; }
+    .meetTile.selected { border-color: #72edfa; }
+    .meetTile.speaking { border-color: #72edfa; animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 24px #72edfa; }
     #meetRow { display: flex; gap: 10px; align-items: center; width: 100%; max-width: 520px; }
     #meetSelfWrap { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
-    #meetSelfVideo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 2px solid #ff4da6; background: #111; display: none; }
+    #meetSelfVideo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 2px solid #9c89f4; background: #111; display: none; }
     #meetSelfOff { width: 84px; height: 84px; border-radius: 50%; background: #1a1a1a; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 30px; }
-    #meetEveryone { flex: 1; border-radius: 24px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; padding: 10px; font-size: 15px; cursor: pointer; }
-    #meetEveryone.active { background: #ff2e88; }
-    #meetCaption { width: 100%; max-width: 520px; min-height: 64px; max-height: 22vh; overflow-y: auto; font-size: 15px; line-height: 1.45; color: #fff; padding: 12px 16px; border: 1px solid #ff2e88; border-radius: 16px; background: #1a1a1a; }
+    #meetEveryone { flex: 1; border-radius: 24px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; padding: 10px; font-size: 15px; cursor: pointer; }
+    #meetEveryone.active { background: #72edfa; }
+    #meetCaption { width: 100%; max-width: 520px; min-height: 64px; max-height: 22vh; overflow-y: auto; font-size: 15px; line-height: 1.45; color: #fff; padding: 12px 16px; border: 1px solid #72edfa; border-radius: 16px; background: #1a1a1a; }
     #meetForm { display: flex; gap: 8px; width: 100%; max-width: 520px; align-items: center; }
-    #meetInput { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #ff2e88; background: #111; color: #fff; font-size: 16px; }
+    #meetInput { flex: 1; padding: 12px; border-radius: 24px; border: 1px solid #72edfa; background: #111; color: #fff; font-size: 16px; }
     #meetForm button { width: 52px; height: 52px; border-radius: 50%; font-size: 20px; padding: 0; flex-shrink: 0; }
-    #meetCamBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
-    #meetCloseBtn { background: #1a1a1a; border: 2px solid #ff2e88; }
-    #meetStartBtn { background: none; border: 1px solid #ff2e88; color: #fff; border-radius: 18px; padding: 10px 22px; font-size: 15px; cursor: pointer; margin-top: 4px; }
+    #meetCamBtn { background: #1a1a1a; border: 2px solid #72edfa; }
+    #meetCloseBtn { background: #1a1a1a; border: 2px solid #72edfa; }
+    #meetStartBtn { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 10px 22px; font-size: 15px; cursor: pointer; margin-top: 4px; }
     /* === Phase 1 living-animation layer (driven by the LumiAnim engine) === */
     #callOverlay { overflow: hidden; }
     .meetTile .meetLabel { z-index: 3; }
     .agentCard { position: relative; }
     .lid { position: absolute; border-radius: 50%; transform: scaleY(0); transform-origin: 50% 0%; pointer-events: none; z-index: 2; opacity: 0.97; }
     .brow { position: absolute; height: 2.4%; border-radius: 999px; background: rgba(25,15,30,0.55); opacity: 0; transition: opacity 0.25s ease, transform 0.25s ease; pointer-events: none; z-index: 2; }
-    #popBubble { position: fixed; left: 50%; bottom: 108px; transform: translateX(-50%) translateY(12px) scale(0.9); max-width: 86vw; background: #1a1a1a; color: #fff; border: 2px solid #ff2e88; border-radius: 18px; padding: 10px 16px; font-size: 15px; line-height: 1.35; box-shadow: 0 8px 30px rgba(255,46,136,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1); z-index: 400; text-align: center; }
+    #popBubble { position: fixed; left: 50%; bottom: 108px; transform: translateX(-50%) translateY(12px) scale(0.9); max-width: 86vw; background: #1a1a1a; color: #fff; border: 2px solid #72edfa; border-radius: 18px; padding: 10px 16px; font-size: 15px; line-height: 1.35; box-shadow: 0 8px 30px rgba(114,237,250,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1); z-index: 400; text-align: center; }
     #popBubble.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
     @media (prefers-reduced-motion: reduce) { #popBubble { transition: none; } }
     /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
-    #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #ff2e88; color: #fff; border: 2px solid #ff4da6; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(255,46,136,0.45); cursor: pointer; }
+    #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #72edfa; color: #fff; border: 2px solid #9c89f4; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(114,237,250,0.45); cursor: pointer; }
     #audioUnlockChip.hide { display: none; }
 
     /* === Camera self-view + meeting shooting stars (build 2026.10.22-1) === */
-    #camPipWrap { display: none; position: fixed; right: 12px; bottom: 92px; width: 104px; aspect-ratio: 3/4; border-radius: 14px; overflow: hidden; border: 2px solid #ff2e88; background: #111; z-index: 400; box-shadow: 0 4px 18px rgba(0,0,0,0.55); }
+    #camPipWrap { display: none; position: fixed; right: 12px; bottom: 92px; width: 104px; aspect-ratio: 3/4; border-radius: 14px; overflow: hidden; border: 2px solid #72edfa; background: #111; z-index: 400; box-shadow: 0 4px 18px rgba(0,0,0,0.55); }
     #camPipWrap.on { display: block; }
     #camPip { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
-    #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
+    #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-12): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-13): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -156,36 +156,36 @@
        position. The overlay is inset:0 with no transformed ancestors,
        so fixed lands exactly where absolute did at scroll 0 — the
        tablet look she approved is unchanged. */
-    #meetOverlay > #meetForm { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(0,0,0,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); }
+    #meetOverlay > #meetForm { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(23,26,59,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); }
     #meetViewBar { display: flex; gap: 8px; width: 100%; max-width: 520px; }
-    #meetViewBar button { flex: 1; padding: 10px 6px; border-radius: 20px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
-    #meetViewBar button.active { background: #ff2e88; }
+    #meetViewBar button { flex: 1; padding: 10px 6px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    #meetViewBar button.active { background: #72edfa; }
     #meetRosterBar { width: 100%; max-width: 520px; }
-    #meetRosterLabel { font-size: 13px; color: #ffb3d1; text-align: center; margin-bottom: 6px; }
+    #meetRosterLabel { font-size: 13px; color: #72edfa; text-align: center; margin-bottom: 6px; }
     #meetRosterChips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-    .rosterChip { padding: 8px 12px; min-height: 38px; border-radius: 18px; border: 2px solid #ff2e88; background: #ff2e88; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .rosterChip { padding: 8px 12px; min-height: 38px; border-radius: 18px; border: 2px solid #72edfa; background: #72edfa; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
     .rosterChip.out { background: #1a1a1a; color: #999; border-color: #555; }
     .rosterChip:disabled { opacity: 0.55; cursor: default; }
     #meetSlide { width: 100%; max-width: 520px; }
     #meetCard { background: #141414; border: 2px solid #333; border-radius: 20px; padding: 14px 12px 12px; text-align: center; touch-action: pan-y; }
-    #meetCardMedia img, #meetCardMedia video { width: min(74vw, 330px); aspect-ratio: 1; object-fit: cover; border-radius: 16px; border: 3px solid #ff2e88; display: block; margin: 0 auto; background: #111; }
+    #meetCardMedia img, #meetCardMedia video { width: min(74vw, 330px); aspect-ratio: 1; object-fit: cover; border-radius: 16px; border: 3px solid #72edfa; display: block; margin: 0 auto; background: #111; }
     #meetCardName { font-size: 22px; font-weight: 800; color: #fff; margin-top: 10px; }
     #meetCardBlurb { font-size: 14px; color: #ccc; line-height: 1.4; margin-top: 4px; min-height: 20px; }
     #meetCardBtns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
-    #meetCardBtns button { border-radius: 20px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; padding: 10px 16px; font-size: 15px; font-weight: 700; cursor: pointer; }
-    #meetCardBtns button.primary { background: #ff2e88; }
+    #meetCardBtns button { border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; padding: 10px 16px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    #meetCardBtns button.primary { background: #72edfa; }
     #meetCardCount { font-size: 12px; color: #999; margin-top: 10px; }
     #meetNav { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
-    #meetNav > button { width: 56px; height: 44px; border-radius: 22px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; font-size: 18px; cursor: pointer; }
+    #meetNav > button { width: 56px; height: 44px; border-radius: 22px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 18px; cursor: pointer; }
     #meetDots { display: flex; gap: 6px; }
     #meetDots span { width: 9px; height: 9px; border-radius: 50%; background: #444; display: block; }
-    #meetDots span.on { background: #ff2e88; }
+    #meetDots span.on { background: #72edfa; }
     /* === Living meeting faces + voice-truth badges (build 2026.10.22-12) === */
     #meetCardMedia .slideStage { position: relative; width: min(74vw, 330px); aspect-ratio: 1; margin: 0 auto; }
     #meetCardMedia .slideStage img, #meetCardMedia .slideStage video { width: 100%; height: 100%; margin: 0; }
-    .meetNoVoice { display: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: 38px; z-index: 4; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #ff2e88; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; pointer-events: none; }
+    .meetNoVoice { display: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: 38px; z-index: 4; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #72edfa; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; pointer-events: none; }
     .meetNoVoice.show { display: block; }
-    #meetCardNoVoice { display: none; margin: 8px auto 0; width: fit-content; max-width: 92%; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #ff2e88; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
+    #meetCardNoVoice { display: none; margin: 8px auto 0; width: fit-content; max-width: 92%; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #72edfa; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
     #meetCardNoVoice.show { display: block; }
     @media (max-width: 560px) {
       #meetScroll > * { margin-bottom: 8px; }
@@ -305,7 +305,7 @@
     }
     @media (orientation: landscape) and (min-width: 900px) and (min-height: 560px) {
       body { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto; grid-template-areas: "rail chat" "rail chips" "rail form" "rail contact"; }
-      header { grid-area: rail; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: none; border-right: 3px solid #ff2e88; }
+      header { grid-area: rail; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: none; border-right: 3px solid #72edfa; }
       #chat { grid-area: chat; min-width: 0; }
       #chips { grid-area: chips; }
       #form { grid-area: form; }
@@ -343,11 +343,11 @@
     body::after { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background-image:
         radial-gradient(1.5px 1.5px at 22px 34px, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 52%),
-        radial-gradient(1px 1px at 148px 96px, rgba(255,179,209,0.65) 50%, rgba(255,179,209,0) 52%),
+        radial-gradient(1px 1px at 148px 96px, rgba(156,137,244,0.65) 50%, rgba(156,137,244,0) 52%),
         radial-gradient(1.2px 1.2px at 84px 168px, rgba(255,255,255,0.40) 50%, rgba(255,255,255,0) 52%),
-        radial-gradient(1px 1px at 196px 210px, rgba(255,215,234,0.55) 50%, rgba(255,215,234,0) 52%),
+        radial-gradient(1px 1px at 196px 210px, rgba(114,237,250,0.55) 50%, rgba(114,237,250,0) 52%),
         radial-gradient(1.8px 1.8px at 268px 52px, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 52%),
-        radial-gradient(1px 1px at 322px 150px, rgba(255,179,209,0.50) 50%, rgba(255,179,209,0) 52%);
+        radial-gradient(1px 1px at 322px 150px, rgba(156,137,244,0.50) 50%, rgba(156,137,244,0) 52%);
       background-size: 360px 260px, 420px 300px, 300px 220px, 380px 280px, 460px 320px, 340px 240px;
       background-repeat: repeat; }
     header::before, header::after { content: ""; position: absolute; top: 14px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1 L14.6 9.4 L23 12 L14.6 14.6 L12 23 L9.4 14.6 L1 12 L9.4 9.4 Z' fill='%23ffb3d1'/%3E%3C/svg%3E") center / contain no-repeat; pointer-events: none; animation: designStarTwinkle 3.6s ease-in-out infinite; }
@@ -355,6 +355,36 @@
     header::after { right: 16px; width: 15px; height: 15px; animation-delay: 1.8s; }
     @keyframes designStarTwinkle { 0%, 100% { opacity: 0.35; transform: scale(0.82) rotate(0deg); } 50% { opacity: 0.95; transform: scale(1.08) rotate(12deg); } }
     @media (prefers-reduced-motion: reduce) { header::before, header::after { animation: none; opacity: 0.7; } }
+ /* === GALAXY THEME (build 2026.10.22-13): the whole app re-based on the
+       official logo — dark navy ground, cyan + violet accents, NO PINK.
+       Owner, Oct 22, 2026: "Base the website off of that [logo]."
+       Palette sampled from the logo artwork: navy #171a3b (its
+       background), cyan #72edfa and violet #9c89f4 (the L gradient).
+       Merged onto the voicefix build -12 bytes after the two builds
+       crossed in flight — combines the -12 voice fixes with this theme.
+       Avatar artwork is never touched; only UI chrome themes. === */
+ body { background: #171a3b; }
+ header { background: #242746; border-bottom-color: #3d3d63; }
+ footer { background: #242746; border-top-color: #3d3d63; }
+ #chat { background: #1d1f42; }
+ .msg { background: #2a2c4b; }
+ .msg.user { background: #72edfa; color: #171a3b; border-color: #72edfa; }
+ .msg .who { color: #72edfa; }
+ a { color: #72edfa; }
+ #log { background: #242746; border-top-color: #3d3d63; }
+ .agentCard { background: #242746; }
+ #callView { background: #171a3b; }
+ #callView .callBtns button { background: #2a2c4b; border-color: #5a5a85; }
+ #meetViewBar { background: rgba(23,26,59,0.92); }
+ .rosterChip { background: #72edfa; color: #171a3b; }
+ .meetCard { background: #242746; border-color: #3d3d63; }
+ #meetCardBtns button { background: #2a2c4b; }
+ #meetStrip { background: #242746; border-top-color: #3d3d63; }
+ #audioUnlockChip { background: #72edfa; color: #171a3b; }
+ button, #micBtn, #locBtn, .chip:active, .hbtns button.active,
+ .agentCard.active, #meetEveryone.active,
+ #meetCardBtns button.primary, #meetViewBar button.active { color: #171a3b; }
+
 </style>
 </head>
 <body>
@@ -468,11 +498,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-12</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-13</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-12) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-13) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -484,7 +514,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-12';
+  var LUMI_BUILD_STAMP = '2026.10.22-13';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2211,7 +2241,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-12, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-13, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
@@ -2396,7 +2426,7 @@
     // Per-agent face rig, measured on the shipped 1600x1600 art
     // (percent of the square image; the app shows the full square).
     var RIG = {
-      lumi:  { skin: '#82c8dd', mouthIn: 'rgba(43,10,22,0.95)',
+      lumi:  { skin: '#82c8dd', mouthIn: 'rgba(26,18,54,0.95)',
                eyes: [ { x: 38.0, y: 52.0, w: 16.5, h: 11 }, { x: 62.5, y: 52.0, w: 16.5, h: 11 } ],
                mouth: { x: 50.5, y: 67.8, w: 17 } },
       izzy:  { skin: '#52bdc3', mouthIn: 'rgba(46,16,18,0.95)',
