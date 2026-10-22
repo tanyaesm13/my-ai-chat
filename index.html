@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-16): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-17): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -306,7 +306,15 @@
       #callAvatar, #callVideo { width: min(52vmin, 300px); height: min(52vmin, 300px); }
       #callCaption { max-height: 24vh; }
     }
-    @media (orientation: landscape) and (min-width: 900px) and (min-height: 560px) {
+    /* === Landscape for real phones too (build 2026.10.22-17):
+       the -10 rail gate (min-width 900px AND min-height 560px)
+       only ever matched big tablets — the owner's real Huawei
+       in landscape is ~892-915 x ~412 CSS px, so the min-height
+       leg excluded EVERY phone and she "couldn't rotate fully
+       horizontal." Gate is now orientation + min-width 760px:
+       her phone landscape and all tablets get the rail;
+       portrait and small phones are untouched. === */
+    @media (orientation: landscape) and (min-width: 760px) {
       body { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto; grid-template-areas: "rail chat" "rail chips" "rail form" "rail contact"; }
       header { grid-area: rail; display: flex; flex-direction: column; align-items: center; justify-content: center; border-bottom: none; border-right: 3px solid #72edfa; }
       #chat { grid-area: chat; min-width: 0; }
@@ -519,11 +527,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-16</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-17</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-16) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-17) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -535,7 +543,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-16';
+  var LUMI_BUILD_STAMP = '2026.10.22-17';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2283,7 +2291,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-16, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-17, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
