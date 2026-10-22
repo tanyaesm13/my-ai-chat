@@ -7,12 +7,15 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Lumi's Galaxy Network</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#171a3b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lumi">
-<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Lumi Galaxy">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #0f1126; color: #fff; display: flex; flex-direction: column; height: 100dvh; }
@@ -120,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-13): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-14): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -385,10 +388,23 @@
  .agentCard.active, #meetEveryone.active,
  #meetCardBtns button.primary, #meetViewBar button.active { color: #171a3b; }
 
+ /* === LOGO + PWA (build 2026.10.22-14): the official Constellation L
+       lockup in the header (artwork unaltered, scaled only) and the
+       install hint bar. Owner, Oct 22, 2026: the logo "until I decide
+       to change it"; the page saves to home screens as "Lumi Galaxy". === */
+ #brandLogo { display: block; margin: 0 auto 10px; width: min(250px, 74%); height: auto; }
+ #installBar { position: fixed; top: 0; left: 0; right: 0; z-index: 95; display: flex; align-items: center; gap: 10px; background: #242746; border-bottom: 2px solid #72edfa; color: #fff; padding: 10px 14px; font-size: 14px; line-height: 1.45; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+ #installBar[hidden] { display: none; }
+ #installBar .ibText { flex: 1; }
+ #installBar .ibText b { color: #72edfa; }
+ #installBarClose { flex: 0 0 auto; background: #72edfa; color: #171a3b; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 15px; cursor: pointer; }
+ @media (max-height: 500px) { #brandLogo { width: 150px; margin-bottom: 4px; } }
+
 </style>
 </head>
 <body>
 <header>
+    <img id="brandLogo" src="lumis-galaxy-network-logo.png" alt="Lumi's Galaxy Network">
     <div id="avatarWrap">
         <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi" title="Tap to stop">
         <div class="mouth"></div>
@@ -406,6 +422,7 @@
         <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
         <button id="exportBtn" title="Export chat">⬇</button>
         <button id="clearBtn" title="Clear chat">🗑</button>
+        <button id="installBtn" title="Save Lumi Galaxy to your home screen">📲</button>
     </div>
 </header>
 <div id="chat">
@@ -498,11 +515,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-13</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-14</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-13) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-14) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -514,7 +531,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-13';
+  var LUMI_BUILD_STAMP = '2026.10.22-14';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2241,7 +2258,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-13, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-14, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
@@ -2858,6 +2875,29 @@
     try { startAll(); } catch (e) { try { startMouth(); } catch (e2) {} }
   })();
 
+</script>
+
+<div id="installBar" hidden>
+  <div class="ibText">📲 <b>Save Lumi Galaxy to your home screen:</b> on iPhone/iPad tap <b>Share</b> then <b>Add to Home Screen</b>; on Android tap the browser <b>menu</b> then <b>Install app / Add to Home screen</b>.</div>
+  <button id="installBarClose" title="Dismiss" aria-label="Dismiss install hint">✕</button>
+</div>
+<script>
+ /* Install hint (build 2026.10.22-14): slim, dismissible, shown once
+    per session unless the app already runs standalone. Dismissal is
+    kept in a JS variable only — no storage, no tracking. */
+ (function () {
+   var dismissed = false;
+   var bar = document.getElementById('installBar');
+   if (!bar) return;
+   function standalone() {
+     return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+   }
+   function show() { if (!dismissed && !standalone()) bar.hidden = false; }
+   document.getElementById('installBarClose').addEventListener('click', function () { dismissed = true; bar.hidden = true; });
+   var btn = document.getElementById('installBtn');
+   if (btn) btn.addEventListener('click', function () { dismissed = false; bar.hidden = false; window.scrollTo(0, 0); });
+   window.addEventListener('load', function () { setTimeout(show, 1200); });
+ })();
 </script>
 </body>
 </html>
