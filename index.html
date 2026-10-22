@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -120,7 +120,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-6): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-7): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus one occasional shooting streak from the meeting-stars
@@ -176,6 +176,65 @@
       #meetSelfOff { font-size: 24px; }
       #meetCaption { min-height: 52px; font-size: 14px; padding: 10px 12px; }
       #meetEveryone { font-size: 14px; }
+    }
+
+    /* === Device-fit hardening (build 2026.10.22-7): ONE responsive
+       codebase — no per-device forks; the app measures the screen it
+       finds itself on. Proven on the device matrix (iPhone SE
+       375x667, iPhone 12/13/14 390x844, iPhone 15 Pro Max 430x932,
+       Android 360x740 / 393x851 / 412x915, tablet 768x1024,
+       landscape 844x390): the team picker and the call screen were
+       centered flex columns with no scrolling — their content is
+       ~1044px / ~650px tall, so on every phone the top was clipped
+       above the screen and the bottom buttons (Close!) sat below
+       it, unreachable. Both are now SAFE-CENTERED SCROLLERS: auto
+       margins on the first/last child center them exactly as
+       before when they fit, and collapse to 0 so the whole column
+       scrolls when they don't. #chat gets min-height: 0 so the
+       main column can truly shrink on short screens (landscape,
+       on-screen keyboard) instead of pushing the ask bar off the
+       bottom. iOS: viewport-fit=cover (meta tag) wakes the
+       env(safe-area-inset-*) values up; the header, chat, form,
+       contact bar, both full-screen overlays and the fixed chips
+       pad by those insets so nothing hides under a notch or the
+       home indicator — env() is 0 on devices without insets, so
+       rendering there is byte-for-byte the old layout. Android:
+       overscroll containment keeps pull-to-refresh from hijacking
+       the chat/caption scrolls. Older engines that don't know dvh
+       fall back to the 100vh line above it. === */
+    body { height: 100vh; height: 100dvh; -webkit-tap-highlight-color: transparent; }
+    header { padding-top: calc(16px + env(safe-area-inset-top)); padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); }
+    #chat { min-height: 0; overscroll-behavior: contain; padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); }
+    #form { padding-left: calc(12px + env(safe-area-inset-left)); padding-right: calc(12px + env(safe-area-inset-right)); }
+    #contact { padding-bottom: calc(8px + env(safe-area-inset-bottom)); padding-left: calc(8px + env(safe-area-inset-left)); padding-right: calc(8px + env(safe-area-inset-right)); }
+    #teamOverlay { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; justify-content: flex-start; padding: calc(24px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left)); }
+    #teamOverlay > h2 { margin-top: auto; }
+    #teamOverlay > #teamClose { margin-bottom: auto; }
+    #callOverlay { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; justify-content: flex-start; padding: calc(24px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left)); }
+    #callOverlay > #callName { margin-top: auto; }
+    #callOverlay > #callBtns { margin-bottom: auto; }
+    #callCaption, #meetCaption { overscroll-behavior: contain; }
+    #lumiBuildStamp { bottom: calc(6px + env(safe-area-inset-bottom)); }
+    #popBubble { bottom: calc(108px + env(safe-area-inset-bottom)); }
+    #camPipWrap { bottom: calc(92px + env(safe-area-inset-bottom)); }
+    #audioUnlockChip { bottom: calc(92px + env(safe-area-inset-bottom)); }
+    /* Short screens (landscape phones, keyboard-up): the fixed
+       header/chips/form stack is ~370px, which by itself nearly
+       fills a 390px-tall landscape viewport and squeezes the chat
+       to nothing — compact the header stack so the conversation
+       keeps a real share of the screen. Portrait phones (667px+)
+       and tablets never enter this query. */
+    @media (max-height: 500px) {
+      header { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 8px; }
+      #avatarWrap { margin-bottom: 2px; }
+      #lumiAvatar { width: 52px; height: 52px; }
+      header h1 { font-size: 17px; }
+      header p { font-size: 12px; margin-top: 2px; }
+      .hbtns { margin-top: 4px; }
+      .hbtns button { width: 32px; height: 32px; }
+      #chips { padding-top: 6px; }
+      .chip { padding: 6px 12px; }
+      #form { padding-top: 8px; padding-bottom: 8px; }
     }
 </style>
 </head>
@@ -285,11 +344,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-6</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-7</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-6) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-7) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -301,7 +360,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-6';
+  var LUMI_BUILD_STAMP = '2026.10.22-7';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1838,7 +1897,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-6, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-7, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
