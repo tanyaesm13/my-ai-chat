@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-15): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-16): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -392,13 +392,17 @@
        lockup in the header (artwork unaltered, scaled only) and the
        install hint bar. Owner, Oct 22, 2026: the logo "until I decide
        to change it"; the page saves to home screens as "Lumi Galaxy". === */
- #brandLogo { display: block; margin: 0 auto 10px; width: min(250px, 74%); height: auto; }
+ /* LOGO SIZE (build 2026.10.22-16): owner — the 250px lockup was
+       "a little too big" in 1:1 chat, dwarfing the agent; now a
+       tiny top mark so the AVATAR takes up most of the space.
+       Artwork still unaltered, scaled only. */
+ #brandLogo { display: block; margin: 0 auto 4px; width: min(96px, 40%); height: auto; }
  #installBar { position: fixed; top: 0; left: 0; right: 0; z-index: 95; display: flex; align-items: center; gap: 10px; background: #242746; border-bottom: 2px solid #72edfa; color: #fff; padding: 10px 14px; font-size: 14px; line-height: 1.45; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
  #installBar[hidden] { display: none; }
  #installBar .ibText { flex: 1; }
  #installBar .ibText b { color: #72edfa; }
  #installBarClose { flex: 0 0 auto; background: #72edfa; color: #171a3b; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 15px; cursor: pointer; }
- @media (max-height: 500px) { #brandLogo { width: 150px; margin-bottom: 4px; } }
+ @media (max-height: 500px) { #brandLogo { width: 72px; margin-bottom: 2px; } }
 
 </style>
 </head>
@@ -515,11 +519,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-15</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-16</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-15) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-16) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -531,7 +535,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-15';
+  var LUMI_BUILD_STAMP = '2026.10.22-16';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2279,7 +2283,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-15, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-16, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
