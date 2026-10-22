@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-17): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-18): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -404,19 +404,50 @@
        "a little too big" in 1:1 chat, dwarfing the agent; now a
        tiny top mark so the AVATAR takes up most of the space.
        Artwork still unaltered, scaled only. */
- #brandLogo { display: block; margin: 0 auto 4px; width: min(96px, 40%); height: auto; }
+ #brandLogo { display: block; margin: 0 auto; width: min(380px, 84%); height: auto; }
  #installBar { position: fixed; top: 0; left: 0; right: 0; z-index: 95; display: flex; align-items: center; gap: 10px; background: #242746; border-bottom: 2px solid #72edfa; color: #fff; padding: 10px 14px; font-size: 14px; line-height: 1.45; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
  #installBar[hidden] { display: none; }
  #installBar .ibText { flex: 1; }
  #installBar .ibText b { color: #72edfa; }
  #installBarClose { flex: 0 0 auto; background: #72edfa; color: #171a3b; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 15px; cursor: pointer; }
- @media (max-height: 500px) { #brandLogo { width: 72px; margin-bottom: 2px; } }
+ @media (max-height: 500px) { #brandLogo { width: 168px; } }
 
+
+ /* === HOME PAGE (build 2026.10.22-18): owner — the Galaxy logo
+       gets its OWN page. The app opens on Home: the lockup at
+       full presence, a welcome in Lumi's voice, and ways into
+       the team and the meeting. The logo banner is OFF the
+       avatar/chat screens entirely — faces own those screens.
+       While body.onHome the chat stack is display:none and
+       #homeView fills the screen over the sky; in landscape
+       the grid body yields to flex for Home (body.onHome
+       out-specifies the rail's body rule), so Home never lands
+       in a grid cell. Chat layout CSS is untouched. === */
+ #homeView { display: none; }
+ body.onHome #homeView { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; flex: 1; min-height: 0; overflow-y: auto; padding: 28px 20px; text-align: center; position: relative; z-index: 1; background: transparent; }
+ body.onHome header, body.onHome #chat, body.onHome #chips, body.onHome #form, body.onHome #contact { display: none; }
+ #homeHi { margin: 2px 0 0; font-size: 26px; color: #fff; }
+ #homeWelcome { margin: 0; max-width: 430px; font-size: 15px; line-height: 1.55; color: #cfd3ff; }
+ #homeBtns { display: flex; flex-direction: column; gap: 10px; width: min(320px, 88%); margin-top: 6px; }
+ #homeBtns button { background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 18px; font-size: 16px; cursor: pointer; }
+ #homeBtns button:active { background: #72edfa; color: #171a3b; }
+ #homeHint { margin: 4px 0 0; font-size: 12px; color: rgba(255,255,255,0.55); }
+ @media (orientation: landscape) and (min-width: 760px) { body.onHome { display: flex; } }
 </style>
 </head>
-<body>
-<header>
+<body class="onHome">
+<div id="homeView">
     <img id="brandLogo" src="lumis-galaxy-network-logo.png" alt="Lumi's Galaxy Network">
+    <h2 id="homeHi">Hi, I'm Lumi 🌙</h2>
+    <p id="homeWelcome">Welcome to Lumi's Galaxy Network — your whole team is here. Talk with one of us, or bring everybody together.</p>
+    <div id="homeBtns">
+        <button id="homeChatBtn" type="button">💬 Chat with Lumi</button>
+        <button id="homeTeamBtn" type="button">👥 Meet the team</button>
+        <button id="homeMeetBtn" type="button">🎬 Team meeting</button>
+    </div>
+    <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
+</div>
+<header>
     <div id="avatarWrap">
         <img id="lumiAvatar" src="lumi-avatar.webp" alt="Lumi" title="Tap to stop">
         <div class="mouth"></div>
@@ -424,6 +455,7 @@
     <h1>Lumi</h1>
     <p>Ask me anything</p>
     <div class="hbtns">
+        <button id="homeBtn" title="Home">🏠</button>
         <button id="voiceToggle" title="Toggle voice">🔊</button>
         <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Luz, Hey Sol, Hey Stella, Hey Cielo, Hey Astra, Hey Alba, Hey Vega">🎧</button>
         <button id="motionBtn" class="active" title="Toggle character motion">🕺</button>
@@ -527,11 +559,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-17</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-18</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-17) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-18) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -543,7 +575,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-17';
+  var LUMI_BUILD_STAMP = '2026.10.22-18';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2291,7 +2323,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-17, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-18, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
@@ -2930,6 +2962,40 @@
    var btn = document.getElementById('installBtn');
    if (btn) btn.addEventListener('click', function () { dismissed = false; bar.hidden = false; window.scrollTo(0, 0); });
    window.addEventListener('load', function () { setTimeout(show, 1200); });
+ })();
+</script>
+<script>
+ /* Home page (build 2026.10.22-18): Home is the default view
+    (body starts .onHome). Show/hide is a body class only — the
+    chat stack's own layout is never touched. The team and
+    meeting buttons reuse the app's EXISTING flows by clicking
+    their own buttons, so every behavior (sky lift, spoken
+    intros, gates) is identical to entering from the header.
+    Picking an agent — a picker card, or a meeting card's Chat
+    button — leaves Home for the chat. */
+ (function () {
+   var body = document.body;
+   var chatBtn = document.getElementById('homeChatBtn');
+   function agentName() { var h = document.querySelector('header h1'); return h ? h.textContent : 'Lumi'; }
+   function paintChatBtn() { if (chatBtn) chatBtn.textContent = '💬 Chat with ' + agentName(); }
+   function showHome() { body.classList.add('onHome'); paintChatBtn(); }
+   function showChat() { body.classList.remove('onHome'); }
+   window.LumiHome = { showHome: showHome, showChat: showChat };
+   var homeBtn = document.getElementById('homeBtn');
+   if (homeBtn) homeBtn.addEventListener('click', showHome);
+   if (chatBtn) chatBtn.addEventListener('click', showChat);
+   var teamGo = document.getElementById('homeTeamBtn');
+   if (teamGo) teamGo.addEventListener('click', function () { document.getElementById('teamBtn').click(); });
+   var meetGo = document.getElementById('homeMeetBtn');
+   if (meetGo) meetGo.addEventListener('click', function () { document.getElementById('meetStartBtn').click(); });
+   document.addEventListener('click', function (e) {
+     paintChatBtn();
+     if (!body.classList.contains('onHome')) return;
+     if (!e.target.closest) return;
+     if (e.target.closest('.vlabel')) return;
+     if (e.target.closest('.agentCard') || e.target.closest('#meetCardChat')) showChat();
+   });
+   paintChatBtn();
  })();
 </script>
 </body>
