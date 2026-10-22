@@ -120,11 +120,12 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-8): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-9): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
-       plus one occasional shooting streak from the meeting-stars
-       family, inside the same light budget. The canvas sits BEHIND
+       plus soft shooting streaks from the meeting-stars family -- a
+       lead every ~4-9s that sometimes brings a companion or two (up
+       to three at once), inside the same light budget. The canvas sits BEHIND
        the main screens (their section backgrounds go transparent so
        the sky shows through the gaps, over the app's black night) and
        lifts over the team picker (.overTeam, z 250 — above the
@@ -354,11 +355,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-8</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-9</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-8) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-9) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -370,7 +371,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-8';
+  var LUMI_BUILD_STAMP = '2026.10.22-9';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1987,15 +1988,18 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-8, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-9, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
   // and a fresh one drifts in to take its place. Very light, like a
   // drizzle — never a busy starfield. Inside that same light budget,
-  // ONE soft shooting streak (same drawing family as the meeting
-  // stars above) drifts through now and then: the first one soon
-  // after the app opens, then only every ~10-22 seconds. Runs on the
+  // soft shooting streaks (same drawing family as the meeting stars
+  // above) drift through: the first one soon after the app opens,
+  // then a lead streak every ~4-9 seconds — and since the sky
+  // upgrade (owner: "I want more shooting stars") a lead sometimes
+  // brings a companion or two, so up to THREE soft streaks can share
+  // the sky at once, never more. Runs on the
   // main screens — the chat view, and over the team picker via the
   // .overTeam lift; the meeting keeps its own stars and the video
   // call screen stays plain. Honors the motion toggle (persisted
@@ -2013,6 +2017,7 @@
     var callOverlay = document.getElementById('callOverlay');
     var teamOverlay = document.getElementById('teamOverlay');
     var twinkles = [], streaks = [], raf = 0, nextTwinkleAt = 0, nextStreakAt = 0, running = false;
+    var companionAt = 0, companionsLeft = 0;
     function motionAllowed() {
       try { if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false; } catch (e) {}
       try { var sv = localStorage.getItem('lumi_motion'); if (sv !== null) return sv === '1'; } catch (e) {}
@@ -2038,7 +2043,7 @@
       });
       nextTwinkleAt = now + 350 + Math.random() * 1100;
     }
-    function spawnStreak(now) {
+    function spawnStreak(now, companion) {
       var W = canvas.width, H = canvas.height;
       var ang = Math.PI * (0.78 + Math.random() * 0.1);
       var s = {
@@ -2052,13 +2057,29 @@
       };
       var m = Math.sqrt(s.vx * s.vx + s.vy * s.vy); s.vx /= m; s.vy /= m;
       streaks.push(s);
-      nextStreakAt = now + 10000 + Math.random() * 12000;
+      if (companion) return;
+      nextStreakAt = now + 4000 + Math.random() * 5000;
+      // A richer drizzle (sky upgrade, owner Oct 22: "I want more
+      // shooting stars"): a lead streak sometimes brings a friend --
+      // about 2 in 5 leads are followed by one companion 0.5-1.4s
+      // later, and sometimes by a second one, so two or three soft
+      // streaks can share the sky at once (hard cap 3 in frame()).
+      companionsLeft = 0;
+      if (Math.random() < 0.42) {
+        companionsLeft = 1 + (Math.random() < 0.4 ? 1 : 0);
+        companionAt = now + 500 + Math.random() * 900;
+      }
     }
     function frame(now) {
       if (!running) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (twinkles.length < 7 && now >= nextTwinkleAt) spawnTwinkle(now, false);
-      if (!streaks.length && now >= nextStreakAt) spawnStreak(now);
+      if (streaks.length < 3 && now >= nextStreakAt) spawnStreak(now, false);
+      if (companionsLeft > 0 && streaks.length < 3 && now >= companionAt) {
+        companionsLeft--;
+        companionAt = now + 500 + Math.random() * 900;
+        spawnStreak(now, true);
+      }
       twinkles = twinkles.filter(function (t) { return now - t.born < t.life; });
       twinkles.forEach(function (t) {
         var p = (now - t.born) / t.life;
@@ -2115,7 +2136,7 @@
       } else if (!want && running) {
         running = false;
         if (raf) cancelAnimationFrame(raf);
-        twinkles = []; streaks = [];
+        twinkles = []; streaks = []; companionsLeft = 0; companionAt = 0;
         try { ctx.clearRect(0, 0, canvas.width, canvas.height); } catch (e) {}
       }
     }
