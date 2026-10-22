@@ -120,7 +120,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-5): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-6): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus one occasional shooting streak from the meeting-stars
@@ -285,11 +285,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-5</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-6</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-5) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-6) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -301,7 +301,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-5';
+  var LUMI_BUILD_STAMP = '2026.10.22-6';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -685,6 +685,7 @@
   // speech-activity envelope (the .talking class drives mouthTick's fallback).
   var directAudio = null;
   function setTalkingUI(on) {
+    try { if (window.__lumiSpeechHook) window.__lumiSpeechHook(!!on); } catch (e) {}
     if (lumiAvatar) lumiAvatar.classList.toggle('talking', !!on);
     var ca = document.getElementById('callAvatar');
     if (ca) ca.classList.toggle('talking', !!on);
@@ -849,6 +850,7 @@
     utter.pitch = isIOS ? 1 : vstyle.pitch;
     utter.volume = 1;
     const stopTalking = () => {
+      try { if (window.__lumiSpeechHook) window.__lumiSpeechHook(false); } catch (e) {}
       if (lumiAvatar) lumiAvatar.classList.remove('talking');
       const callAvatar = document.getElementById('callAvatar');
       if (callAvatar) callAvatar.classList.remove('talking');
@@ -873,6 +875,7 @@
       } catch (e) {}
     }, 2500);
     utter.onstart = () => { window._lumiHeardStart = true; clearTimeout(_speakWatch);
+      try { if (window.__lumiSpeechHook) window.__lumiSpeechHook(true); } catch (e) {}
       if (lumiAvatar) lumiAvatar.classList.add('talking');
       const callAvatar = document.getElementById('callAvatar');
       if (callAvatar) callAvatar.classList.add('talking');
@@ -1121,10 +1124,18 @@
     let listening = false;
     let wakeOn = false;
     let wakeHold = false;
-    const wakeRec = new SpeechRecognition();
-    wakeRec.continuous = true;
-    wakeRec.interimResults = true;
-    wakeRec.lang = 'en-US';
+    // WAKE SUPERVISOR state (build 2026.10.22-6): whether the wake
+    // recognizer is verifiably running, whether the agent's own voice
+    // is playing (speechHold), whether the browser truly denied the
+    // mic (wakeDenied -- the one error that must NOT retry), plus the
+    // pending-restart timer and backoff/abort bookkeeping.
+    let wakeRunning = false;
+    let speechHold = false;
+    let wakeDenied = false;
+    let wakeTimer = null;
+    let wakeFails = 0;
+    let wakeAbortStreak = 0;
+    let wakeRec = freshWakeRec();
     function startVoiceInput() {
       if (listening) return;
       try { recognition.start(); } catch (e) {}
@@ -1135,12 +1146,56 @@
       micBtn.classList.add('flash');
       setTimeout(() => micBtn.classList.remove('flash'), 1600);
     }
-    function startWake() {
-      if (wakeOn && !wakeHold) { try { wakeRec.start(); } catch (e) {} }
+    function wakeDesired() {
+      return wakeOn && !wakeHold && !speechHold && !wakeDenied;
     }
+    function clearWakeTimer() {
+      if (wakeTimer) { clearTimeout(wakeTimer); wakeTimer = null; }
+    }
+    function scheduleWake(ms) {
+      clearWakeTimer();
+      if (!wakeDesired()) return;
+      wakeTimer = setTimeout(() => { wakeTimer = null; pumpWake(); }, ms);
+    }
+    function pumpWake() {
+      if (!wakeDesired() || wakeRunning) return;
+      try {
+        wakeRec.start();
+        wakeFails = 0;
+      } catch (e) {
+        // Start refused (previous session still tearing down, the
+        // classic InvalidStateError race): retry with backoff
+        // instead of dying silently -- the -5 bug.
+        wakeFails++;
+        scheduleWake(Math.min(350 * Math.pow(2, wakeFails - 1), 3000));
+      }
+    }
+    function startWake() { clearWakeTimer(); pumpWake(); }
     function stopWake() {
+      clearWakeTimer();
       try { wakeRec.abort(); } catch (e) {}
     }
+    // The speak paths report speech activity through this hook
+    // (setTalkingUI for the cloud/direct audio elements, the device
+    // utterance's onstart/stopTalking): while the agent's own voice
+    // is playing, wake stays down -- no self-trigger from the
+    // speaker and no mic fight on Android -- and it resumes right
+    // after playback ends.
+    window.__lumiSpeechHook = function (on) {
+      speechHold = !!on;
+      if (speechHold) {
+        clearWakeTimer();
+        if (wakeRunning) { try { wakeRec.abort(); } catch (e) {} }
+      } else {
+        scheduleWake(500);
+      }
+    };
+    // Test/diagnostic hook, same pattern as LumiCam / LumiSky.
+    window.LumiWake = {
+      state: function () {
+        return { on: wakeOn, running: wakeRunning, hold: wakeHold, speech: speechHold, denied: wakeDenied, fails: wakeFails };
+      }
+    };
     micBtn.addEventListener('click', () => {
       if (listening) {
         recognition.stop();
@@ -1194,29 +1249,88 @@
       }
       return null;
     }
-    wakeRec.addEventListener('result', (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const heard = e.results[i][0].transcript;
-        const id = wakeAgentFor(heard);
-        if (id) {
-          wakeHold = true;
-          stopWake();
-          flashMic();
-          // Talk to the agent she named: in a team meeting, direct the
-          // meeting; otherwise switch the main chat to them.
-          if (window.meetMode && window.meetSelectAgent) window.meetSelectAgent(id);
-          else if (id !== currentAgent) applyAgent(id, false);
-          startVoiceInput();
-          break;
+    function bindWake(rec) {
+      rec.addEventListener('start', () => {
+        if (rec !== wakeRec) return;
+        wakeRunning = true;
+        wakeFails = 0;
+        clearWakeTimer();
+      });
+      rec.addEventListener('result', (e) => {
+        if (rec !== wakeRec) return;
+        wakeAbortStreak = 0; // a live result proves the session healthy
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const heard = e.results[i][0].transcript;
+          const id = wakeAgentFor(heard);
+          if (id) {
+            wakeHold = true;
+            stopWake();
+            flashMic();
+            // Talk to the agent she named: in a team meeting, direct the
+            // meeting; otherwise switch the main chat to them.
+            if (window.meetMode && window.meetSelectAgent) window.meetSelectAgent(id);
+            else if (id !== currentAgent) applyAgent(id, false);
+            startVoiceInput();
+            break;
+          }
         }
-      }
-    });
-    wakeRec.addEventListener('end', () => { startWake(); });
+      });
+      rec.addEventListener('error', (e) => {
+        if (rec !== wakeRec) return;
+        const err = e && e.error;
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          // A true permission denial: do NOT loop. Turn wake off so
+          // the toggle tells the truth, and tell her once -- the same
+          // message the dictation path uses.
+          wakeDenied = true;
+          wakeOn = false;
+          if (wakeToggle) wakeToggle.classList.remove('active');
+          clearWakeTimer();
+          addMsg('The browser blocked the microphone. You may need to allow microphone access for this site.', 'error');
+          return;
+        }
+        if (err === 'aborted') {
+          wakeAbortStreak++;
+          if (wakeAbortStreak >= 3) {
+            // The recognizer object itself may be poisoned (seen
+            // with Android's intent-backed sessions): swap in a
+            // fresh one. The 'end' that follows drives the restart
+            // onto the new object.
+            wakeAbortStreak = 0;
+            wakeRunning = false;
+            try { rec.abort(); } catch (e2) {}
+            wakeRec = freshWakeRec();
+            scheduleWake(300);
+          }
+        }
+        // Any other error ('no-speech', 'network', 'audio-capture',
+        // a lone 'aborted'): the 'end' event that follows schedules
+        // the restart with the supervisor.
+      });
+      rec.addEventListener('end', () => {
+        if (rec !== wakeRec) return;
+        wakeRunning = false;
+        // Restart via a short timer, not synchronously inside the
+        // 'end' dispatch -- a same-tick start() is exactly the call
+        // some engines refuse, which is how -5 lost wake for good.
+        if (wakeDesired()) scheduleWake(250);
+      });
+    }
+    function freshWakeRec() {
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+      bindWake(rec);
+      return rec;
+    }
     wakeToggle.addEventListener('click', () => {
       wakeOn = !wakeOn;
       wakeToggle.classList.toggle('active', wakeOn);
       if (wakeOn) {
         wakeHold = false;
+        wakeDenied = false;
+        wakeAbortStreak = 0;
         startWake();
       } else {
         stopWake();
@@ -1724,7 +1838,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-5, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-6, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
