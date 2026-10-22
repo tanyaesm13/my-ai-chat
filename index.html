@@ -120,7 +120,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #ff2e88; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-11): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-12): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -148,7 +148,15 @@
        "All together" (the 8-box grid) or "One by one" — a slide view
        with one MUCH bigger profile card, swipe / arrow navigation,
        and Chat + Call buttons right on the card. */
-    #meetOverlay > #meetForm { position: absolute; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(0,0,0,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); }
+    /* (build 2026.10.22-12) the ask-bar is position:FIXED, not absolute:
+       absolute placed it in the scroller's CONTENT coordinates, so it
+       rode up over the tiles as she scrolled her phone (measured bottom
+       844 -> 581 on a 263px scroll). Fixed = viewport coordinates: the
+       bar's bottom edge is the screen's bottom edge at every scroll
+       position. The overlay is inset:0 with no transformed ancestors,
+       so fixed lands exactly where absolute did at scroll 0 — the
+       tablet look she approved is unchanged. */
+    #meetOverlay > #meetForm { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(0,0,0,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); }
     #meetViewBar { display: flex; gap: 8px; width: 100%; max-width: 520px; }
     #meetViewBar button { flex: 1; padding: 10px 6px; border-radius: 20px; border: 2px solid #ff2e88; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
     #meetViewBar button.active { background: #ff2e88; }
@@ -172,6 +180,13 @@
     #meetDots { display: flex; gap: 6px; }
     #meetDots span { width: 9px; height: 9px; border-radius: 50%; background: #444; display: block; }
     #meetDots span.on { background: #ff2e88; }
+    /* === Living meeting faces + voice-truth badges (build 2026.10.22-12) === */
+    #meetCardMedia .slideStage { position: relative; width: min(74vw, 330px); aspect-ratio: 1; margin: 0 auto; }
+    #meetCardMedia .slideStage img, #meetCardMedia .slideStage video { width: 100%; height: 100%; margin: 0; }
+    .meetNoVoice { display: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: 38px; z-index: 4; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #ff2e88; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; pointer-events: none; }
+    .meetNoVoice.show { display: block; }
+    #meetCardNoVoice { display: none; margin: 8px auto 0; width: fit-content; max-width: 92%; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #ff2e88; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
+    #meetCardNoVoice.show { display: block; }
     @media (max-width: 560px) {
       #meetScroll > * { margin-bottom: 8px; }
       #meetOverlay h2 { font-size: 18px; }
@@ -404,6 +419,7 @@
             <div id="meetCardMedia"></div>
             <div id="meetCardName"></div>
             <div id="meetCardBlurb"></div>
+            <div id="meetCardNoVoice">🔇 no voice on this device yet</div>
             <div id="meetCardBtns">
                 <button id="meetCardChat" type="button">💬 Chat</button>
                 <button id="meetCardCall" type="button" class="primary">📹 Call</button>
@@ -452,11 +468,11 @@
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-11</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-12</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-11) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-12) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -468,7 +484,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-11';
+  var LUMI_BUILD_STAMP = '2026.10.22-12';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -851,6 +867,26 @@
   // able to bypass the graph entirely and still animate the mouth from the
   // speech-activity envelope (the .talking class drives mouthTick's fallback).
   var directAudio = null;
+  // VOICE TRUTH BUS (build 2026.10.22-12; owner: "mouths move, no
+  // sound"). From this build on, "someone is speaking" is TRUE only
+  // while a real audio channel is verifiably playing: the cloud/direct
+  // <audio> elements' play/ended/error events, or a device utterance's
+  // onstart/onend/onerror. speechStarted/speechEnded are called from
+  // those event handlers ONLY — never from a timer. Consumers: the
+  // meeting (tile pulse + no-voice badges, via onSpeechChange) and the
+  // animation engine, which reads window.__lumiSpeechAgent in its
+  // mouth tick and opens ONLY that agent's mouth.
+  var speechAgentNow = null;
+  var speechListeners = [];
+  var cloudForAgent = null; // who the cloud/direct elements speak for
+  function speechNow() { return speechAgentNow; }
+  function onSpeechChange(fn) { if (typeof fn === 'function') speechListeners.push(fn); }
+  function emitSpeech() {
+    try { window.__lumiSpeechAgent = speechAgentNow; } catch (e) {}
+    speechListeners.forEach(function (fn) { try { fn(speechAgentNow); } catch (e) {} });
+  }
+  function speechStarted(id) { speechAgentNow = id || speechAgentNow || currentAgent; emitSpeech(); }
+  function speechEnded(id) { if (!id || speechAgentNow === id) { speechAgentNow = null; emitSpeech(); } }
   function setTalkingUI(on) {
     try { if (window.__lumiSpeechHook) window.__lumiSpeechHook(!!on); } catch (e) {}
     if (lumiAvatar) lumiAvatar.classList.toggle('talking', !!on);
@@ -863,13 +899,13 @@
   }
   function animSetAnalyser(node) { try { if (window.LumiAnim && node) LumiAnim.setAnalyser(node); } catch (e) {} }
   function animClearAnalyser() { try { if (window.LumiAnim) LumiAnim.clearAnalyser(); } catch (e) {} }
-  function cloudDone() { setTalkingUI(false); animClearAnalyser(); }
+  function cloudDone() { setTalkingUI(false); animClearAnalyser(); speechEnded(); }
   function ensureDirectAudio() {
     if (directAudio) return true;
     try {
       directAudio = new Audio();
       directAudio.preload = 'auto';
-      directAudio.addEventListener('play', function () { animClearAnalyser(); setTalkingUI(true); });
+      directAudio.addEventListener('play', function () { animClearAnalyser(); setTalkingUI(true); speechStarted(cloudForAgent); });
       directAudio.addEventListener('ended', cloudDone);
       directAudio.addEventListener('error', cloudDone);
       return true;
@@ -896,6 +932,7 @@
           cloudAudio.addEventListener('play', function () {
             setTalkingUI(true);
             animSetAnalyser(cloudAnalyser);
+            speechStarted(cloudForAgent);
           });
           cloudAudio.addEventListener('ended', cloudDone);
           cloudAudio.addEventListener('error', cloudDone);
@@ -934,6 +971,7 @@
   }
   function stopCloudSpeech() {
     cloudPlaySeq++;
+    speechEnded();
     try { if (cloudAudio) { cloudAudio.pause(); cloudAudio.removeAttribute('src'); cloudAudio.load(); } } catch (e) {}
     try { if (directAudio) { directAudio.pause(); directAudio.removeAttribute('src'); directAudio.load(); } } catch (e) {}
     setTalkingUI(false);
@@ -941,6 +979,7 @@
   }
   async function speakCloud(text, agentId) {
     if (typeof PENDING_AGENTS !== 'undefined' && PENDING_AGENTS[agentId || currentAgent]) return false;
+    cloudForAgent = agentId || currentAgent;
     var seq = ++cloudPlaySeq;
     var ctrl = ('AbortController' in window) ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 9000) : 0;
@@ -953,11 +992,11 @@
         signal: ctrl ? ctrl.signal : undefined
       });
       if (timer) clearTimeout(timer);
-      if (!res.ok) return false;
+      if (!res.ok) { console.warn('[LumiVoice] /tts HTTP ' + res.status + ' for ' + cloudForAgent); return false; }
       var ct = res.headers.get('Content-Type') || '';
-      if (ct.indexOf('audio') !== 0) return false;
+      if (ct.indexOf('audio') !== 0) { console.warn('[LumiVoice] /tts non-audio reply for ' + cloudForAgent + ': ' + ct); return false; }
       blob = await res.blob();
-    } catch (e) { if (timer) clearTimeout(timer); return false; }
+    } catch (e) { if (timer) clearTimeout(timer); console.warn('[LumiVoice] /tts fetch failed for ' + cloudForAgent + ':', e && e.name ? e.name : e); return false; }
     if (seq !== cloudPlaySeq) return true; // a newer reply already took over
     if (!ensureCloudAudio()) return false;
     if (cloudObjUrl) URL.revokeObjectURL(cloudObjUrl);
@@ -974,7 +1013,7 @@
         cloudAudio.src = cloudObjUrl;
         await cloudAudio.play();
         return true;
-      } catch (e) { /* fall through to the direct element */ }
+      } catch (e) { console.warn('[LumiVoice] graph play() failed for ' + cloudForAgent + ':', e && e.name ? e.name : e); /* fall through to the direct element */ }
     }
     if (seq !== cloudPlaySeq) return true;
     // Direct path: plain element playback (audible regardless of the
@@ -986,18 +1025,29 @@
       await directAudio.play();
       setTalkingUI(true);
       return true;
-    } catch (e) { return false; }
+    } catch (e) { console.warn('[LumiVoice] direct play() failed for ' + cloudForAgent + ':', e && e.name ? e.name : e); return false; }
   }
   function speak(text, agentId) {
-    if (!voiceOn) return;
+    // Resolves TRUE only when an audio channel actually started (a
+    // cloud/direct play() succeeded, or a device utterance fired
+    // onstart) — faces that "speak" bind their visuals to this truth.
+    if (!voiceOn) return Promise.resolve(false);
     unlockAudio();
     stopCloudSpeech();
-    if (spanishOn) { speakDevice(text, agentId); return; } // device Spanish voices until a Spanish cloud voice is picked
-    speakCloud(text, agentId).then(function (ok) { if (!ok) { animClearAnalyser(); speakDevice(text, agentId); } });
+    if (spanishOn) return speakDevice(text, agentId); // device Spanish voices until a Spanish cloud voice is picked
+    return speakCloud(text, agentId).then(function (ok) {
+      if (ok) return true;
+      animClearAnalyser();
+      console.warn('[LumiVoice] cloud voice did not start for ' + (agentId || currentAgent) + '; trying the device voice.');
+      return speakDevice(text, agentId);
+    });
   }
   function speakDevice(text, agentId) {
-    if (!voiceOn || !('speechSynthesis' in window)) return;
+    if (!voiceOn || !('speechSynthesis' in window)) return Promise.resolve(false);
     unlockAudio();
+    return new Promise(function (resolve) {
+    var settled = false;
+    function settle(ok) { if (!settled) { settled = true; resolve(!!ok); } }
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
     // iOS quirk: cancel() on the same tick as speak() can swallow the
     // utterance entirely (no error, no sound). Only cancel when something is
@@ -1017,13 +1067,16 @@
     utter.pitch = isIOS ? 1 : vstyle.pitch;
     utter.volume = 1;
     const stopTalking = () => {
+      speechEnded(aid);
       try { if (window.__lumiSpeechHook) window.__lumiSpeechHook(false); } catch (e) {}
       if (lumiAvatar) lumiAvatar.classList.remove('talking');
       const callAvatar = document.getElementById('callAvatar');
       if (callAvatar) callAvatar.classList.remove('talking');
     };
-    utter.onend = stopTalking;
+    utter.onend = () => { settle(window._lumiHeardStart); stopTalking(); };
     utter.onerror = (ev) => {
+      try { console.warn('[LumiVoice] device voice error for ' + aid + ':', ev && ev.error ? ev.error : ev); } catch (e2) {}
+      settle(false);
       stopTalking();
       // Surface the failure in chat so it can be diagnosed.
       try {
@@ -1037,11 +1090,13 @@
     const _speakWatch = setTimeout(function () {
       try {
         if (!speechSynthesis.speaking && !window._lumiHeardStart) {
+          settle(false);
+          try { console.warn('[LumiVoice] device voice never started for ' + aid + ' (engine swallowed the utterance)'); } catch (e) {}
           addMsg('🔇 The voice engine did not start. Check the silent switch (it mutes Lumi on iPhone) and volume, then tap 🎭 again.', 'error');
         }
       } catch (e) {}
     }, 2500);
-    utter.onstart = () => { window._lumiHeardStart = true; clearTimeout(_speakWatch);
+    utter.onstart = () => { window._lumiHeardStart = true; clearTimeout(_speakWatch); settle(true); speechStarted(aid);
       try { if (window.__lumiSpeechHook) window.__lumiSpeechHook(true); } catch (e) {}
       if (lumiAvatar) lumiAvatar.classList.add('talking');
       const callAvatar = document.getElementById('callAvatar');
@@ -1063,13 +1118,21 @@
       }, 4000);
     } catch (e) {}
     }; // end doSpeak
-    if (isIOS && (speechSynthesis.speaking || speechSynthesis.pending)) {
+    // Cancel-then-speak in the same tick DROPS the utterance on
+    // Android Chrome (the engine is still tearing the cancelled queue
+    // down when speak() lands: no error, no sound — the iOS swallow
+    // this block was written for is the same bug in a different hat).
+    // Only cancel when the engine is actually busy, and give it a
+    // beat to settle before speaking; when idle, speak at once.
+    var engineBusy = false;
+    try { engineBusy = !!(speechSynthesis.speaking || speechSynthesis.pending); } catch (e) {}
+    if (engineBusy) {
       try { speechSynthesis.cancel(); } catch (e) {}
-      setTimeout(doSpeak, 120);
+      setTimeout(doSpeak, isIOS ? 120 : 90);
     } else {
-      if (!isIOS) { try { speechSynthesis.cancel(); } catch (e) {} }
       doSpeak();
     }
+    });
   }
   voiceToggle.addEventListener('click', () => {
     voiceOn = !voiceOn;
@@ -1647,6 +1710,10 @@
     }
     if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
     callOverlay.classList.add('open');
+    // Her introduction is SPOKEN on a one-on-one (build 2026.10.22-12):
+    // opening a call greets her out loud, in this agent's own voice
+    // (device voice for the gated four — never the cloud /tts).
+    try { speak(AGENTS[currentAgent].greeting, currentAgent); } catch (e) {}
     // One-on-one call = camera on (owner ask Oct 22): she sees herself in
     // the corner PiP and this assistant can see her. If she already had
     // the camera on elsewhere, it simply stays on.
@@ -1687,7 +1754,7 @@
       const media = a.video
         ? '<video loop muted playsinline preload="metadata" src="' + a.video + '"></video>'
         : '<img class="mtile" src="' + a.avatar + '" alt="' + a.name + '">';
-      tile.innerHTML = media + '<div class="meetLabel">' + a.emoji + ' ' + a.name + '</div>';
+      tile.innerHTML = media + '<div class="meetLabel">' + a.emoji + ' ' + a.name + '</div><div class="meetNoVoice">🔇 no voice on this device yet</div>';
       tile.addEventListener('click', () => {
         meetAgent = id;
         meetEveryone.classList.remove('active');
@@ -1748,6 +1815,10 @@
       renderDots();
       if (!meetSlideEl.hidden) renderSlide();
       meetCaption.textContent = AGENTS[id].name + (leaving ? ' left the meeting.' : ' joined the meeting! 🎉');
+      // A joining agent introduces herself OUT LOUD (build
+      // 2026.10.22-12) — unless someone is mid-sentence; never talk
+      // over the room.
+      if (!leaving && !speechNow()) { try { speak(AGENTS[id].greeting, id); } catch (e) {} }
     }
     agentIdsAll.forEach((id) => {
       const chip = document.createElement('button');
@@ -1801,9 +1872,18 @@
       if (slideIdx < 0) slideIdx = 0;
       const id = room[slideIdx];
       const a = AGENTS[id];
-      meetCardMedia.innerHTML = a.video
-        ? '<video loop muted playsinline autoplay preload="metadata" src="' + a.video + '"></video>'
-        : '<img src="' + a.avatar + '" alt="' + a.name + '">';
+      meetCardMedia.innerHTML = '<div class="slideStage" data-agent="' + id + '">'
+        + (a.video
+          ? '<video loop muted playsinline autoplay preload="metadata" src="' + a.video + '"></video>'
+          : '<img src="' + a.avatar + '" alt="' + a.name + '">')
+        + '<div class="mouth"></div></div>';
+      // Living faces on the big card for EVERY agent (build
+      // 2026.10.22-12): the animation engine rigs the stage — blink,
+      // breathe, speaking mouth. Before this, still-photo agents got
+      // a bare <img> here and never moved; the originals only looked
+      // alive because their media is a self-playing video file.
+      try { if (window.LumiAnim && LumiAnim.rigSlideStage) LumiAnim.rigSlideStage(meetCardMedia.querySelector('.slideStage'), id, !!a.video); } catch (e) {}
+      syncCardNoVoice();
       meetCardName.textContent = a.emoji + ' ' + a.name;
       meetCardBlurb.textContent = a.blurb;
       meetCardCount.textContent = (slideIdx + 1) + ' of ' + room.length;
@@ -1879,11 +1959,55 @@
       Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', !on && k === first));
       meetCaption.textContent = on ? 'Everyone will weigh in.' : AGENTS[first].name + ' will answer next.';
     });
-    function setSpeaking(id, on) {
-      if (tiles[id]) tiles[id].classList.toggle('speaking', !!on);
+    // Speaking visuals come ONLY from the voice truth bus (build
+    // 2026.10.22-12): the tile pulse lights while that agent's audio
+    // is verifiably playing and dies the moment it ends. The old code
+    // lit the tile on ask and cleared it on a fixed 4s timer — mouths
+    // moving over silence, exactly what the owner reported.
+    const noVoiceAgents = {};
+    function applyMeetSpeech() {
+      const who = speechNow();
+      Object.keys(tiles).forEach((id) => tiles[id].classList.toggle('speaking', who === id));
+    }
+    if (typeof onSpeechChange === 'function') onSpeechChange(applyMeetSpeech);
+    function syncCardNoVoice() {
+      const el = document.getElementById('meetCardNoVoice');
+      if (!el) return;
+      const room = roomIds();
+      const cur = room[Math.min(slideIdx, room.length - 1)];
+      el.classList.toggle('show', !!noVoiceAgents[cur]);
+    }
+    function markNoVoice(id) {
+      noVoiceAgents[id] = true;
+      const t = tiles[id];
+      if (t) { const b = t.querySelector('.meetNoVoice'); if (b) b.classList.add('show'); }
+      syncCardNoVoice();
+    }
+    function clearNoVoice(id) {
+      if (!noVoiceAgents[id]) return;
+      delete noVoiceAgents[id];
+      const t = tiles[id];
+      if (t) { const b = t.querySelector('.meetNoVoice'); if (b) b.classList.remove('show'); }
+      syncCardNoVoice();
+    }
+    // Fire-and-forget like before (the room never waits on playback),
+    // but the outcome is now REPORTED truthfully: real audio clears
+    // the badge; failure shows words-as-text with the honest 🔇 note
+    // instead of a mouth moving over silence. The caption note is
+    // appended ONLY if the caption still shows this exact answer —
+    // never scribbled over a newer one.
+    function speakInMeeting(reply, id, capSnapshot) {
+      speak(reply, id).then(function (ok) {
+        if (ok) { clearNoVoice(id); return; }
+        markNoVoice(id);
+        try {
+          if (meetOverlay.classList.contains('open') && meetCaption.innerHTML === capSnapshot) {
+            meetCaption.innerHTML += '<br>🔇 No voice on this device yet — her words are above as text.';
+          }
+        } catch (e) {}
+      }).catch(function () {});
     }
     async function askAgent(id, text) {
-      setSpeaking(id, true);
       meetCaption.textContent = AGENTS[id].name + ' is thinking...';
       if (PENDING_AGENTS[id]) {
         const mhP = loadHistory(id);
@@ -1893,8 +2017,7 @@
         mhP.push({ role: 'assistant', content: replyP });
         try { localStorage.setItem(historyKey(id), JSON.stringify(mhP.slice(-40))); } catch (e) {}
         if (id === currentAgent) { history = mhP; }
-        speak(replyP, id);
-        setTimeout(() => setSpeaking(id, false), 4000);
+        speakInMeeting(replyP, id, meetCaption.innerHTML);
         return;
       }
       const mh = loadHistory(id);
@@ -1920,12 +2043,10 @@
         mh.push({ role: 'assistant', content: reply });
         try { localStorage.setItem(historyKey(id), JSON.stringify(mh.slice(-40))); } catch (e) {}
         if (id === currentAgent) { history = mh; }
-        speak(reply, id);
+        speakInMeeting(reply, id, meetCaption.innerHTML);
       } catch (err) {
         meetCaption.textContent = "Couldn't reach " + AGENTS[id].name + '. Check your connection.';
       }
-      // Visual speaking pulse sized to the reply; TTS end also clears it.
-      setTimeout(() => setSpeaking(id, false), 4000);
     }
     let meetBusy = false;
     async function meetSend() {
@@ -1976,6 +2097,11 @@
         const v = t.querySelector('video');
         if (v) v.play().catch(() => {});
       });
+      // The host introduces the room OUT LOUD (build 2026.10.22-12):
+      // opening the meeting speaks the aimed agent's greeting in her
+      // own voice — introductions are verbal here, not just captions.
+      const host = AGENTS[meetAgent] ? meetAgent : (roomIds()[0] || 'lumi');
+      try { speak(AGENTS[host].greeting, host); } catch (e) {}
     }
     function closeMeet() {
       meetOverlay.classList.remove('open');
@@ -2085,7 +2211,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-11, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-12, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
@@ -2389,9 +2515,58 @@
       wrap._blinkOn = true;
       (function tick() {
         if (!motionOn) { wrap._blinkOn = false; return; }
+        if (wrap.isConnected === false) { wrap._blinkOn = false; return; }
         blinkWrap(wrap);
         later(tick, rnd(2400, 5600));
       })();
+    }
+
+    // ---------- meeting faces: tiles + slide stage (build 2026.10.22-12) ----------
+    // The meeting used to live outside this engine: tiles were raw
+    // media and the slide card a bare <img>/<video>, so agents without
+    // a baked video (Cielo, Astra, Alba, Vega) sat perfectly still on
+    // the big card. Still-photo tiles and the slide stage now get the
+    // SAME rig as the main avatar: lids/brows/mouth placed by rigFace,
+    // idle breathe + blink, and a mouth driven by mouthTick — which
+    // opens ONLY while the voice truth bus names this agent as the
+    // one audibly speaking (window.__lumiSpeechAgent). Baked-video
+    // faces keep their own motion with overlays off — the same rule
+    // the call screen has always used.
+    var meetMouths = [];
+    function registerMeetMouth(wrap, id) {
+      meetMouths = meetMouths.filter(function (e) { return e.wrap !== wrap; });
+      meetMouths.push({ wrap: wrap, id: id });
+    }
+    function unregisterMeetMouth(wrap) {
+      meetMouths = meetMouths.filter(function (e) { return e.wrap !== wrap; });
+    }
+    function rigTile(tile, id) {
+      if (!tile || !id || tile.querySelector('video')) return;
+      if (!tile.querySelector('.mouth')) {
+        var m = document.createElement('div');
+        m.className = 'mouth';
+        tile.appendChild(m);
+      }
+      rigFace(tile, id);
+      blinkChain(tile);
+      registerMeetMouth(tile, id);
+    }
+    function rigSlideStage(stage, id, isVideo) {
+      if (!stage) return;
+      if (isVideo) {
+        stage.querySelectorAll('.lid,.brow').forEach(function (n) { n.remove(); });
+        var mv = stage.querySelector('.mouth');
+        if (mv) mv.style.display = 'none';
+        unregisterMeetMouth(stage);
+        return;
+      }
+      var m2 = stage.querySelector('.mouth');
+      if (m2) m2.style.display = '';
+      rigFace(stage, id);
+      var media = stage.querySelector('img');
+      if (media && motionOn) breathe(media, true);
+      blinkChain(stage);
+      registerMeetMouth(stage, id);
     }
 
     // ---------- expressions (transforms/overlays only — art untouched) ----------
@@ -2472,6 +2647,15 @@
       var callOpen = $('callOverlay') && $('callOverlay').classList.contains('open');
       mouthFor($('avatarWrap'), mouthLevel, active && !callOpen);
       mouthFor($('callAvatarWrap'), mouthLevel, active && !!callOpen);
+      // Meeting faces: a tile/stage mouth opens ONLY while the voice
+      // truth bus names THIS agent as audibly speaking — never on a
+      // timer, never for someone else's voice.
+      var who = null;
+      try { who = window.__lumiSpeechAgent || null; } catch (e) {}
+      for (var mi = 0; mi < meetMouths.length; mi++) {
+        var me = meetMouths[mi];
+        if (me.wrap && me.wrap.isConnected !== false) mouthFor(me.wrap, mouthLevel, active && who === me.id);
+      }
     }
 
     // ---------- playful pop-ins ----------
@@ -2547,6 +2731,7 @@
       try { breathe($('avatarWrap'), false); } catch (e) {}
       try { document.querySelectorAll('.agentCard img').forEach(function (img) { breathe(img, false); }); } catch (e) {}
       try { document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); }); } catch (e) {}
+      try { document.querySelectorAll('.meetTile').forEach(function (t) { rigTile(t, t.dataset.agent); }); } catch (e) {}
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
       try { every(stageTick, 3400); } catch (e) {}
@@ -2564,6 +2749,7 @@
       });
       mouthFor($('avatarWrap'), 0.12, false);
       mouthFor($('callAvatarWrap'), 0.12, false);
+      meetMouths.forEach(function (e) { mouthFor(e.wrap, 0.12, false); });
       var b = $('popBubble'); if (b) b.classList.remove('show');
       setExpression('neutral');
     }
@@ -2576,6 +2762,7 @@
       clearAnalyser: function () { analyser = null; analyserData = null; analyserFreq = null; },
       setExpression: function (name) { try { setExpression(name); } catch (e) {} },
       popIn: function (agentId) { try { popIn(agentId || currentAgent, true); } catch (e) {} },
+      rigSlideStage: function (stage, id, isVideo) { try { rigSlideStage(stage, id, isVideo); } catch (e) {} },
       blink: function () { try { blinkWrap($('avatarWrap')); } catch (e) {} try { blinkWrap($('callAvatarWrap')); } catch (e) {} }
     };
 
