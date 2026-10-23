@@ -111,6 +111,12 @@
     #popBubble { position: fixed; left: 50%; bottom: 108px; transform: translateX(-50%) translateY(12px) scale(0.9); max-width: 86vw; background: #1a1a1a; color: #fff; border: 2px solid #72edfa; border-radius: 18px; padding: 10px 16px; font-size: 15px; line-height: 1.35; box-shadow: 0 8px 30px rgba(114,237,250,0.35); opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.34,1.56,.64,1); z-index: 400; text-align: center; }
     #popBubble.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
     @media (prefers-reduced-motion: reduce) { #popBubble { transition: none; } }
+    /* (build 2026.10.23-29) Call transfer picker + meeting roster note */
+    #callTransferBar { display: none; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 520px; }
+    #callTransferBar.open { display: flex; }
+    #callTransferBar .xferLabel { width: 100%; text-align: center; font-size: 14px; color: #9c89f4; }
+    .xferChip { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    #teamRosterNote { max-width: 520px; margin: 10px auto 0; font-size: 13px; line-height: 1.5; color: #ccc; text-align: center; }
     /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
     #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #72edfa; color: #fff; border: 2px solid #9c89f4; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(114,237,250,0.45); cursor: pointer; }
@@ -544,6 +550,7 @@
         <div id="meetRosterLabel">👥 Who's in the meeting? Tap a name to add or remove her.</div>
         <div id="meetRosterChips"></div>
     </div>
+    <div id="teamRosterNote"></div>
     <div id="meetGrid"></div>
     <div id="meetSlide" hidden>
         <div id="meetCard">
@@ -593,18 +600,22 @@
         <button id="callMicBtn" type="button" title="Talk">🎤</button>
         <button id="callSpeakerBtn" type="button" title="Toggle voice">🔊</button>
         <button id="callCamBtn" type="button" title="Toggle your camera">📷</button>
+        <button id="callTransferBtn" type="button" title="Transfer call" aria-label="Transfer call">🔀</button>
         <button id="callCloseBtn" type="button" title="End call">❌</button>
+    </div>
+    <div id="callTransferBar" aria-label="Transfer this call to">
+        <div class="xferLabel">Hand this call to…</div>
     </div>
 </div>
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-28</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-29</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.23-28) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.23-29) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -616,7 +627,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-28';
+  var LUMI_BUILD_STAMP = '2026.10.23-29';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -897,6 +908,147 @@
     pools: GREETING_POOLS,
     intros: CALL_INTROS
   };
+  // ================================================================
+  // TEAM ROSTER — EVERY AGENT KNOWS THE WHOLE TEAM (build
+  // 2026.10.23-29, owner order Oct 23 ~10:40 AM CDT, Addendum 41):
+  // in a live call today Lumi was unaware of the last four agents
+  // added (Cielo, Astra, Alba, Vega) and had forgotten who they
+  // are. The full roster of 8 — name, duties, and voice — now lives
+  // in the app itself: it fills the meeting's roster note and rides
+  // as a context line on every chat request, so whichever agent she
+  // is talking to answers knowing the whole team. The same roster
+  // is baked into the staged Worker brainpack (TEAM_ROSTER_BLOCK)
+  // for all 8 prompts; that half takes effect with the pending
+  // Worker deploy. Duties only — personalities frozen.
+  // ================================================================
+  const TEAM_ROSTER = {
+    lumi:  { name: 'Lumi',   duty: 'lead assistant — she leads the team', voice: 'asteria' },
+    izzy:  { name: 'Luz',    duty: 'email agent — drafts, replies, inbox care, sweepstakes and surveys', voice: 'luna' },
+    bea:   { name: 'Sol',    duty: 'booking and calendar agent — schedules, reminders, and the team secretary who keeps the meeting minutes', voice: 'athena' },
+    quinn: { name: 'Stella', duty: 'social media agent — captions, posts, and growing her accounts', voice: 'stella' },
+    cielo: { name: 'Cielo',  duty: 'meteorologist — worldwide weather watch, forecasts, and storm alerts', voice: 'callista' },
+    astra: { name: 'Astra',  duty: 'attorney and political researcher — cases, dockets, fact-checks, and legal investigation', voice: 'hera' },
+    alba:   { name: 'Alba',   duty: 'wellness keeper — sleep, walks, energy, and gentle mornings', voice: 'ophelia' },
+    vega:   { name: 'Vega',   duty: 'study coach — LSAT prep, study plans, and coursework pacing', voice: 'andromeda' }
+  };
+  function teamRosterLine() {
+    return 'Your team of eight: ' + Object.keys(TEAM_ROSTER).map((id) => {
+      const r = TEAM_ROSTER[id];
+      return r.name + ' (' + r.duty + ')';
+    }).join('; ') + '.';
+  }
+  window.LumiTeam = { roster: TEAM_ROSTER, line: teamRosterLine };
+  try {
+    const note = document.getElementById('teamRosterNote');
+    if (note) note.textContent = '🌟 ' + teamRosterLine();
+  } catch (e) {}
+  // ================================================================
+  // WELCOME BUBBLE — ONCE A DAY (build 2026.10.23-29, owner order
+  // Oct 23 ~10:39 AM CDT, Addendum 39): "I did like the little
+  // bubble that would appear — that was a cute idea, but you
+  // overdid it with it popping up." Build -28 deleted the pop-ins
+  // outright; this brings the bubble back as ONE standard welcoming
+  // greeting per day: the first time the app opens on a calendar
+  // day, the current agent's own greeting (her LumiGreet pool line)
+  // shows in #popBubble for a few seconds, then fades. A per-device
+  // localStorage date stamp (lumi_welcome_day_v1) is written the
+  // moment it shows, so it can never fire twice in a day — no
+  // timer, no scheduler, no repeats on agent switch, call, or
+  // meeting. It is a visual hello only: nothing is spoken and no
+  // chat message is added.
+  // ================================================================
+  const WELCOME_DAY_KEY = 'lumi_welcome_day_v1';
+  let welcomeShownThisLoad = false;
+  let bubbleHideTimer = null;
+  function showBubbleText(line, ms) {
+    const el = document.getElementById('popBubble');
+    if (!el || !line) return false;
+    if (bubbleHideTimer) { try { clearTimeout(bubbleHideTimer); } catch (e) {} bubbleHideTimer = null; }
+    el.textContent = line;
+    el.classList.add('show');
+    bubbleHideTimer = setTimeout(() => { try { el.classList.remove('show'); el.textContent = ''; } catch (e) {} bubbleHideTimer = null; }, ms || 6000);
+    return true;
+  }
+  function welcomeDayStamp() {
+    try { return localStorage.getItem(WELCOME_DAY_KEY) || ''; } catch (e) { return ''; }
+  }
+  function maybeShowWelcome(id) {
+    if (welcomeShownThisLoad) return false;
+    const today = new Date().toDateString();
+    if (welcomeDayStamp() === today) return false;
+    const line = (window.LumiGreet ? LumiGreet.pick(id || currentAgent) : ((AGENTS[id || currentAgent] || {}).greeting)) || '';
+    if (!line) return false;
+    if (!showBubbleText(line, 6000)) return false;
+    welcomeShownThisLoad = true;
+    try { localStorage.setItem(WELCOME_DAY_KEY, today); } catch (e) {}
+    return true;
+  }
+  window.LumiWelcome = {
+    maybeShow: maybeShowWelcome,
+    shownToday: function () { return welcomeDayStamp() === new Date().toDateString(); },
+    shownThisLoad: function () { return welcomeShownThisLoad; }
+  };
+  // ================================================================
+  // UPDATE PING — IMPORTANT ONLY (build 2026.10.23-29, owner add-on
+  // Oct 23 ~10:45 AM CDT, same Addendum 39): beyond the once-a-day
+  // welcome, Lumi may ping T in the bubble to get her attention
+  // when it is IMPORTANT — an alert, or an update on something T
+  // asked her to help with. Importance-gated by construction, so
+  // it can never become the old every-55–95s pop-up problem:
+  //  - a ping fires ONLY when the caller marks it important
+  //    (important: true, or kind 'alert' / 'task-update'); routine
+  //    calls are refused outright;
+  //  - the same topic can ping at most once per 30 minutes;
+  //  - at most 6 pings per calendar day, per device;
+  //  - there is NO timer and NO scheduler — a ping exists only
+  //    when some feature calls LumiPing.ping() with real news.
+  // Callers today: any in-app feature via window.LumiPing.ping().
+  // Cielo's emergency pop-up (her standing design) and future
+  // task-update sources call this same hook; a backend event
+  // source for pings that originate outside the open app is a
+  // later build (see the -29 build log).
+  // ================================================================
+  const PING_STATE_KEY = 'lumi_ping_state_v1';
+  const PING_TOPIC_GAP_MS = 30 * 60 * 1000;
+  const PING_DAY_MAX = 6;
+  function pingState() {
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(PING_STATE_KEY) || '{}') || {}; } catch (e) { s = {}; }
+    const today = new Date().toDateString();
+    if (s.day !== today) s = { day: today, count: 0, topics: {} };
+    if (!s.topics || typeof s.topics !== 'object') s.topics = {};
+    if (typeof s.count !== 'number') s.count = 0;
+    return s;
+  }
+  function savePingState(s) { try { localStorage.setItem(PING_STATE_KEY, JSON.stringify(s)); } catch (e) {} }
+  function lumiPing(text, opts) {
+    const line = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (!line) return false;
+    const o = opts || {};
+    const kind = String(o.kind || '');
+    const important = o.important === true || kind === 'alert' || kind === 'task-update' || kind === 'task';
+    if (!important) return false;
+    const topic = String(o.topic || kind || 'general').slice(0, 60);
+    const s = pingState();
+    if (s.count >= PING_DAY_MAX) return false;
+    const last = s.topics[topic] || 0;
+    if (last && (Date.now() - last) < PING_TOPIC_GAP_MS) return false;
+    if (!showBubbleText(line, 9000)) return false;
+    s.topics[topic] = Date.now();
+    s.count += 1;
+    savePingState(s);
+    return true;
+  }
+  window.LumiPing = {
+    ping: lumiPing,
+    // Local test trigger (also used by the -29 test suite): fires
+    // one sample IMPORTANT ping through the real gate + throttles.
+    test: function () { return lumiPing('🔔 Lumi ping test — important updates will look like this.', { kind: 'alert', topic: 'test' }); },
+    state: function () { return pingState(); }
+  };
+  // The day's one welcome fires shortly after the app opens (the
+  // chat is on screen by then); every later call is a no-op.
+  setTimeout(() => { try { maybeShowWelcome(currentAgent); } catch (e) {} }, 1200);
   // Each agent keeps their OWN conversation history, so Quinn never sees
   // Lumi's replies and stays in character.
   function historyKey(id) { return 'lumi_history_' + (id || currentAgent); }
@@ -1472,7 +1624,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
+        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
       });
       return res.json();
     }
@@ -1826,6 +1978,14 @@
       const transcript = e.results[0][0].transcript;
       dictGotResult = true;
       emptyDictStreak = 0;
+      // TRANSFER CUE (build 2026.10.23-29): "transfer me to Alba"
+      // said on a call hands the call to her — the same transfer
+      // as the 🔀 picker, never sent on as chat text. Calls only;
+      // in plain chat the name-cue switch below already covers it.
+      if (window.callMode) {
+        const xferId = transferCueFor(transcript);
+        if (xferId && xferId !== currentAgent) { transferCall(xferId); return; }
+      }
       // GOODBYE CUE (build 2026.10.23-26): she said goodbye -- the
       // conversation concludes here, in every mode, instead of the
       // goodbye being sent on as ordinary chat text.
@@ -1982,6 +2142,23 @@
       }
       return null;
     }
+    // TRANSFER WORDS (build 2026.10.23-29): "transfer me to <name>",
+    // "hand me over to <name>", "pass me to <name>", "switch me to
+    // <name>", "connect me to <name>", "put me through to <name>" —
+    // the named agent is resolved with the bare-name cue table, so
+    // recognizer spellings (loose/luce for Luz, viga for Vega) count.
+    const TRANSFER_LEADS = ['transfer me over to', 'transfer me to', 'hand me over to', 'hand me to', 'pass me over to', 'pass me to', 'switch me over to', 'switch me to', 'put me through to', 'connect me to'];
+    function transferCueFor(text) {
+      const t = normCueText(text);
+      if (!t) return null;
+      for (const lead of TRANSFER_LEADS) {
+        if (t.indexOf(lead) === 0) {
+          const rest = t.slice(lead.length).replace(/^[\s,!.]+/, '');
+          if (rest) { const id = cueAgentFor(rest); if (id) return id; }
+        }
+      }
+      return null;
+    }
     function concludeConversation(nameId) {
       let who = nameId || currentAgent;
       if (window.meetMode && nameId && window.meetRoster && !window.meetRoster.has(nameId)) who = currentAgent;
@@ -2010,6 +2187,7 @@
     window.LumiCues = {
       cue: cueAgentFor,
       goodbye: function (t) { const g = goodbyeCue(t); return g ? (g.nameId || true) : null; },
+      transfer: transferCueFor,
       names: NAME_CUES,
     };
     function bindWake(rec) {
@@ -2317,6 +2495,66 @@
   document.getElementById('callCloseBtn').addEventListener('click', closeCall);
   callMicBtn.addEventListener('click', () => { if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput(); });
   callSpeakerBtn.addEventListener('click', () => { voiceToggle.click(); syncCallSpeaker(); });
+  // ================================================================
+  // CALL TRANSFER — EVERY AGENT (build 2026.10.23-29, owner order
+  // Oct 23 ~10:39 AM CDT, Addendum 40): "a transfer video call
+  // option so Lumi can transfer the video call with an agent one
+  // on one — and each agent can have that ability as well." Inside
+  // a one-on-one call, the 🔀 button opens a picker with the other
+  // seven agents. Picking one hands the call over: this call's
+  // speech and listening stop, the agent switches, and a fresh
+  // one-on-one call opens with the target — her own rotated call
+  // intro, spoken and captioned, camera continuity preserved
+  // (openCall's camera start is a no-op while the camera is
+  // already on, and the call never claimed it, so the full
+  // closeCall teardown never runs), and conversation mode
+  // re-armed by openCall exactly like a call she started herself.
+  // Saying it works too: "transfer me to Alba" is read by the cue
+  // layer (transferCueFor, next to the name/goodbye cues).
+  // ================================================================
+  const callTransferBar = document.getElementById('callTransferBar');
+  function buildTransferChips() {
+    if (!callTransferBar) return;
+    callTransferBar.querySelectorAll('.xferChip').forEach((c) => c.remove());
+    Object.keys(AGENTS).forEach((id) => {
+      if (id === currentAgent) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'xferChip';
+      b.dataset.agent = id;
+      b.textContent = (AGENTS[id].emoji || '') + ' ' + AGENTS[id].name;
+      b.addEventListener('click', () => { transferCall(id); });
+      callTransferBar.appendChild(b);
+    });
+  }
+  function transferCall(targetId) {
+    if (!targetId || !AGENTS[targetId] || targetId === currentAgent) return false;
+    if (!window.callMode) return false;
+    if (callTransferBar) callTransferBar.classList.remove('open');
+    try { if (window.LumiConvo && LumiConvo.stop) LumiConvo.stop(); } catch (e) {}
+    try { stopCloudSpeech(); } catch (e) {}
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+    const cv = document.getElementById('callVideo');
+    if (cv) { try { cv.pause(); } catch (e) {} }
+    // Switch the conversation to the target, then open HER call:
+    // applyAgent reloads her history/avatar/name; openCall picks
+    // her own call intro, speaks it, keeps the camera running,
+    // and re-arms conversation mode for the new call.
+    const done = () => { try { openCall(); } catch (e) {} };
+    try {
+      const pr = applyAgent(targetId, false);
+      if (pr && pr.then) pr.then(done, done); else done();
+    } catch (e) { done(); }
+    return true;
+  }
+  window.LumiCall = { transfer: transferCall };
+  const callTransferBtn = document.getElementById('callTransferBtn');
+  if (callTransferBtn && callTransferBar) {
+    callTransferBtn.addEventListener('click', () => {
+      buildTransferChips();
+      callTransferBar.classList.toggle('open');
+    });
+  }
   // Team meeting mode: 2x2 grid of the agents, tap one (or Everyone) to
   // direct your question. Your camera preview is optional and stays on-device.
   (function () {
@@ -2660,7 +2898,7 @@
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
+          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
         });
         return res.json();
       }
@@ -3327,18 +3565,14 @@
     }
 
     // ---------- playful pop-ins ----------
-    // POP-UP GREETING BUBBLES REMOVED (build 2026.10.23-28, owner
-    // order Oct 23 ~10:07 AM CDT): "there doesn't need to always be a
-    // little message that pops up." The old scheduler fired a canned
-    // bubble ("Oh hey, I didn't see you there …") every 55–95s on the
-    // home/chat view, and the same bubble path could fire around
-    // agent switches and calls. Gone: no scheduler, no bubble lines,
-    // no showBubble — the #popBubble element can never be shown
-    // again. A greeting now exists ONLY as the agent's real first
-    // conversational line (a chat message, or the spoken call intro
-    // — see LumiGreet above). popIn() survives as the SILENT hello —
-    // a hop + a happy expression on agent switch / call open — and
-    // its greet argument is ignored: it can never show text.
+    // POP-UP HISTORY: build -28 removed the old 55–95s canned
+    // pop-ins ("Oh hey, I didn't see you there …") after the owner
+    // said the bubble popped up too often; build 2026.10.23-29
+    // (owner order Oct 23 ~10:39 AM CDT) brought the bubble back as
+    // the ONCE-A-DAY welcome only — see LumiWelcome in the main
+    // script. This engine still never shows bubble text: popIn()
+    // remains the SILENT hello — a hop + a happy expression on
+    // agent switch / call open — and its greet argument is ignored.
     function popIn(agentId, greet) {
       if (!motionOn) return;
       hop($('avatarWrap'), 16);
@@ -3397,7 +3631,7 @@
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
       try { every(stageTick, 3400); } catch (e) {}
-      // (build 2026.10.23-28: no schedulePop — pop-up greeting bubbles removed.)
+      // (build 2026.10.23-29: no pop scheduler — the bubble is the once-a-day LumiWelcome only.)
       try { scheduleTileWiggle(); } catch (e) {}
     }
     function stopAll() {
