@@ -479,6 +479,17 @@
        is staying open for a conversation, the button wears a
        soft cyan ring so she can SEE it is still hers to talk to. === */
  #micBtn.convo { box-shadow: 0 0 0 3px rgba(114,237,250,.55), 0 0 14px rgba(114,237,250,.35); }
+
+    /* (build 2026.10.23-30) Document attach chips + Lumi routing bar */
+    #docBar, #meetDocBar { margin: 6px auto 0; max-width: 760px; padding: 0 10px; }
+    #meetDocBar { margin: 4px 10px 0; }
+    .docChip { display: inline-flex; align-items: center; gap: 8px; background: rgba(90,70,160,.28); border: 1px solid rgba(180,160,255,.45); color: #fff; border-radius: 999px; padding: 5px 8px 5px 12px; font-size: 13px; }
+    .docChipX { background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 999px; width: 20px; height: 20px; line-height: 1; cursor: pointer; }
+    #routeBar { margin: 6px auto 0; max-width: 760px; padding: 8px 10px; background: rgba(40,32,80,.55); border: 1px solid rgba(180,160,255,.35); border-radius: 12px; }
+    .routeHead { color: #fff; font-size: 14px; margin-bottom: 6px; }
+    .routeRow { display: flex; flex-wrap: wrap; gap: 6px; }
+    .routeRow button { border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.10); color: #fff; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+    .routeRow button.primary { background: #6a4fd0; border-color: #6a4fd0; }
 </style>
 </head>
 <body class="onHome">
@@ -527,9 +538,13 @@
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="locBtn" type="button" title="Share location with next message">📍</button>
     <button id="camBtn" type="button" title="Turn your camera on or off — while it is on, the team can see you">📷</button>
+    <button id="attachBtn" type="button" title="Attach a PDF for her to read and research">📎</button>
+    <input id="docFile" type="file" accept=".pdf,.txt,application/pdf,text/plain" hidden />
     <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
     <button id="send" type="submit">Send</button>
 </form>
+<div id="docBar" hidden></div>
+<div id="routeBar" hidden></div>
 <div id="contact"><a href="#" id="contactBtn">Contact</a></div>
 <div id="teamOverlay">
     <h2>👥 Lumi's Team</h2>
@@ -580,8 +595,11 @@
     </div>
     <div id="meetCaption">Pick who answers, then ask away.</div>
     </div>
+    <div id="meetDocBar" hidden></div>
     <div id="meetForm">
         <button id="meetMicBtn" type="button" title="Talk">🎤</button>
+        <button id="meetAttachBtn" type="button" title="Attach a PDF for the team to read">📎</button>
+        <input id="meetDocFile" type="file" accept=".pdf,.txt,application/pdf,text/plain" hidden />
         <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
         <button id="meetSendBtn" type="button" title="Send">➤</button>
         <button id="meetCamBtn" type="button" title="Toggle your camera">📷</button>
@@ -611,7 +629,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-29</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-30</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -627,7 +645,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-29';
+  var LUMI_BUILD_STAMP = '2026.10.23-30';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1045,6 +1063,223 @@
     // one sample IMPORTANT ping through the real gate + throttles.
     test: function () { return lumiPing('🔔 Lumi ping test — important updates will look like this.', { kind: 'alert', topic: 'test' }); },
     state: function () { return pingState(); }
+  };
+  // ================================================================
+  // ATTACH A DOCUMENT (PDF / TXT) + LUMI ROUTES IT (build
+  // 2026.10.23-30, owner order Oct 23 ~10:55 AM CDT, Addendum 42 —
+  // fulfills Addendums 13/14): T can attach a PDF in EVERY agent's
+  // chat (the 📎 button sits in the one chat bar all eight agents
+  // share, and in the meeting bar too). The file itself never
+  // leaves her device and is never uploaded anywhere: its text is
+  // extracted right here in the browser (pdf.js 3.11.174, pinned
+  // cdnjs build) and rides inside her next message in a bracketed
+  // [Attached document: <name>] marker — conversation content the
+  // live Worker already reads. Nothing is stored beyond the
+  // conversation history the app already keeps. Text longer than
+  // DOC_TEXT_CAP characters is cut to the first part, and the chip
+  // AND the marker both say so plainly. If the PDF reader cannot
+  // load, or the PDF holds no readable text, she gets ONE clear
+  // error message — never a silent failure.
+  // ROUTING: a document attached while she talks to LUMI brings up
+  // Lumi's assignment — a suggestion bar naming the proper agent
+  // by plain keyword fit (legal → Astra, study → Vega, weather →
+  // Cielo, wellness → Alba, email → Luz, scheduling → Sol, social
+  // → Stella, unclear → Lumi keeps it). She taps to accept (the
+  // document and her question move into that agent's chat and go
+  // out on that agent's normal send path), picks a different agent
+  // instead, or keeps it with Lumi. Never a silent move.
+  // ================================================================
+  const DOC_TEXT_CAP = 12000;
+  const DOC_PAGE_CAP = 50;
+  const DOC_MAX_BYTES = 25 * 1024 * 1024;
+  const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const docPending = { chat: null, meet: null };
+  let pdfjsPromise = null;
+  function loadPdfjs() {
+    if (window.pdfjsLib) { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (e) {} return Promise.resolve(window.pdfjsLib); }
+    if (pdfjsPromise) return pdfjsPromise;
+    pdfjsPromise = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = PDFJS_SRC;
+      sc.onload = () => {
+        if (window.pdfjsLib) { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (e) {} resolve(window.pdfjsLib); }
+        else reject(new Error('pdfjs-missing'));
+      };
+      sc.onerror = () => reject(new Error('pdfjs-load'));
+      document.head.appendChild(sc);
+    });
+    return pdfjsPromise;
+  }
+  async function extractPdfText(lib, arrayBuffer) {
+    const pdf = await lib.getDocument({ data: arrayBuffer, standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/', cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/', cMapPacked: true }).promise;
+    const total = pdf.numPages || 0;
+    const pages = Math.min(total, DOC_PAGE_CAP);
+    const parts = [];
+    for (let pg = 1; pg <= pages; pg++) {
+      const page = await pdf.getPage(pg);
+      const tc = await page.getTextContent();
+      parts.push((tc.items || []).map((it) => it.str).join(' '));
+    }
+    return { text: parts.join('\n'), pages: total };
+  }
+  async function extractFileText(file) {
+    const name = (file && file.name) || 'document';
+    if (/\.txt$/i.test(name) || (file && file.type === 'text/plain')) {
+      return { text: await file.text(), pages: 0 };
+    }
+    const lib = await loadPdfjs();
+    const buf = await file.arrayBuffer();
+    return extractPdfText(lib, buf);
+  }
+  const DOC_ROUTE_RULES = [
+    { id: 'astra', keys: ['legal', 'court', 'case', 'contract', 'attorney', 'lawyer', 'lawsuit', 'custody', 'docket', 'judge', 'plaintiff', 'defendant', 'divorce', 'expunction', 'grievance', 'statute', 'petition', 'decree'] },
+    { id: 'vega', keys: ['study', 'exam', 'syllabus', 'lsat', 'coursework', 'school', 'class', 'assignment', 'homework', 'university', 'student', 'quiz', 'capstone', 'course', 'lecture', 'semester'] },
+    { id: 'cielo', keys: ['weather', 'forecast', 'storm', 'hurricane', 'rainfall', 'temperature', 'climate', 'flood watch'] },
+    { id: 'alba', keys: ['health', 'wellness', 'sleep', 'weight', 'fitness', 'diet', 'blood pressure', 'cholesterol', 'symptom', 'therapy'] },
+    { id: 'izzy', keys: ['email', 'inbox', 'sweepstakes', 'survey', 'newsletter', 'unsubscribe', 'dear '] },
+    { id: 'bea', keys: ['schedule', 'appointment', 'calendar', 'booking', 'reservation', 'reminder', 'itinerary'] },
+    { id: 'quinn', keys: ['social media', 'instagram', 'facebook', 'caption', 'followers', 'content calendar', 'tiktok'] }
+  ];
+  function docSuggest(text, filename) {
+    const hay = ((filename || '') + '\n' + String(text || '').slice(0, 4000)).toLowerCase();
+    let best = null, bestScore = 0;
+    for (const rule of DOC_ROUTE_RULES) {
+      let score = 0;
+      for (const k of rule.keys) { if (hay.indexOf(k) !== -1) score++; }
+      if (score > bestScore) { bestScore = score; best = rule.id; }
+    }
+    return bestScore > 0 ? best : 'lumi';
+  }
+  function docMarker(doc) {
+    let head = '[Attached document: ' + doc.name + ']';
+    if (doc.truncated) head += '\n[Note to the assistant: this document is longer than one message can carry — ' + doc.totalChars + ' characters of text in all — so only the first part is included below. Say plainly that you received the first part only.]';
+    return head + '\n' + doc.text.slice(0, DOC_TEXT_CAP) + '\n[End of attached document: ' + doc.name + ']';
+  }
+  function renderDocChip(ctx) {
+    const bar = document.getElementById(ctx === 'meet' ? 'meetDocBar' : 'docBar');
+    if (!bar) return;
+    const doc = docPending[ctx];
+    bar.innerHTML = '';
+    if (!doc) { bar.hidden = true; return; }
+    const chip = document.createElement('span');
+    chip.className = 'docChip';
+    chip.textContent = '📄 ' + doc.name + (doc.truncated ? ' — long document: only the first part will be sent' : ' — ready to send with your next message');
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'docChipX'; x.textContent = '✕'; x.title = 'Remove attachment'; x.setAttribute('aria-label', 'Remove attachment');
+    x.addEventListener('click', () => { clearDoc(ctx); });
+    chip.appendChild(x);
+    bar.appendChild(chip);
+    bar.hidden = false;
+  }
+  function clearDoc(ctx) {
+    docPending[ctx] = null;
+    renderDocChip(ctx);
+    if (ctx === 'chat') renderRouteBar();
+  }
+  function docError(ctx, msg) {
+    if (ctx === 'meet') { const cap = document.getElementById('meetCaption'); if (cap) cap.textContent = msg; }
+    else { try { addMsg(msg, 'error'); } catch (e) {} }
+  }
+  function ingestDoc(ctx, name, text, pages) {
+    const clean = String(text || '');
+    docPending[ctx] = { name: name, text: clean, totalChars: clean.length, truncated: clean.length > DOC_TEXT_CAP, pages: pages || 0 };
+    renderDocChip(ctx);
+    if (ctx === 'chat') renderRouteBar();
+  }
+  async function onDocFile(ctx, file) {
+    if (!file) return;
+    if (file.size > DOC_MAX_BYTES) { docError(ctx, 'That file is too big for me to read here (25 MB limit) — try a smaller PDF.'); return; }
+    try {
+      const out = await extractFileText(file);
+      const clean = String(out.text || '').replace(/[ \t]+\n/g, '\n').trim();
+      if (!clean) { docError(ctx, 'I couldn\'t find any readable text in "' + file.name + '" — it may be a scan made of pictures. A text-based PDF will work.'); return; }
+      ingestDoc(ctx, file.name, clean, out.pages);
+    } catch (e) {
+      if (e && (e.message === 'pdfjs-load' || e.message === 'pdfjs-missing')) docError(ctx, 'I couldn\'t load the PDF reader just now — check your connection and tap 📎 to try again.');
+      else docError(ctx, 'I couldn\'t read "' + file.name + '" — the file may be damaged. Try a different copy of it.');
+    }
+  }
+  function routeBtn(label, id, primary) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = label;
+    if (primary) b.className = 'primary';
+    b.addEventListener('click', () => { deliverRouted(id); });
+    return b;
+  }
+  function renderRouteBar() {
+    const bar = document.getElementById('routeBar');
+    if (!bar) return;
+    const doc = docPending.chat;
+    if (!doc || currentAgent !== 'lumi') { bar.hidden = true; bar.innerHTML = ''; return; }
+    const sug = docSuggest(doc.text, doc.name);
+    bar.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'routeHead';
+    head.textContent = sug === 'lumi'
+      ? '📄 Lumi: this one looks like mine to review — or hand it to…'
+      : '📄 Lumi: this looks like ' + AGENTS[sug].name + "'s desk. Send it to " + AGENTS[sug].name + '?';
+    bar.appendChild(head);
+    const row = document.createElement('div');
+    row.className = 'routeRow';
+    if (sug !== 'lumi') row.appendChild(routeBtn('✓ Send to ' + AGENTS[sug].name, sug, true));
+    for (const id of Object.keys(AGENTS)) {
+      if (id !== 'lumi' && id !== sug) row.appendChild(routeBtn(AGENTS[id].name, id, false));
+    }
+    row.appendChild(routeBtn('Keep with Lumi', 'lumi', sug === 'lumi'));
+    bar.appendChild(row);
+    bar.hidden = false;
+  }
+  async function deliverRouted(targetId) {
+    const doc = docPending.chat;
+    if (!doc) return;
+    const bar = document.getElementById('routeBar');
+    if (bar) { bar.hidden = true; bar.innerHTML = ''; }
+    if (targetId === 'lumi' || targetId === currentAgent) return;
+    const typed = input.value.trim();
+    try { await applyAgent(targetId, false); } catch (e) {}
+    try { addMsg('📄 Lumi handed "' + doc.name + '" to ' + AGENTS[targetId].name + ' to review.', 'ai'); } catch (e) {}
+    input.value = typed || 'Please review this document and tell me what matters in it.';
+    if (form.requestSubmit) form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { cancelable: true }));
+  }
+  function consumeDocInto(inputEl, ctx) {
+    const doc = docPending[ctx];
+    if (!doc || !inputEl) return;
+    const typed = inputEl.value.trim();
+    const base = typed || (ctx === 'chat' ? 'I attached a document for you to review.' : 'I attached a document for the team to review.');
+    inputEl.value = base + '\n\n' + docMarker(doc);
+    docPending[ctx] = null;
+    renderDocChip(ctx);
+    if (ctx === 'chat') renderRouteBar();
+  }
+  function wireAttach(btnId, fileId, ctx) {
+    const btn = document.getElementById(btnId), fi = document.getElementById(fileId);
+    if (!btn || !fi) return;
+    btn.addEventListener('click', () => { fi.value = ''; fi.click(); });
+    fi.addEventListener('change', () => { const f = fi.files && fi.files[0]; if (f) onDocFile(ctx, f); });
+  }
+  wireAttach('attachBtn', 'docFile', 'chat');
+  wireAttach('meetAttachBtn', 'meetDocFile', 'meet');
+  // Registered BEFORE the app's own send handlers (same script,
+  // later lines), so the document rides the very next message she
+  // sends — typed, dictated, or tapped from a suggestion chip.
+  const docFormEl = document.getElementById('form');
+  if (docFormEl) docFormEl.addEventListener('submit', () => { consumeDocInto(document.getElementById('input'), 'chat'); });
+  const docMeetBtn = document.getElementById('meetSendBtn');
+  if (docMeetBtn) docMeetBtn.addEventListener('click', () => { consumeDocInto(document.getElementById('meetInput'), 'meet'); });
+  const docMeetInput = document.getElementById('meetInput');
+  if (docMeetInput) docMeetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') consumeDocInto(docMeetInput, 'meet'); });
+  window.LumiDocs = {
+    cap: DOC_TEXT_CAP,
+    pending: function (ctx) { return docPending[ctx || 'chat']; },
+    suggest: docSuggest,
+    marker: docMarker,
+    ingest: ingestDoc,
+    clear: clearDoc,
+    extractPdfText: extractPdfText,
+    route: deliverRouted
   };
   // The day's one welcome fires shortly after the app opens (the
   // chat is on screen by then); every later call is a no-op.
