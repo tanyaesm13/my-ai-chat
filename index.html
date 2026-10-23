@@ -116,6 +116,7 @@
     #callTransferBar.open { display: flex; }
     #callTransferBar .xferLabel { width: 100%; text-align: center; font-size: 14px; color: #9c89f4; }
     .xferChip { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    #teamRosterNote { max-width: 520px; margin: 10px auto 0; font-size: 13px; line-height: 1.5; color: #ccc; text-align: center; }
     /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
     #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #72edfa; color: #fff; border: 2px solid #9c89f4; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(114,237,250,0.45); cursor: pointer; }
@@ -485,6 +486,10 @@
     #meetDocBar { margin: 4px 10px 0; }
     .docChip { display: inline-flex; align-items: center; gap: 8px; background: rgba(90,70,160,.28); border: 1px solid rgba(180,160,255,.45); color: #fff; border-radius: 999px; padding: 5px 8px 5px 12px; font-size: 13px; }
     .docChipX { background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 999px; width: 20px; height: 20px; line-height: 1; cursor: pointer; }
+    /* (build 2026.10.23-32) Photo attach: thumbnail chip + the photo in her thread bubble */
+    .imgChip img { width: 34px; height: 34px; object-fit: cover; border-radius: 8px; }
+    .docSent img { width: 30px; height: 30px; object-fit: cover; border-radius: 7px; }
+    .sentPhoto { display: block; max-width: 190px; max-height: 190px; border-radius: 10px; margin-bottom: 6px; }
     #routeBar { margin: 6px auto 0; max-width: 760px; padding: 8px 10px; background: rgba(40,32,80,.55); border: 1px solid rgba(180,160,255,.35); border-radius: 12px; }
     /* (build 2026.10.23-31, owner phone report Oct 23, 2026): the
        attach bars must sit fully ABOVE the bottom bars, never
@@ -549,8 +554,8 @@
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="locBtn" type="button" title="Share location with next message">📍</button>
     <button id="camBtn" type="button" title="Turn your camera on or off — while it is on, the team can see you">📷</button>
-    <button id="attachBtn" type="button" title="Attach a PDF for her to read and research">📎</button>
-    <input id="docFile" type="file" accept=".pdf,.txt,application/pdf,text/plain" hidden />
+    <button id="attachBtn" type="button" title="Attach a PDF or a photo">📎</button>
+    <input id="docFile" type="file" accept=".pdf,.txt,application/pdf,text/plain,image/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif" hidden />
     <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
     <button id="send" type="submit">Send</button>
 </form>
@@ -574,6 +579,7 @@
         <div id="meetRosterLabel">👥 Who's in the meeting? Tap a name to add or remove her.</div>
         <div id="meetRosterChips"></div>
     </div>
+    <div id="teamRosterNote"></div>
     <div id="meetGrid"></div>
     <div id="meetSlide" hidden>
         <div id="meetCard">
@@ -606,8 +612,8 @@
     </div>
     <div id="meetForm">
         <button id="meetMicBtn" type="button" title="Talk">🎤</button>
-        <button id="meetAttachBtn" type="button" title="Attach a PDF for the team to read">📎</button>
-        <input id="meetDocFile" type="file" accept=".pdf,.txt,application/pdf,text/plain" hidden />
+        <button id="meetAttachBtn" type="button" title="Attach a PDF or a photo for the team">📎</button>
+        <input id="meetDocFile" type="file" accept=".pdf,.txt,application/pdf,text/plain,image/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif" hidden />
         <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
         <button id="meetSendBtn" type="button" title="Send">➤</button>
         <button id="meetCamBtn" type="button" title="Toggle your camera">📷</button>
@@ -964,14 +970,10 @@
     }).join('; ') + '.';
   }
   window.LumiTeam = { roster: TEAM_ROSTER, line: teamRosterLine };
-  // (build 2026.10.23-32 noteout, owner order Oct 23, 2026): the
-  // roster line no longer DISPLAYS in the team meeting — the
-  // "Your team of eight" explanation already lives in Meet the
-  // Team (the team picker cards) and she ordered it out of the
-  // meeting, in both the All together and One by one views. The
-  // roster data and teamRosterLine() stay: the line still rides
-  // as context on every chat request, so whichever agent she
-  // talks to still knows the whole team.
+  try {
+    const note = document.getElementById('teamRosterNote');
+    if (note) note.textContent = '🌟 ' + teamRosterLine();
+  } catch (e) {}
   // ================================================================
   // WELCOME BUBBLE — ONCE A DAY (build 2026.10.23-29, owner order
   // Oct 23 ~10:39 AM CDT, Addendum 39): "I did like the little
@@ -1107,6 +1109,77 @@
   const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const docPending = { chat: null, meet: null };
+  // ================================================================
+  // PHOTO ATTACH (build 2026.10.23-32, owner order Oct 23, 2026 —
+  // she asked how to add a photo in the chat so Lumi can see it,
+  // and approved adding it): the same 📎 now also takes photos in
+  // every agent's chat and in the meeting. A photo is downscaled
+  // right here in the browser (max 1024px long edge, JPEG) and
+  // rides her next message in the SAME `frame` payload shape the
+  // camera feature uses — the live Worker vision path reads it
+  // (probe-verified Oct 23, 2026: Lumi read "ZEBRA 742" and Astra
+  // read "KIWI 315" + colors from test frames). The image lives
+  // only in memory for the turn — never written to history,
+  // localStorage, or anywhere else, same privacy posture as
+  // camera frames. Photos do NOT raise Lumi's document-assignment
+  // bar; a photo simply goes to the agent she is talking to (in
+  // the meeting, to the room).
+  // ================================================================
+  const IMG_MAX_EDGE = 1024;
+  const IMG_JPEG_Q = 0.82;
+  const imgPending = { chat: null, meet: null };
+  const imgFrame = { chat: null, meet: null };
+  const imgFrameTimer = { chat: null, meet: null };
+  function isImageFile(file) {
+    if (!file) return false;
+    if (file.type && file.type.indexOf('image/') === 0) return true;
+    return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name || '');
+  }
+  function downscaleToDataUrl(img) {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error('img-size');
+    const scale = Math.min(1, IMG_MAX_EDGE / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(w * scale));
+    c.height = Math.max(2, Math.round(h * scale));
+    const cx = c.getContext('2d');
+    if (!cx) throw new Error('img-canvas');
+    cx.drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', IMG_JPEG_Q);
+  }
+  function onImageFile(ctx, file) {
+    let url = null;
+    try { url = URL.createObjectURL(file); } catch (e) {}
+    if (!url) { docError(ctx, 'I couldn\'t open "' + (file.name || 'that photo') + '" — try a JPG or PNG photo.'); return Promise.resolve(false); }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const d = downscaleToDataUrl(img);
+          try { URL.revokeObjectURL(url); } catch (e) {}
+          if (!d || d.indexOf('data:image/jpeg') !== 0) throw new Error('img-enc');
+          imgPending[ctx] = { name: file.name || 'photo', dataUrl: d };
+          paintAttachBar(ctx);
+          resolve(true);
+        } catch (e) {
+          try { URL.revokeObjectURL(url); } catch (e2) {}
+          docError(ctx, 'I couldn\'t prepare that photo to send — try a JPG or PNG photo.');
+          resolve(false);
+        }
+      };
+      img.onerror = () => {
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        docError(ctx, 'I couldn\'t open "' + (file.name || 'that photo') + '" — the photo may be in a format this device can\'t read, or the file is damaged. A JPG or PNG will work.');
+        resolve(false);
+      };
+      img.src = url;
+    });
+  }
+  function clearImg(ctx) {
+    imgPending[ctx] = null;
+    paintAttachBar(ctx);
+  }
+  function photoFrameFor(ctx) { return imgFrame[ctx] || null; }
   let pdfjsPromise = null;
   function loadPdfjs() {
     if (window.pdfjsLib) { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; } catch (e) {} return Promise.resolve(window.pdfjsLib); }
@@ -1168,12 +1241,9 @@
     if (doc.truncated) head += '\n[Note to the assistant: this document is longer than one message can carry — ' + doc.totalChars + ' characters of text in all — so only the first part is included below. Say plainly that you received the first part only.]';
     return head + '\n' + doc.text.slice(0, DOC_TEXT_CAP) + '\n[End of attached document: ' + doc.name + ']';
   }
-  function renderDocChip(ctx) {
-    const bar = document.getElementById(ctx === 'meet' ? 'meetDocBar' : 'docBar');
-    if (!bar) return;
+  function appendDocChip(bar, ctx) {
     const doc = docPending[ctx];
-    bar.innerHTML = '';
-    if (!doc) { bar.hidden = true; return; }
+    if (!doc) return;
     const chip = document.createElement('span');
     chip.className = 'docChip';
     chip.textContent = '📄 ' + doc.name + (doc.truncated ? ' — long document: only the first part will be sent' : ' — ready to send with your next message');
@@ -1182,8 +1252,37 @@
     x.addEventListener('click', () => { clearDoc(ctx); });
     chip.appendChild(x);
     bar.appendChild(chip);
-    bar.hidden = false;
   }
+  function appendImgChip(bar, ctx) {
+    const imgP = imgPending[ctx];
+    if (!imgP) return;
+    const chip = document.createElement('span');
+    chip.className = 'docChip imgChip';
+    const th = document.createElement('img');
+    th.src = imgP.dataUrl; th.alt = '';
+    chip.appendChild(th);
+    const label = document.createElement('span');
+    label.textContent = '🖼 ' + imgP.name + ' — ready to send with your next message';
+    chip.appendChild(label);
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'docChipX'; x.textContent = '✕'; x.title = 'Remove photo'; x.setAttribute('aria-label', 'Remove photo');
+    x.addEventListener('click', () => { clearImg(ctx); });
+    chip.appendChild(x);
+    bar.appendChild(chip);
+  }
+  // One paint for the whole attach bar (build 2026.10.23-32: the
+  // bar now carries the document chip AND the photo chip; same
+  // -31 layer placement, above the bottom bar, never under it).
+  function paintAttachBar(ctx) {
+    const bar = document.getElementById(ctx === 'meet' ? 'meetDocBar' : 'docBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    appendDocChip(bar, ctx);
+    appendImgChip(bar, ctx);
+    bar.hidden = !(docPending[ctx] || imgPending[ctx]);
+  }
+  function renderDocChip(ctx) { paintAttachBar(ctx); }
+  function renderImgChip(ctx) { paintAttachBar(ctx); }
   function clearDoc(ctx) {
     docPending[ctx] = null;
     renderDocChip(ctx);
@@ -1201,7 +1300,8 @@
   }
   async function onDocFile(ctx, file) {
     if (!file) return;
-    if (file.size > DOC_MAX_BYTES) { docError(ctx, 'That file is too big for me to read here (25 MB limit) — try a smaller PDF.'); return; }
+    if (file.size > DOC_MAX_BYTES) { docError(ctx, isImageFile(file) ? 'That photo is too big to send from here (25 MB limit) — try a smaller photo.' : 'That file is too big for me to read here (25 MB limit) — try a smaller PDF.'); return; }
+    if (isImageFile(file)) { await onImageFile(ctx, file); return; }
     try {
       const out = await extractFileText(file);
       const clean = String(out.text || '').replace(/[ \t]+\n/g, '\n').trim();
@@ -1292,6 +1392,67 @@
       renderDocSent(doc);
     }
   }
+  function renderImgSent(imgP) {
+    // Meeting-side photo proof (build 2026.10.23-32): stands in
+    // the meeting's attach bar, next to any document proof from
+    // the same send — the meeting has no thread bubble to hold it.
+    const bar = document.getElementById('meetDocBar');
+    if (!bar) return;
+    if (!bar.querySelector('.docSent')) bar.innerHTML = '';
+    const chip = document.createElement('span');
+    chip.className = 'docChip docSent';
+    const th = document.createElement('img');
+    th.src = imgP.dataUrl; th.alt = '';
+    chip.appendChild(th);
+    const label = document.createElement('span');
+    label.textContent = ' 🖼 ' + imgP.name + ' attached — sent to the team with your message.';
+    chip.appendChild(label);
+    bar.appendChild(chip);
+    bar.hidden = false;
+  }
+  function consumeImgInto(inputEl, ctx) {
+    // Runs on EVERY send attempt for this surface (registered
+    // after the document consume): the frame slot always matches
+    // the current send — a photo she attached rides THIS message
+    // (and its one automatic retry), never a later one. The slot
+    // self-clears after 20 seconds as a backstop.
+    const imgP = imgPending[ctx];
+    imgFrame[ctx] = imgP ? imgP.dataUrl : null;
+    if (imgFrameTimer[ctx]) { clearTimeout(imgFrameTimer[ctx]); imgFrameTimer[ctx] = null; }
+    if (imgFrame[ctx]) {
+      const slot = ctx;
+      imgFrameTimer[ctx] = setTimeout(() => { imgFrame[slot] = null; imgFrameTimer[slot] = null; }, 20000);
+    }
+    if (!imgP) return;
+    // A photo on its own is a complete message, like a document.
+    if (inputEl && !inputEl.value.trim()) {
+      inputEl.value = ctx === 'chat' ? 'I attached a photo for you to look at.' : 'I attached a photo for the team to look at.';
+    }
+    imgPending[ctx] = null;
+    paintAttachBar(ctx);
+    if (ctx === 'chat') {
+      const recvName = (AGENTS[currentAgent] || {}).name || 'Lumi';
+      const nm = imgP.name, du = imgP.dataUrl;
+      // Deferred a beat, like the document proof: her own bubble
+      // is added synchronously by the send handler right after
+      // these listeners run — the thumbnail lands IN her bubble,
+      // and the standing note names the agent who has the photo.
+      setTimeout(() => {
+        try {
+          const bubbles = document.querySelectorAll('#chat .msg.user');
+          const last = bubbles[bubbles.length - 1];
+          if (last) {
+            const th = document.createElement('img');
+            th.className = 'sentPhoto'; th.src = du; th.alt = '';
+            last.insertBefore(th, last.firstChild);
+          }
+        } catch (e) {}
+        try { addMsg('🖼 ' + nm + ' attached — ' + recvName + ' has it.', 'ai'); } catch (e) {}
+      }, 80);
+    } else {
+      renderImgSent(imgP);
+    }
+  }
   function wireAttach(btnId, fileId, ctx) {
     const btn = document.getElementById(btnId), fi = document.getElementById(fileId);
     if (!btn || !fi) return;
@@ -1309,6 +1470,20 @@
   if (docMeetBtn) docMeetBtn.addEventListener('click', () => { consumeDocInto(document.getElementById('meetInput'), 'meet'); });
   const docMeetInput = document.getElementById('meetInput');
   if (docMeetInput) docMeetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') consumeDocInto(docMeetInput, 'meet'); });
+  // Photo consume rides the same sends, registered after the
+  // document consume so a message can carry both.
+  if (docFormEl) docFormEl.addEventListener('submit', () => { consumeImgInto(document.getElementById('input'), 'chat'); });
+  if (docMeetBtn) docMeetBtn.addEventListener('click', () => { consumeImgInto(document.getElementById('meetInput'), 'meet'); });
+  if (docMeetInput) docMeetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') consumeImgInto(docMeetInput, 'meet'); });
+  window.LumiPhoto = {
+    pending: function (ctx) { return imgPending[ctx || 'chat']; },
+    frameFor: photoFrameFor,
+    isImage: isImageFile,
+    handle: onImageFile,
+    downscale: downscaleToDataUrl,
+    clear: clearImg,
+    maxEdge: IMG_MAX_EDGE
+  };
   window.LumiDocs = {
     cap: DOC_TEXT_CAP,
     pending: function (ctx) { return docPending[ctx || 'chat']; },
@@ -1897,7 +2072,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
+        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
       });
       return res.json();
     }
@@ -3265,7 +3440,7 @@
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {}))
+          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('meet')) ? { frame: LumiPhoto.frameFor('meet') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
         });
         return res.json();
       }
