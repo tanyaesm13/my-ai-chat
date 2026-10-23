@@ -641,7 +641,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-33</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-34</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -657,7 +657,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-33';
+  var LUMI_BUILD_STAMP = '2026.10.23-34';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -976,6 +976,176 @@
   // roster data and teamRosterLine() stay: the line still rides
   // as context on every chat request, so whichever agent she
   // talks to still knows the whole team.
+  // ================================================================
+  // TRANSFER INTENT + HIDDEN TEAM NOTE (build 2026.10.23-34,
+  // owner re-report Oct 23, 2026 ~1:36 PM CDT; build list
+  // Addendums 53 + 54): on a call, T asked Lumi to hand her over
+  // to a newer agent; Lumi answered that she does not know
+  // Cielo/Astra/Alba/Vega and can't transfer — her live Worker
+  // persona still names only Luz/Sol/Stella, and the brain-side
+  // roster block rides the parked Worker deploy. Two app-side
+  // mitigations ship here:
+  // (1) TRANSFER INTENT: when her words ask to be handed to
+  //     another agent — "transfer me to Alba", "switch to Vega",
+  //     "let me talk to Stella", "get me Alba" — the APP performs
+  //     the hand-off itself: on a call via the build -29 transfer
+  //     (window.LumiCall.transfer); in a one-on-one chat the chat
+  //     switches to that agent with a visible note, and words
+  //     beyond the request ride on as her first message to her.
+  //     An untargeted strong request on a call ("transfer me",
+  //     "transfer me to the doctor") opens the 🔀 picker instead
+  //     of guessing. In the meeting nothing is intercepted (its
+  //     own routing owns it), and an ambiguous or unknown target
+  //     in chat falls through as ordinary text, never a wrong
+  //     switch. Name resolution uses the same recognizer-spelling
+  //     variants as the -26/-29 cue tables; the variants are
+  //     restated here on purpose so typed chat works even where
+  //     SpeechRecognition (and with it the voice block) is absent.
+  // (2) HIDDEN TEAM NOTE: a short factual note — the full team of
+  //     8 with duties and voices (built from TEAM_ROSTER above),
+  //     the fact that call transfer IS built into the app, and the
+  //     traditions sentence (Addendum 54) — is appended to the
+  //     outgoing one-on-one chat payload (the `message` field and
+  //     the sent copy of the last history entry), the same channel
+  //     the -30 document marker proved the live Worker reads. It
+  //     is NEVER rendered in her thread and NEVER written into
+  //     the history the app stores: her bubbles and her saved
+  //     history stay exactly her own words. The meeting is
+  //     unchanged — it already sends the `team` field.
+  // ================================================================
+  const XFER_NAME_VARIANTS = {
+    lumi: ['lumi', 'loomy', 'loomie'],
+    izzy: ['luz', 'luiz', 'luce', 'loose'],
+    bea: ['sol', 'soul', 'sal'],
+    quinn: ['stella', 'stela', 'stellar'],
+    cielo: ['cielo', 'cello', 'sielo'],
+    astra: ['astra', 'astro'],
+    alba: ['alba', 'alva'],
+    vega: ['vega', 'vegas', 'viga', 'bega']
+  };
+  function xferNormText(s) {
+    return String(s || '').toLowerCase().replace(/[\u2019\u2018]/g, "'").replace(/^\s*["\u201c\u201d\s]+/, '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  // Resolve an agent when the text IS her name or LEADS with it
+  // (optionally after hey/ok/okay), whole token only — the -26
+  // cue discipline, so "sal" never fires on "salad".
+  function xferNameFrom(text) {
+    let t = xferNormText(text);
+    if (!t) return null;
+    if (t.indexOf('hey ') === 0) t = t.slice(4);
+    else if (t.indexOf('okay ') === 0) t = t.slice(5);
+    else if (t.indexOf('ok ') === 0) t = t.slice(3);
+    for (const id of Object.keys(XFER_NAME_VARIANTS)) {
+      for (const v of XFER_NAME_VARIANTS[id]) {
+        if (t === v) return id;
+        if (t.indexOf(v) === 0 && !/[a-z]/.test(t.charAt(v.length))) return id;
+      }
+    }
+    return null;
+  }
+  // Hand-off leads. STRONG leads unmistakably ask for a hand-off;
+  // WEAK leads act only when an agent actually resolves.
+  const XFER_STRONG_LEADS = ['transfer me over to', 'transfer this call to', 'transfer the call to', 'transfer me to', 'transfer to', 'hand me over to', 'hand me to', 'pass me over to', 'pass me to', 'switch me over to', 'switch me to', 'switch over to', 'switch to', 'put me through to', 'connect me to'];
+  const XFER_WEAK_LEADS = ['let me talk to', 'let me speak to', 'let me talk with', 'let me speak with', 'i want to talk to', 'i want to speak to', 'i wanna talk to', 'bring in', 'get me', 'get'];
+  const XFER_BARE_WORDS = ['transfer me', 'transfer', 'switch me', 'hand me over', 'pass me', 'connect me', 'put me through'];
+  const XFER_FILLER = ['', 'please', 'now', 'please now', 'for me', 'thanks', 'thank you'];
+  // { id, rest } — a resolved hand-off ("rest" = the words after
+  // the request, in her original casing) · { bare: true } — a
+  // strong request with no resolvable agent · null — ordinary
+  // text, never intercepted.
+  function transferIntentFor(text) {
+    const rawToks = String(text || '').trim().split(/\s+/).filter(Boolean);
+    let t = xferNormText(text);
+    if (!t) return null;
+    let leadSkip = 0;
+    if (t.indexOf('hey ') === 0) { t = t.slice(4); leadSkip = 1; }
+    else if (t.indexOf('okay ') === 0) { t = t.slice(5); leadSkip = 1; }
+    else if (t.indexOf('ok ') === 0) { t = t.slice(3); leadSkip = 1; }
+    const leads = XFER_STRONG_LEADS.map((l) => [l, true]).concat(XFER_WEAK_LEADS.map((l) => [l, false]));
+    for (const pair of leads) {
+      const lead = pair[0], strong = pair[1];
+      if (t === lead) { if (strong) return { bare: true }; continue; }
+      if (t.indexOf(lead) === 0 && !/[a-z]/.test(t.charAt(lead.length))) {
+        const after = t.slice(lead.length).replace(/^[\s,!.?]+/, '');
+        if (!after) { if (strong) return { bare: true }; continue; }
+        const id = xferNameFrom(after);
+        if (id) {
+          let p = leadSkip + lead.split(' ').length;
+          if (rawToks[p] && ['hey', 'ok', 'okay'].indexOf(xferNormText(rawToks[p]).replace(/[^a-z]/g, '')) !== -1) p++;
+          p++; // the name token itself
+          let rest = rawToks.slice(p).join(' ').replace(/^[\s,!.?\u2014-]+/, '').trim();
+          if (rest.indexOf('and ') === 0) rest = rest.slice(4).trim();
+          if (XFER_FILLER.indexOf(xferNormText(rest).replace(/[.!?]+$/, '')) !== -1) rest = '';
+          return { id: id, rest: rest };
+        }
+        // Strong lead + a short somebody-phrase that is not an
+        // agent ("the doctor", "my sister"): a picker case on a
+        // call, never a guess. A topic phrase instead ("dark
+        // mode") is ordinary text everywhere.
+        if (strong && /^(the|a|an|my)\s/.test(after) && after.split(' ').length <= 3) return { bare: true };
+      }
+    }
+    if (XFER_BARE_WORDS.indexOf(t.replace(/[.!?]+$/, '')) !== -1) return { bare: true };
+    return null;
+  }
+  const TEAM_NOTE_TEXT = '[Private app context — not written by T, and not to be quoted back to her: ' +
+    'Your team on this app has eight members: ' +
+    Object.keys(TEAM_ROSTER).map((id) => { const r = TEAM_ROSTER[id]; return r.name + ' (' + r.duty + '; voice: ' + r.voice + ')'; }).join('; ') +
+    '. Call transfer is built into this app: on a one-on-one video call the 🔀 button hands the call to any teammate, and when T asks in words to be transferred or switched to a teammate, the app performs the hand-off itself. ' +
+    'You are also well versed in United States and Mexican holiday traditions, religious traditions, and cultural traditions, and can speak to them naturally and respectfully.]';
+  window.LumiTeamNote = { text: TEAM_NOTE_TEXT };
+  window.LumiXferIntent = { intent: transferIntentFor };
+  let xferResending = false;
+  async function performChatSwitch(hit) {
+    const targetId = hit.id;
+    try { await applyAgent(targetId, false); } catch (e) {}
+    try { addMsg('🔀 You are now talking to ' + AGENTS[targetId].name + '.', 'ai'); } catch (e) {}
+    const rest = (hit.rest || '').trim();
+    const attachPending = !!((window.LumiDocs && LumiDocs.pending && LumiDocs.pending('chat')) ||
+                             (window.LumiPhoto && LumiPhoto.pending && LumiPhoto.pending('chat')));
+    input.value = rest;
+    if (!rest && !attachPending) return;
+    // Words (or, with only an attachment pending, an empty box —
+    // the consume listeners fill their own default line) go
+    // through the normal send path for the NEW agent: a pending
+    // document or photo rides along, its confirmation names the
+    // new agent, and the words land as her first message to her.
+    xferResending = true;
+    try {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+    } finally { xferResending = false; }
+  }
+  // Typed + dictated one-on-one interception. Registered here —
+  // before the document/photo consume listeners and the app's own
+  // send handler — so a hand-off request stops the submit and is
+  // performed above; a pending attachment stays pending and rides
+  // the re-submit to the new agent. Dictated one-on-one chat
+  // rides this same form submit. The meeting is never touched.
+  form.addEventListener('submit', (e) => {
+    if (xferResending) return;
+    if (window.meetMode) return;
+    const raw = input.value || '';
+    if (!raw.trim()) return;
+    const hit = transferIntentFor(raw);
+    if (!hit) return;
+    if (hit.bare) {
+      if (window.callMode) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        const b = document.getElementById('callTransferBtn');
+        if (b) { try { b.click(); } catch (err) {} }
+      }
+      return;
+    }
+    if (!hit.id || hit.id === currentAgent) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (window.callMode) {
+      input.value = '';
+      if (window.LumiCall && LumiCall.transfer) { try { LumiCall.transfer(hit.id); } catch (err) {} }
+      return;
+    }
+    performChatSwitch(hit);
+  });
   // ================================================================
   // WELCOME BUBBLE — ONCE A DAY (build 2026.10.23-29, owner order
   // Oct 23 ~10:39 AM CDT, Addendum 39): "I did like the little
@@ -2071,10 +2241,24 @@
       return;
     }
     async function postOnce() {
+      // HIDDEN TEAM NOTE (build 2026.10.23-34): the note rides
+      // the SENT copies only — the `message` field and a copied
+      // messages array whose last user entry carries it. The
+      // stored `history` and her rendered bubble keep her exact
+      // words; the note is never displayed and never saved.
+      const teamNote = (window.LumiTeamNote && LumiTeamNote.text) || '';
+      let outText = text, outMsgs = history;
+      if (teamNote) {
+        outText = text + '\n' + teamNote;
+        outMsgs = history.slice();
+        for (let i = outMsgs.length - 1; i >= 0; i--) {
+          if (outMsgs[i] && outMsgs[i].role === 'user') { outMsgs[i] = { role: 'user', content: outText }; break; }
+        }
+      }
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ message: text, messages: history, agent: currentAgent, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
+        body: JSON.stringify(Object.assign({ message: outText, messages: outMsgs, agent: currentAgent, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
       });
       return res.json();
     }
@@ -2435,6 +2619,15 @@
       if (window.callMode) {
         const xferId = transferCueFor(transcript);
         if (xferId && xferId !== currentAgent) { transferCall(xferId); return; }
+        // WIDER TRANSFER NET (build 2026.10.23-34): the -29 cue
+        // hears only its fixed "transfer me to…" leads; the
+        // intent layer also hears "switch to Alba", "let me talk
+        // to Vega", "bring in Stella" — and an untargeted strong
+        // request ("transfer me", "transfer me to the doctor")
+        // opens the 🔀 picker instead of going out as chat text.
+        const xi = transferIntentFor(transcript);
+        if (xi && xi.id && xi.id !== currentAgent) { if (transferCall(xi.id)) return; }
+        if (xi && xi.bare) { const tb = document.getElementById('callTransferBtn'); if (tb) { try { tb.click(); } catch (err) {} } return; }
       }
       // GOODBYE CUE (build 2026.10.23-26): she said goodbye -- the
       // conversation concludes here, in every mode, instead of the
