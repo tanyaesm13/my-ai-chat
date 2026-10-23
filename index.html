@@ -580,11 +580,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-25</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-26</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-25) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.23-26) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -596,7 +596,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-25';
+  var LUMI_BUILD_STAMP = '2026.10.23-26';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1643,21 +1643,49 @@
       const transcript = e.results[0][0].transcript;
       dictGotResult = true;
       emptyDictStreak = 0;
+      // GOODBYE CUE (build 2026.10.23-26): she said goodbye -- the
+      // conversation concludes here, in every mode, instead of the
+      // goodbye being sent on as ordinary chat text.
+      const bye = goodbyeCue(transcript);
+      if (bye) { concludeConversation(bye.nameId); return; }
       if (window.meetMode) {
+        // NAME CUE IN A MEETING (build 2026.10.23-26, owner bug
+        // report Oct 23, 2026: "I say Lumi and she doesn't pick it
+        // up"): the aim follows the NAME she leads with -- bare or
+        // "hey <name>" -- not only the tap-selected agent. Before
+        // this, meeting routing never looked at the words at all,
+        // so a bare name was just text for whoever was aimed.
+        const cueIdM = cueAgentFor(transcript);
+        if (cueIdM && window.meetSelectAgent) { try { window.meetSelectAgent(cueIdM); } catch (err) {} }
         document.getElementById('meetInput').value = transcript;
         convoSentAt = Date.now();
         if (window.meetSendFromInput) window.meetSendFromInput();
         return;
       }
       const input = document.getElementById('input');
-      input.value = transcript;
-      convoSentAt = Date.now();
-      // Hands-free chat (build 2026.10.22-21, owner ask): a finished
-      // dictation in plain chat SENDS, exactly like the meeting and
-      // the call already did — no extra tap on Send. (Call mode
-      // rides the same submit.)
-      if (form.requestSubmit) form.requestSubmit();
-      else form.dispatchEvent(new Event('submit', { cancelable: true }));
+      const sendChat = () => {
+        input.value = transcript;
+        convoSentAt = Date.now();
+        // Hands-free chat (build 2026.10.22-21, owner ask): a finished
+        // dictation in plain chat SENDS, exactly like the meeting and
+        // the call already did — no extra tap on Send. (Call mode
+        // rides the same submit.)
+        if (form.requestSubmit) form.requestSubmit();
+        else form.dispatchEvent(new Event('submit', { cancelable: true }));
+      };
+      // NAME CUE ONE-ON-ONE / ON A CALL (build 2026.10.23-26): leading
+      // with another agent's name hands the conversation to HER --
+      // the switch lands before the send, so she is the one who
+      // answers this utterance, in her own voice and video.
+      const cueId = cueAgentFor(transcript);
+      if (cueId && cueId !== currentAgent && typeof applyAgent === 'function') {
+        try {
+          const p = applyAgent(cueId, false);
+          if (p && p.then) p.then(sendChat, sendChat); else sendChat();
+        } catch (err) { sendChat(); }
+      } else {
+        sendChat();
+      }
     });
     const stopListening = () => {
       listening = false;
@@ -1690,15 +1718,117 @@
       cielo: ['hey cielo', 'hey cello', 'hey sielo'],
       astra: ['hey astra', 'hey astro'],
       alba: ['hey alba', 'hey alva'],
-      vega: ['hey vega'],
+      vega: ['hey vega', 'hey viga', 'hey bega', 'hey vegas'],
     };
     function wakeAgentFor(phrase) {
       const t = phrase.toLowerCase();
       for (const id of Object.keys(WAKE_PHRASES)) {
         if (WAKE_PHRASES[id].some(p => t.indexOf(p) !== -1)) return id;
       }
+      // NAME ALONE IS A CUE TOO (build 2026.10.23-26, owner order
+      // Oct 23, 2026): "Alba" by itself, or an utterance that LEADS
+      // with her name, wakes that agent -- not only "hey <name>".
+      return cueAgentFor(phrase);
+    }
+    // Bare-name cue table: the display name plus the spellings the
+    // recognizer commonly hears for it (same pattern as WAKE_PHRASES).
+    const NAME_CUES = {
+      lumi: ['lumi', 'loomy', 'loomie'],
+      izzy: ['luz', 'luiz', 'luce', 'loose'],
+      bea: ['sol', 'soul', 'sal'],
+      quinn: ['stella', 'stela', 'stellar'],
+      cielo: ['cielo', 'cello', 'sielo'],
+      astra: ['astra', 'astro'],
+      alba: ['alba', 'alva'],
+      vega: ['vega', 'vegas', 'viga', 'bega'],
+    };
+    function normCueText(s) {
+      return String(s || '').toLowerCase().replace(/[\u2019\u2018]/g, "'").replace(/^\s*[\"\u201c\u201d\s]+/, '').trim();
+    }
+    // An agent is cued when the utterance IS her name, LEADS with her
+    // name (optionally after "hey"/"ok"/"okay"), and the name is a
+    // whole token -- "sal" must not fire on "salad", nor a name
+    // mentioned mid-sentence count as an attention switch.
+    function cueAgentFor(text) {
+      let t = normCueText(text);
+      if (!t) return null;
+      if (t.indexOf('hey ') === 0) t = t.slice(4);
+      else if (t.indexOf('okay ') === 0) t = t.slice(5);
+      else if (t.indexOf('ok ') === 0) t = t.slice(3);
+      for (const id of Object.keys(NAME_CUES)) {
+        for (const v of NAME_CUES[id]) {
+          if (t === v) return id;
+          if (t.indexOf(v) === 0 && !/[a-z]/.test(t.charAt(v.length))) return id;
+        }
+      }
       return null;
     }
+    // GOODBYE = CONCLUSION CUE (build 2026.10.23-26, owner order
+    // Oct 23, 2026): "goodbye" -- whole utterance or leading it, in
+    // any listening mode -- closes the conversation: the agent she
+    // named (or the current one) gives ONE warm short close with no
+    // new question, conversation mode ends, and a meeting / call
+    // view actually closes after the close has played. "bye" buried
+    // mid-sentence does NOT conclude.
+    const GOODBYE_PHRASES = ['goodbye', 'good bye', 'bye bye', 'bye', 'good night', 'goodnight', "that's all", 'that is all', "we're done", 'we are done', 'close the meeting', 'end the meeting', 'close this meeting', 'see you later'];
+    function goodbyeLead(t) {
+      for (const g of GOODBYE_PHRASES) {
+        if (t === g) return g;
+        if (t.indexOf(g) === 0 && !/[a-z]/.test(t.charAt(g.length))) return g;
+      }
+      return null;
+    }
+    function goodbyeCue(text) {
+      const t = normCueText(text);
+      if (!t) return null;
+      const g = goodbyeLead(t);
+      if (g) {
+        const rest = t.slice(g.length).replace(/^[\s,!.]+/, '');
+        return { nameId: rest ? cueAgentFor(rest) : null };
+      }
+      // "<Name>, goodbye" shape: her name leads, goodbye follows.
+      const lead = cueAgentFor(t);
+      if (lead) {
+        let rest = t;
+        if (rest.indexOf('hey ') === 0) rest = rest.slice(4);
+        const leadVars = NAME_CUES[lead].slice().sort((a, b) => b.length - a.length);
+        for (const v of leadVars) {
+          if (rest.indexOf(v) === 0 && !/[a-z]/.test(rest.charAt(v.length))) { rest = rest.slice(v.length).replace(/^[\s,!.]+/, ''); break; }
+        }
+        if (goodbyeLead(rest)) return { nameId: lead };
+      }
+      return null;
+    }
+    function concludeConversation(nameId) {
+      let who = nameId || currentAgent;
+      if (window.meetMode && nameId && window.meetRoster && !window.meetRoster.has(nameId)) who = currentAgent;
+      const line = 'Goodbye for now, T \u2014 talk soon. \uD83D\uDC9B';
+      convoOn = false;
+      clearTimeout(convoTimer);
+      try { recognition.stop(); } catch (e) {}
+      try { stopWake(); } catch (e) {}
+      if (window.meetMode) {
+        if (nameId && window.meetSelectAgent) { try { window.meetSelectAgent(who); } catch (e) {} }
+        try { speak(line, who); } catch (e) {}
+        // Close AFTER the close has had its moment -- closeMeet
+        // cancels speech, so an instant close would swallow it.
+        setTimeout(() => { const b = document.getElementById('meetCloseBtn'); if (b) b.click(); }, 3400);
+      } else if (window.callMode) {
+        try { speak(line, who); } catch (e) {}
+        setTimeout(() => { try { closeCall(); } catch (e) {} }, 3400);
+      } else {
+        try { addMsg(line, 'ai'); } catch (e) {}
+        try { speak(line, who); } catch (e) {}
+      }
+      // Wake stays armed (her preference persists): she re-enters by
+      // calling any agent's name, exactly like before this chat.
+    }
+    // Test/diagnostic hook, same pattern as LumiWake / LumiConvo.
+    window.LumiCues = {
+      cue: cueAgentFor,
+      goodbye: function (t) { const g = goodbyeCue(t); return g ? (g.nameId || true) : null; },
+      names: NAME_CUES,
+    };
     function bindWake(rec) {
       rec.addEventListener('start', () => {
         if (rec !== wakeRec) return;
@@ -1711,6 +1841,13 @@
         wakeAbortStreak = 0; // a live result proves the session healthy
         for (let i = e.resultIndex; i < e.results.length; i++) {
           const heard = e.results[i][0].transcript;
+          // GOODBYE heard by the wake ears while a meeting / call is
+          // open concludes it too (build 2026.10.23-26) -- she should
+          // not have to be mid-dictation for goodbye to land.
+          if (window.meetMode || window.callMode) {
+            const byeW = goodbyeCue(heard);
+            if (byeW) { concludeConversation(byeW.nameId); break; }
+          }
           const id = wakeAgentFor(heard);
           if (id) {
             wakeHold = true;
