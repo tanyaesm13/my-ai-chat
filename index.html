@@ -600,11 +600,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-27</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-28</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.23-27) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.23-28) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -616,7 +616,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-27';
+  var LUMI_BUILD_STAMP = '2026.10.23-28';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -753,6 +753,150 @@
     const said = (hist || []).filter(m => m && m.role === 'assistant' && lines.indexOf(m.content) !== -1).length;
     return lines[Math.min(said, lines.length - 1)];
   }
+  // ================================================================
+  // VARIED GREETINGS (build 2026.10.23-28, owner order Oct 23 ~10:07
+  // AM CDT): "every time Lumi has a greeting she changes up her
+  // greeting every single time — all eight of them change their daily
+  // greetings and every single day." Each agent owns a POOL of chat
+  // openers and a POOL of one-on-one call intros. Every line is a
+  // phrasing variant built ONLY from her existing AGENTS greeting +
+  // blurb — same name, same established duties, personalities FROZEN;
+  // the rotation is the only new thing. A per-agent cursor is seeded
+  // by the calendar day and advanced on every pick (persisted in
+  // localStorage), so (a) the same agent NEVER repeats the identical
+  // line twice in a row, (b) the day's first greeting shifts daily,
+  // (c) pools are keyed by agent id — another agent's line, Lumi's
+  // included, can never surface for the wrong agent. Call intros use
+  // the one-on-one shape the owner asked for: her own name, one line
+  // on what she does for T, then ONE role-relevant check-in question.
+  // Alba's first intro is the owner's own example, verbatim.
+  // ================================================================
+  const GREETING_POOLS = {
+    lumi: [
+      "Hi! I'm Lumi. What would you like to talk about?",
+      "Hi, T — Lumi here, your lead assistant. Research, writing, planning — where do we start?",
+      "Hello! I'm Lumi. Bring me anything — a question, a plan, a project — and we'll work it out together.",
+      "Hey, T! Lumi at your side. What's on your mind today?"
+    ],
+    izzy: [
+      "Hi, I'm Luz 📧 — Lumi's email agent. Inbox zero is my love language. What are we writing today?",
+      "Hey, T! Luz here 📧 — drafts, replies, inbox triage. What are we working on?",
+      "Hi! I'm Luz, your email agent. Want to draft something, answer someone, or clear the inbox?",
+      "Luz reporting in 📧 — give me the message and I'll help you write it beautifully."
+    ],
+    bea: [
+      "Hi, I'm Sol 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan — and remember to make a little time for yourself, too.",
+      "Hi, T! Sol here 📅 — appointments, reminders, and meeting notes. What needs a plan?",
+      "Hello! I'm Sol, your booking agent. Tell me the day you're dreaming of and I'll line it up.",
+      "Sol at your service 📅 — let's turn the chaos into a calm schedule."
+    ],
+    quinn: [
+      "Hey, I'm Stella 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up.",
+      "Hey hey, T! Stella here 📣 — captions, hooks and hashtags at the ready. What are we posting?",
+      "Hi! I'm Stella, your social media agent. Got something to share with the world today?",
+      "Stella reporting for duty 📣 — let's make something they'll love."
+    ],
+    cielo: [
+      "¡Hola! I'm Cielo 🌦️ — your meteorologist. I keep watch over the skies for you, especially here in Laredo. Ask me about the weather anytime.",
+      "¡Hola, T! Cielo here 🌦️ — watching the skies over Laredo and beyond. Want today's forecast?",
+      "Hi! I'm Cielo, your meteorologist. Clear or stormy, I'll keep you posted — ask me anything about the weather.",
+      "Cielo checking in 🌦️ — the sky report is ready whenever you are, T."
+    ],
+    astra: [
+      "Hi, I'm Astra ⚖️ — your attorney and political researcher. Cases, dockets, elections, fact-checks — bring me the question and I'll find the truth of it.",
+      "Hello, T. Astra here ⚖️ — cases, dockets, elections, fact-checks. What are we looking into?",
+      "Hi! I'm Astra, your attorney and political researcher. Bring me the question and we'll find the truth of it.",
+      "Astra at your service ⚖️ — research first, answers you can trust. Where do we dig in?"
+    ],
+    alba: [
+      "Hi, I'm Alba 🌅 — I keep your mornings gentle and your wellness on track. Sleep, walks, energy, you. How did you rest?",
+      "Good to see you, T 🌅 Alba here — sleep, walks, energy, you. How are you feeling today?",
+      "Hi! I'm Alba. I keep your mornings gentle and your wellness on track. Did you rest well?",
+      "Alba checking in 🌅 — let's start soft. How's your energy this morning?"
+    ],
+    vega: [
+      "Hi, I'm Vega ⭐ — your study coach. LSAT reps, study plans, steady progress toward that law school dream. Ready when you are.",
+      "Hi, T! Vega here ⭐ — your study coach. Ready for today's reps?",
+      "Hello! I'm Vega. LSAT reps, study plans, steady progress — one session at a time. When do we start?",
+      "Vega checking in ⭐ — your law school dream, one study session closer. What are we working on?"
+    ]
+  };
+  const CALL_INTROS = {
+    lumi: [
+      "Hi, T — I'm Lumi, your lead assistant. What's on your mind today?",
+      "Lumi here, T — I keep your team, your plans, and your projects moving. What shall we work on first?",
+      "Hello, T! I'm Lumi, your personal assistant. How can I make today easier?"
+    ],
+    izzy: [
+      "Hi, T — I'm Luz, your email agent. Any messages you'd like to write or answer today?",
+      "Luz here, T 📧 — I draft, reply, and keep your inbox in order. What's first in the inbox today?",
+      "Hello, T! I'm Luz — emails and inbox, that's my desk. Anything waiting on a reply?"
+    ],
+    bea: [
+      "Hi, T — I'm Sol, your calendar and booking agent. What's on your schedule today?",
+      "Sol here, T 📅 — appointments, reminders, and your meeting notes. Anything you need me to line up?",
+      "Hello, T! I'm Sol — I turn plans into a calm schedule. What are we planning today?"
+    ],
+    quinn: [
+      "Hey, T — I'm Stella, your social media agent. What are we sharing with the world today?",
+      "Stella here, T 📣 — your social media agent: captions, posts, and ideas. What's the next thing you want to put out there?",
+      "Hi, T! I'm Stella — I look after your socials. Any post you'd like to work on?"
+    ],
+    cielo: [
+      "¡Hola, T! I'm Cielo, your meteorologist — I watch the skies over Laredo for you. Headed out today?",
+      "Hi, T — Cielo here 🌦️ Your weather watch, day and night. Want to know what the sky's doing today?",
+      "Hello, T! I'm Cielo — forecasts and storm watch are my post. Any plans the weather could touch today?"
+    ],
+    astra: [
+      "Hi, T — I'm Astra, your attorney and political researcher. What are we looking into today?",
+      "Astra here, T ⚖️ — cases, dockets, and fact-checks. Is there a question you want answered properly today?",
+      "Hello, T. I'm Astra — I research the law and the politics so you don't have to guess. What's on the docket?"
+    ],
+    alba: [
+      "Hi, I'm Alba 🌅 — I keep your mornings gentle and your wellness on track. Sleep, walks, energy, you. How did you rest?",
+      "Hello, T — I'm Alba, your wellness keeper. How's your energy this morning?",
+      "Hi, T! Alba here 🌅 — sleep, walks, and gentle starts. Did you get some good rest?"
+    ],
+    vega: [
+      "Hi, T — I'm Vega, your LSAT and study coach. Ready to put in a session today?",
+      "Vega here, T ⭐ — study plans and steady progress toward law school. What did you study last?",
+      "Hello, T! I'm Vega — your coach for the LSAT and your coursework. Where should we pick up?"
+    ]
+  };
+  const GREET_STATE_KEY = 'lumi_greet_rot_v1';
+  const greetMemo = { chat: {}, call: {} };
+  function greetRotate(id, pool, kind) {
+    if (!pool || !pool.length) return (AGENTS[id] && AGENTS[id].greeting) || '';
+    if (pool.length === 1) { greetMemo[kind][id] = pool[0]; return pool[0]; }
+    let all = {};
+    try { all = JSON.parse(localStorage.getItem(GREET_STATE_KEY) || '{}') || {}; } catch (e) { all = {}; }
+    const ck = kind + ':' + id;
+    const rec = all[ck] || {};
+    const now = new Date();
+    const dayKey = now.toDateString();
+    const daySeed = now.getFullYear() * 372 + (now.getMonth() + 1) * 31 + now.getDate();
+    // A new day re-seeds the cursor from the date, so the first
+    // greeting of the day shifts daily; within a day the cursor
+    // simply advances — consecutive picks can never collide, and
+    // the rec.last guard covers the day-boundary reset too.
+    let idx = (rec.day === dayKey && typeof rec.idx === 'number') ? rec.idx : (daySeed % pool.length);
+    let next = (idx + 1) % pool.length;
+    if (rec.last && pool[next] === rec.last) next = (next + 1) % pool.length;
+    all[ck] = { day: dayKey, idx: next, last: pool[next] };
+    try { localStorage.setItem(GREET_STATE_KEY, JSON.stringify(all)); } catch (e) {}
+    greetMemo[kind][id] = pool[next];
+    return pool[next];
+  }
+  function pickGreeting(id) { return greetRotate(id, GREETING_POOLS[id], 'chat'); }
+  function pickCallIntro(id) { return greetRotate(id, CALL_INTROS[id], 'call'); }
+  window.LumiGreet = {
+    pick: pickGreeting,
+    callIntro: pickCallIntro,
+    currentCall: function (id) { return greetMemo.call[id] || null; },
+    lastChat: function (id) { return greetMemo.chat[id] || null; },
+    pools: GREETING_POOLS,
+    intros: CALL_INTROS
+  };
   // Each agent keeps their OWN conversation history, so Quinn never sees
   // Lumi's replies and stays in character.
   function historyKey(id) { return 'lumi_history_' + (id || currentAgent); }
@@ -766,7 +910,7 @@
   }
   function renderHistory() {
     chat.innerHTML = '';
-    if (!history.length) { addMsg(AGENTS[currentAgent].greeting, 'ai'); return; }
+    if (!history.length) { addMsg(pickGreeting(currentAgent), 'ai'); return; }
     history.forEach(m => addMsg(m.content, m.role === 'user' ? 'user' : 'ai'));
   }
   let history = [];
@@ -861,7 +1005,7 @@
     document.querySelectorAll('.agentCard').forEach((c) => {
       c.classList.toggle('active', c.dataset.agent === id);
     });
-    if (announce) addMsg(a.greeting, 'ai');
+    if (announce) addMsg(pickGreeting(id), 'ai');
     // Quietly refresh from shared memory so this device sees conversations
     // from her other devices too.
     if (WORKER_URL.indexOf('PASTE_YOUR') === -1) {
@@ -2107,12 +2251,17 @@
   function syncCallSpeaker() { callSpeakerBtn.textContent = voiceToggle.textContent; }
   function openCall() {
     window.callMode = true;
-    // CALL GREETING (build 2026.10.22-24): the caption is ALWAYS the
-    // current agent's own greeting — never latestAiText(), which
-    // reads the last AI bubble in the main chat and could be Lumi's
-    // "Hi! I'm Lumi…" while Cielo / Astra / Alba / Vega is the one
-    // actually on the call. The spoken intro already did this.
-    callCaption.textContent = AGENTS[currentAgent].greeting;
+    // CALL GREETING (build 2026.10.22-24; VARIED INTRO build
+    // 2026.10.23-28): the caption is ALWAYS the current agent's own
+    // call intro — never latestAiText(), which reads the last AI
+    // bubble in the main chat and could be Lumi's line while Cielo /
+    // Astra / Alba / Vega is the one actually on the call. The intro
+    // is picked ONCE here (her name + her role for T + one check-in
+    // question, rotated so it changes every call) and that same
+    // string is captioned, spoken below, and memoized so the
+    // animation hooks caption the identical line.
+    const callIntroText = window.LumiGreet ? LumiGreet.callIntro(currentAgent) : AGENTS[currentAgent].greeting;
+    callCaption.textContent = callIntroText;
     syncCallSpeaker();
     // Show the agent's animated video if it has one, else the static avatar.
     const a = AGENTS[currentAgent];
@@ -2137,7 +2286,7 @@
     // Her introduction is SPOKEN on a one-on-one (build 2026.10.22-12):
     // opening a call greets her out loud, in this agent's own voice
     // (device voice for the gated four — never the cloud /tts).
-    try { speak(AGENTS[currentAgent].greeting, currentAgent); } catch (e) {}
+    try { speak(callIntroText, currentAgent); } catch (e) {}
     // One-on-one call = camera on (owner ask Oct 22): she sees herself in
     // the corner PiP and this assistant can see her. If she already had
     // the camera on elsewhere, it simply stays on.
@@ -2223,8 +2372,9 @@
       const a = AGENTS[id];
       if (!a) return;
       if (speechNow() === id) return;
-      meetCaption.innerHTML = '<b>' + a.emoji + ' ' + a.name + ':</b> ' + a.greeting.replace(/</g, '&lt;');
-      speakInMeeting(a.greeting, id, meetCaption.innerHTML);
+      const intro = pickGreeting(id);
+      meetCaption.innerHTML = '<b>' + a.emoji + ' ' + a.name + ':</b> ' + intro.replace(/</g, '&lt;');
+      speakInMeeting(intro, id, meetCaption.innerHTML);
     }
     window.meetTapRespond = meetTapRespond;
     Object.keys(AGENTS).forEach((id) => {
@@ -2300,7 +2450,7 @@
       // A joining agent introduces herself OUT LOUD (build
       // 2026.10.22-12) — unless someone is mid-sentence; never talk
       // over the room.
-      if (!leaving && !speechNow()) { try { speak(AGENTS[id].greeting, id); } catch (e) {} }
+      if (!leaving && !speechNow()) { try { speak(pickGreeting(id), id); } catch (e) {} }
     }
     agentIdsAll.forEach((id) => {
       const chip = document.createElement('button');
@@ -2593,7 +2743,7 @@
       // opening the meeting speaks the aimed agent's greeting in her
       // own voice — introductions are verbal here, not just captions.
       const host = AGENTS[meetAgent] ? meetAgent : (roomIds()[0] || 'lumi');
-      try { speak(AGENTS[host].greeting, host); } catch (e) {}
+      try { speak(pickGreeting(host), host); } catch (e) {}
     }
     function closeMeet() {
       meetOverlay.classList.remove('open');
@@ -2917,16 +3067,10 @@
                eyes: [ { x: 38.8, y: 47.9, w: 20, h: 17 }, { x: 62.2, y: 47.9, w: 20, h: 17 } ],
                mouth: { x: 50.8, y: 60.6, w: 15 } }
     };
-    var POP_LINES = {
-      lumi:  [ "Oh hey, I didn't see you there ✨", "Right here if you need me, T 💫", "Still orbiting your inbox… kidding. Mostly." ],
-      izzy:  [ "Oh hey, I didn't see you there 📧", "Inbox zero is a lifestyle ✉️", "Psst — your drafts miss you." ],
-      bea:   [ "Oh hey, I didn't see you there 📅", "You look like someone with a plan ✨", "A little time for you is part of the plan ✨" ],
-      quinn: [ "Oh hey, I didn't see you there 📣", "This is your sign to post the thing 👀", "Caption idea brewing… stand back." ],
-      cielo: [ "Oh hey, I didn't see you there 🌦️", "Watching the sky so you don't have to 👀", "Not a cloud gets past me, T." ],
-      astra: [ "Oh hey, I didn't see you there ⚖️", "Facts checked. Twice. ✓", "The truth has a good lawyer tonight." ],
-      alba:  [ "Oh hey, I didn't see you there 🌅", "Gentle morning energy, always ☕", "You rested. I can tell. 💛" ],
-      vega:  [ "Oh hey, I didn't see you there ⭐", "One more rep? I've got you. ✏️", "Steady star, steady progress." ]
-    };
+    // POP_LINES deleted (build 2026.10.23-28): the canned pop-up
+    // greeting lines ("Oh hey, I didn't see you there …") are gone
+    // for good — see the pop-in note below. No bubble text exists
+    // anywhere in the app anymore.
     function $(id) { return document.getElementById(id); }
     var reduced = false;
     try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
@@ -3183,31 +3327,23 @@
     }
 
     // ---------- playful pop-ins ----------
-    function showBubble(text) {
-      var b = $('popBubble');
-      if (!b || !text) return;
-      b.textContent = text;
-      b.classList.add('show');
-      later(function () { b.classList.remove('show'); }, 3400);
-    }
+    // POP-UP GREETING BUBBLES REMOVED (build 2026.10.23-28, owner
+    // order Oct 23 ~10:07 AM CDT): "there doesn't need to always be a
+    // little message that pops up." The old scheduler fired a canned
+    // bubble ("Oh hey, I didn't see you there …") every 55–95s on the
+    // home/chat view, and the same bubble path could fire around
+    // agent switches and calls. Gone: no scheduler, no bubble lines,
+    // no showBubble — the #popBubble element can never be shown
+    // again. A greeting now exists ONLY as the agent's real first
+    // conversational line (a chat message, or the spoken call intro
+    // — see LumiGreet above). popIn() survives as the SILENT hello —
+    // a hop + a happy expression on agent switch / call open — and
+    // its greet argument is ignored: it can never show text.
     function popIn(agentId, greet) {
       if (!motionOn) return;
       hop($('avatarWrap'), 16);
       setExpression('happy');
       later(function () { if (!speechActive()) setExpression('neutral'); }, 2000);
-      if (greet) {
-        var lines = POP_LINES[agentId] || POP_LINES.lumi;
-        showBubble(lines[Math.floor(Math.random() * lines.length)]);
-      }
-    }
-    function schedulePop() {
-      later(function () {
-        if (!motionOn) return;
-        var ae = document.activeElement;
-        var typing = ae && (ae.id === 'input' || ae.id === 'meetInput');
-        if (!document.hidden && !typing && !speechActive()) popIn(currentAgent, true);
-        if (motionOn) schedulePop();
-      }, rnd(55000, 95000));
     }
     function scheduleTileWiggle() {
       every(function () {
@@ -3261,7 +3397,7 @@
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
       try { every(stageTick, 3400); } catch (e) {}
-      try { schedulePop(); } catch (e) {}
+      // (build 2026.10.23-28: no schedulePop — pop-up greeting bubbles removed.)
       try { scheduleTileWiggle(); } catch (e) {}
     }
     function stopAll() {
@@ -3289,7 +3425,7 @@
       },
       clearAnalyser: function () { analyser = null; analyserData = null; analyserFreq = null; },
       setExpression: function (name) { try { setExpression(name); } catch (e) {} },
-      popIn: function (agentId) { try { popIn(agentId || currentAgent, true); } catch (e) {} },
+      popIn: function (agentId) { try { popIn(agentId || currentAgent, false); } catch (e) {} },
       rigSlideStage: function (stage, id, isVideo) { try { rigSlideStage(stage, id, isVideo); } catch (e) {} },
       livingStill: function (el, big) { try { return livingStill(el, big); } catch (e) {} },
       stopLiving: function (el) { try { stopLiving(el); } catch (e) {} },
@@ -3302,7 +3438,7 @@
         livingStill($('callAvatar'), true);
         hop(wrap, 10);
         var cap = $('callCaption');
-        if (cap && typeof AGENTS !== 'undefined' && AGENTS[id]) cap.textContent = AGENTS[id].greeting;
+        if (cap && typeof AGENTS !== 'undefined' && AGENTS[id]) cap.textContent = (window.LumiGreet && LumiGreet.currentCall(id)) || AGENTS[id].greeting;
       } catch (e) {} },
       blink: function () { try { blinkWrap($('avatarWrap')); } catch (e) {} try { blinkWrap($('callAvatarWrap')); } catch (e) {} }
     };
@@ -3346,7 +3482,7 @@
             try { livingStill($('callAvatar'), true); } catch (e) {}
             try { hop(wrap, 10); } catch (e) {}
             var cap = $('callCaption');
-            if (cap) cap.textContent = AGENTS[currentAgent].greeting;
+            if (cap) cap.textContent = (window.LumiGreet && LumiGreet.currentCall(currentAgent)) || AGENTS[currentAgent].greeting;
           } else {
             try { stopLiving($('callAvatar')); } catch (e) {}
           }
