@@ -116,7 +116,6 @@
     #callTransferBar.open { display: flex; }
     #callTransferBar .xferLabel { width: 100%; text-align: center; font-size: 14px; color: #9c89f4; }
     .xferChip { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
-    #teamRosterNote { max-width: 520px; margin: 10px auto 0; font-size: 13px; line-height: 1.5; color: #ccc; text-align: center; }
     /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
     #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #72edfa; color: #fff; border: 2px solid #9c89f4; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(114,237,250,0.45); cursor: pointer; }
@@ -575,7 +574,6 @@
         <div id="meetRosterLabel">👥 Who's in the meeting? Tap a name to add or remove her.</div>
         <div id="meetRosterChips"></div>
     </div>
-    <div id="teamRosterNote"></div>
     <div id="meetGrid"></div>
     <div id="meetSlide" hidden>
         <div id="meetCard">
@@ -639,7 +637,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-31</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-32</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -655,7 +653,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-31';
+  var LUMI_BUILD_STAMP = '2026.10.23-32';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -966,10 +964,14 @@
     }).join('; ') + '.';
   }
   window.LumiTeam = { roster: TEAM_ROSTER, line: teamRosterLine };
-  try {
-    const note = document.getElementById('teamRosterNote');
-    if (note) note.textContent = '🌟 ' + teamRosterLine();
-  } catch (e) {}
+  // (build 2026.10.23-32 noteout, owner order Oct 23, 2026): the
+  // roster line no longer DISPLAYS in the team meeting — the
+  // "Your team of eight" explanation already lives in Meet the
+  // Team (the team picker cards) and she ordered it out of the
+  // meeting, in both the All together and One by one views. The
+  // roster data and teamRosterLine() stay: the line still rides
+  // as context on every chat request, so whichever agent she
+  // talks to still knows the whole team.
   // ================================================================
   // WELCOME BUBBLE — ONCE A DAY (build 2026.10.23-29, owner order
   // Oct 23 ~10:39 AM CDT, Addendum 39): "I did like the little
