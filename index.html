@@ -123,7 +123,7 @@
     #camPipLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0,0,0,0.62); color: #fff; font-size: 11px; text-align: center; }
     #camBtn.on, #callCamBtn.on { background: #72edfa; color: #fff; }
     #meetStars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    /* === App-wide twinkling sky (build 2026.10.22-23): owner ask
+    /* === App-wide twinkling sky (build 2026.10.22-24): owner ask
        Oct 22, 2026 — "about seven twinkling stars" across the whole
        app, the soft MySpace-glitter sky she remembers, like a drizzle;
        plus soft shooting streaks from the meeting-stars family -- a
@@ -186,6 +186,12 @@
     /* === Living meeting faces + voice-truth badges (build 2026.10.22-12) === */
     #meetCardMedia .slideStage { position: relative; width: min(74vw, 330px); aspect-ratio: 1; margin: 0 auto; }
     #meetCardMedia .slideStage img, #meetCardMedia .slideStage video { width: 100%; height: 100%; margin: 0; }
+    /* === Animation parity (build 2026.10.22-24): the still-photo
+       agents' portraits are now in near-constant gentle motion
+       (the LumiAnim livingStill engine: sway + breathe + tilt);
+       will-change keeps that motion on the compositor so it stays
+       smooth on the owner's phone instead of repainting. === */
+    #lumiAvatar, #callAvatar, #meetCardMedia .slideStage img, .meetTile img.mtile { will-change: transform; }
     .meetNoVoice { display: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: 38px; z-index: 4; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #72edfa; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; pointer-events: none; }
     .meetNoVoice.show { display: block; }
     #meetCardNoVoice { display: none; margin: 8px auto 0; width: fit-content; max-width: 92%; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #72edfa; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
@@ -574,11 +580,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-23</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.22-24</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.22-23) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.22-24) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -590,7 +596,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.22-23';
+  var LUMI_BUILD_STAMP = '2026.10.22-24';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -665,7 +671,7 @@
       greeting: "Hi, I'm Luz 📧 — Lumi's email agent. Inbox zero is my love language. What are we writing today?",
       blurb: 'Email agent — drafts, replies, subject lines, inbox triage.' },
     bea: { name: 'Sol', emoji: '📅', avatar: 'bea-avatar.webp', video: 'bea-video.mp4',
-      greeting: "Hi, I'm Sol 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan. (And yes, you're taking lunch.)",
+      greeting: "Hi, I'm Sol 📅 — Lumi's booking and scheduling agent. Tell me what's chaos and I'll make it a plan — and remember to make a little time for yourself, too.",
       blurb: 'Booking agent — appointments, calendars, plans, reminders.' },
     quinn: { name: 'Stella', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
       greeting: "Hey, I'm Stella 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up.",
@@ -1925,7 +1931,12 @@
   function syncCallSpeaker() { callSpeakerBtn.textContent = voiceToggle.textContent; }
   function openCall() {
     window.callMode = true;
-    callCaption.textContent = latestAiText();
+    // CALL GREETING (build 2026.10.22-24): the caption is ALWAYS the
+    // current agent's own greeting — never latestAiText(), which
+    // reads the last AI bubble in the main chat and could be Lumi's
+    // "Hi! I'm Lumi…" while Cielo / Astra / Alba / Vega is the one
+    // actually on the call. The spoken intro already did this.
+    callCaption.textContent = AGENTS[currentAgent].greeting;
     syncCallSpeaker();
     // Show the agent's animated video if it has one, else the static avatar.
     const a = AGENTS[currentAgent];
@@ -1940,6 +1951,11 @@
       if (cv) { cv.pause(); cv.style.display = 'none'; cv.removeAttribute('src'); }
       if (ca) ca.style.display = 'block';
     }
+    // ANIMATION PARITY (build 2026.10.22-24): still-photo agents get
+    // their living treatment HERE, in the base call flow — the
+    // engine hook re-places her rig, runs her blink chain, starts
+    // her portrait's continuous sway and re-asserts her greeting.
+    try { if (window.LumiAnim && LumiAnim.callParity) LumiAnim.callParity(currentAgent, !!(a && a.video)); } catch (e) {}
     if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
     callOverlay.classList.add('open');
     // Her introduction is SPOKEN on a one-on-one (build 2026.10.22-12):
@@ -1953,6 +1969,7 @@
   }
   function closeCall() {
     callOverlay.classList.remove('open');
+    try { if (window.LumiAnim && LumiAnim.stopLiving) LumiAnim.stopLiving(document.getElementById('callAvatar')); } catch (e) {}
     if (window.LumiCam) LumiCam.stopIfOwner('call');
     window.callMode = false;
     const cv = document.getElementById('callVideo');
@@ -2503,7 +2520,7 @@
   })();
 
   // ================================================================
-  // APP-WIDE TWINKLING SKY (build 2026.10.22-23, owner ask Oct 22,
+  // APP-WIDE TWINKLING SKY (build 2026.10.22-24, owner ask Oct 22,
   // 2026): "Let's do about seven twinkling stars" — across the whole
   // app, the MySpace-glitter sky she remembers. About seven small
   // sparkles at a time: each one fades in, shimmers, and fades out,
@@ -2716,7 +2733,7 @@
     var POP_LINES = {
       lumi:  [ "Oh hey, I didn't see you there ✨", "Right here if you need me, T 💫", "Still orbiting your inbox… kidding. Mostly." ],
       izzy:  [ "Oh hey, I didn't see you there 📧", "Inbox zero is a lifestyle ✉️", "Psst — your drafts miss you." ],
-      bea:   [ "Oh hey, I didn't see you there 📅", "You look like someone with a plan ✨", "Lunch. Is. Scheduled. No debates." ],
+      bea:   [ "Oh hey, I didn't see you there 📅", "You look like someone with a plan ✨", "A little time for you is part of the plan ✨" ],
       quinn: [ "Oh hey, I didn't see you there 📣", "This is your sign to post the thing 👀", "Caption idea brewing… stand back." ],
       cielo: [ "Oh hey, I didn't see you there 🌦️", "Watching the sky so you don't have to 👀", "Not a cloud gets past me, T." ],
       astra: [ "Oh hey, I didn't see you there ⚖️", "Facts checked. Twice. ✓", "The truth has a good lawyer tonight." ],
@@ -2742,6 +2759,31 @@
         { transform: 'translate(0px,0px) scale(1) rotate(0deg)' },
         { transform: 'translate(' + dx + 'px,' + (-dy) + 'px) scale(' + (big ? 1.035 : 1.02) + ') rotate(' + r + 'deg)' }
       ], { duration: rnd(2400, 3800), iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' }));
+    }
+    // ---------- living stills (build 2026.10.22-24, ANIMATION PARITY) ----------
+    // The original four carry baked talking-head videos; a still
+    // portrait that only blinks reads as asleep next to them (owner,
+    // Oct 22: the new ones "only blink their eyes"). livingStill is
+    // the still agents' continuous life: sway + breathe + a gentle
+    // head tilt in one seamless WAAPI loop over the LOCKED portrait
+    // (transforms only — the art is never redrawn or restyled).
+    // One animation per element: re-applying cancels the previous
+    // one first, so re-renders and agent switches never stack.
+    function livingStill(el, big) {
+      if (!el || !motionOn) return null;
+      try { if (el._livingAnim) el._livingAnim.cancel(); } catch (e) {}
+      var s = big ? 1 : 0.55;
+      var a = track(el.animate([
+        { transform: 'translate(0px,0px) scale(1.045) rotate(0deg)' },
+        { transform: 'translate(' + (3.2 * s).toFixed(1) + 'px,' + (-5.2 * s).toFixed(1) + 'px) scale(1.065) rotate(' + (1.15 * s).toFixed(2) + 'deg)', offset: 0.34 },
+        { transform: 'translate(' + (-2.8 * s).toFixed(1) + 'px,' + (-2.0 * s).toFixed(1) + 'px) scale(1.055) rotate(' + (-0.95 * s).toFixed(2) + 'deg)', offset: 0.67 },
+        { transform: 'translate(0px,0px) scale(1.045) rotate(0deg)' }
+      ], { duration: Math.round(rnd(5200, 6800)), iterations: Infinity, easing: 'ease-in-out' }));
+      el._livingAnim = a || null;
+      return a;
+    }
+    function stopLiving(el) {
+      try { if (el && el._livingAnim) { el._livingAnim.cancel(); el._livingAnim = null; } } catch (e) {}
     }
     function hop(el, h) {
       if (!el || !motionOn) return;
@@ -2842,6 +2884,9 @@
       rigFace(tile, id);
       blinkChain(tile);
       registerMeetMouth(tile, id);
+      // Parity (build -24): her portrait itself moves, not just lids.
+      var timg = tile.querySelector('img.mtile');
+      if (timg) livingStill(timg, true);
     }
     function rigSlideStage(stage, id, isVideo) {
       if (!stage) return;
@@ -2856,7 +2901,7 @@
       if (m2) m2.style.display = '';
       rigFace(stage, id);
       var media = stage.querySelector('img');
-      if (media && motionOn) breathe(media, true);
+      if (media && motionOn) livingStill(media, true);
       blinkChain(stage);
       registerMeetMouth(stage, id);
     }
@@ -3024,6 +3069,8 @@
       try { document.querySelectorAll('.agentCard img').forEach(function (img) { breathe(img, false); }); } catch (e) {}
       try { document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); }); } catch (e) {}
       try { document.querySelectorAll('.meetTile').forEach(function (t) { rigTile(t, t.dataset.agent); }); } catch (e) {}
+      try { livingStill($('lumiAvatar'), false); } catch (e) {}
+      try { document.querySelectorAll('.meetTile img.mtile').forEach(function (m) { livingStill(m, true); }); } catch (e) {}
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
       try { every(stageTick, 3400); } catch (e) {}
@@ -3039,6 +3086,8 @@
       [$('avatarWrap'), $('callAvatarWrap')].forEach(function (w) {
         if (w) { w.style.transform = ''; w._blinkOn = false; }
       });
+      try { stopLiving($('lumiAvatar')); stopLiving($('callAvatar')); } catch (e) {}
+      try { document.querySelectorAll('.meetTile img.mtile, .slideStage img').forEach(function (m) { stopLiving(m); }); } catch (e) {}
       mouthFor($('avatarWrap'), 0.12, false);
       mouthFor($('callAvatarWrap'), 0.12, false);
       meetMouths.forEach(function (e) { mouthFor(e.wrap, 0.12, false); });
@@ -3055,6 +3104,19 @@
       setExpression: function (name) { try { setExpression(name); } catch (e) {} },
       popIn: function (agentId) { try { popIn(agentId || currentAgent, true); } catch (e) {} },
       rigSlideStage: function (stage, id, isVideo) { try { rigSlideStage(stage, id, isVideo); } catch (e) {} },
+      livingStill: function (el, big) { try { return livingStill(el, big); } catch (e) {} },
+      stopLiving: function (el) { try { stopLiving(el); } catch (e) {} },
+      callParity: function (id, videoShown) { try {
+        var wrap = $('callAvatarWrap');
+        if (!wrap) return;
+        if (videoShown) { stopLiving($('callAvatar')); return; }
+        rigFace(wrap, id);
+        blinkChain(wrap);
+        livingStill($('callAvatar'), true);
+        hop(wrap, 10);
+        var cap = $('callCaption');
+        if (cap && typeof AGENTS !== 'undefined' && AGENTS[id]) cap.textContent = AGENTS[id].greeting;
+      } catch (e) {} },
       blink: function () { try { blinkWrap($('avatarWrap')); } catch (e) {} try { blinkWrap($('callAvatarWrap')); } catch (e) {} }
     };
 
@@ -3065,6 +3127,7 @@
         await _applyAgent(id, announce);
         rigFace($('avatarWrap'), id);
         rigFace($('callAvatarWrap'), id);
+        try { livingStill($('lumiAvatar'), false); } catch (e) {}
         if (announce) popIn(id, false);
       };
     }
@@ -3083,6 +3146,23 @@
           wrap.querySelectorAll('.lid,.brow').forEach(function (n) { n.style.display = videoShown ? 'none' : ''; });
           var m = wrap.querySelector('.mouth');
           if (m) m.style.display = videoShown ? 'none' : '';
+          if (!videoShown) {
+            // ANIMATION PARITY (build 2026.10.22-24): a still-photo
+            // agent on a call gets the full living treatment — rig
+            // re-placed for HER, blink chain running, her portrait
+            // itself swaying / breathing / tilting continuously,
+            // and a little hop of hello — while her own greeting
+            // is the caption. Baked-video agents keep exactly the
+            // motion they have always had.
+            try { rigFace(wrap, currentAgent); } catch (e) {}
+            try { blinkChain(wrap); } catch (e) {}
+            try { livingStill($('callAvatar'), true); } catch (e) {}
+            try { hop(wrap, 10); } catch (e) {}
+            var cap = $('callCaption');
+            if (cap) cap.textContent = AGENTS[currentAgent].greeting;
+          } else {
+            try { stopLiving($('callAvatar')); } catch (e) {}
+          }
         }
         popIn(currentAgent, false);
       };
@@ -3091,6 +3171,7 @@
       var _closeCall = closeCall;
       closeCall = function () {
         _closeCall();
+        try { stopLiving($('callAvatar')); } catch (e) {}
         var wrap = $('callAvatarWrap');
         if (wrap) wrap.style.transform = '';
       };
