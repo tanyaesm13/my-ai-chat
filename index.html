@@ -352,6 +352,7 @@
       #chat { grid-area: chat; min-width: 0; }
       #chips { grid-area: chips; }
       #form { grid-area: form; }
+      #docBar, #routeBar { grid-column: 2; }
       #contact { grid-area: contact; }
       #lumiAvatar { width: 150px; height: 150px; }
       #popBubble, #audioUnlockChip { left: calc(300px + (100vw - 300px) / 2); }
@@ -486,6 +487,15 @@
     .docChip { display: inline-flex; align-items: center; gap: 8px; background: rgba(90,70,160,.28); border: 1px solid rgba(180,160,255,.45); color: #fff; border-radius: 999px; padding: 5px 8px 5px 12px; font-size: 13px; }
     .docChipX { background: rgba(255,255,255,.18); border: none; color: #fff; border-radius: 999px; width: 20px; height: 20px; line-height: 1; cursor: pointer; }
     #routeBar { margin: 6px auto 0; max-width: 760px; padding: 8px 10px; background: rgba(40,32,80,.55); border: 1px solid rgba(180,160,255,.35); border-radius: 12px; }
+    /* (build 2026.10.23-31, owner phone report Oct 23, 2026): the
+       attach bars must sit fully ABOVE the bottom bars, never
+       layered under them — in chat they are unshrinkable flex
+       items on their own layer above #form (z-index 1) and now
+       stand before it in the page; in the meeting #meetDocBar
+       lives inside #meetScroll, whose bottom padding clears the
+       fixed #meetForm bar. */
+    #docBar, #routeBar { position: relative; z-index: 2; flex-shrink: 0; }
+    #meetDocBar { position: relative; z-index: 2; }
     .routeHead { color: #fff; font-size: 14px; margin-bottom: 6px; }
     .routeRow { display: flex; flex-wrap: wrap; gap: 6px; }
     .routeRow button { border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.10); color: #fff; padding: 5px 12px; cursor: pointer; font-size: 13px; }
@@ -534,6 +544,8 @@
     <button type="button" class="chip">Motivate me</button>
     <button type="button" class="chip">Help me plan my day</button>
 </div>
+<div id="docBar" hidden></div>
+<div id="routeBar" hidden></div>
 <form id="form">
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="locBtn" type="button" title="Share location with next message">📍</button>
@@ -543,8 +555,6 @@
     <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
     <button id="send" type="submit">Send</button>
 </form>
-<div id="docBar" hidden></div>
-<div id="routeBar" hidden></div>
 <div id="contact"><a href="#" id="contactBtn">Contact</a></div>
 <div id="teamOverlay">
     <h2>👥 Lumi's Team</h2>
@@ -594,8 +604,8 @@
         <button id="meetEveryone" type="button">🌟 Everyone answers</button>
     </div>
     <div id="meetCaption">Pick who answers, then ask away.</div>
-    </div>
     <div id="meetDocBar" hidden></div>
+    </div>
     <div id="meetForm">
         <button id="meetMicBtn" type="button" title="Talk">🎤</button>
         <button id="meetAttachBtn" type="button" title="Attach a PDF for the team to read">📎</button>
@@ -629,7 +639,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-30</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-31</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -645,7 +655,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-30';
+  var LUMI_BUILD_STAMP = '2026.10.23-31';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1244,6 +1254,19 @@
     if (form.requestSubmit) form.requestSubmit();
     else form.dispatchEvent(new Event('submit', { cancelable: true }));
   }
+  function renderDocSent(doc) {
+    // Meeting-side sent proof (build 2026.10.23-31): the meeting
+    // has no chat thread to leave a note in, so the confirmation
+    // stands in the meeting's own doc bar until the next attach.
+    const bar = document.getElementById('meetDocBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    const chip = document.createElement('span');
+    chip.className = 'docChip docSent';
+    chip.textContent = '📄 ' + doc.name + ' attached — sent to the team with your message.';
+    bar.appendChild(chip);
+    bar.hidden = false;
+  }
   function consumeDocInto(inputEl, ctx) {
     const doc = docPending[ctx];
     if (!doc || !inputEl) return;
@@ -1253,6 +1276,19 @@
     docPending[ctx] = null;
     renderDocChip(ctx);
     if (ctx === 'chat') renderRouteBar();
+    // ATTACHED CONFIRMATION (build 2026.10.23-31, owner phone
+    // report Oct 23, 2026 — she could not tell whether her file
+    // had attached): the pre-send chip vanishes the moment the
+    // message goes, so the thread itself keeps the proof — a
+    // standing note naming the file and the agent who has it.
+    // Deferred a beat so it lands after her own message bubble,
+    // which the app's send handler adds synchronously.
+    if (ctx === 'chat') {
+      const recvName = (AGENTS[currentAgent] || {}).name || 'Lumi';
+      setTimeout(() => { try { addMsg('📄 ' + doc.name + ' attached — ' + recvName + ' has it.', 'ai'); } catch (e) {} }, 60);
+    } else {
+      renderDocSent(doc);
+    }
   }
   function wireAttach(btnId, fileId, ctx) {
     const btn = document.getElementById(btnId), fi = document.getElementById(fileId);
@@ -2227,6 +2263,25 @@
       const bye = goodbyeCue(transcript);
       if (bye) { concludeConversation(bye.nameId); return; }
       if (window.meetMode) {
+        // "HEY TEAM" CUE IN A MEETING (build 2026.10.23-31, owner
+        // order Oct 23, 2026): "hey team" addresses the WHOLE room.
+        // The aim switches to Everyone (the in-room roster only —
+        // meetSend's 'all' round walks roomIds()), and what follows
+        // the cue goes to the whole team with the cue stripped.
+        // "Hey team" with nothing after it is attention only: the
+        // host acknowledges once and nothing is sent as chat text.
+        const teamCueM = teamCueFor(transcript);
+        if (teamCueM) {
+          if (window.meetSelectEveryone) { try { window.meetSelectEveryone(); } catch (err) {} }
+          convoSentAt = Date.now();
+          if (teamCueM.rest) {
+            document.getElementById('meetInput').value = teamCueM.rest;
+            if (window.meetSendFromInput) window.meetSendFromInput();
+          } else if (window.meetTeamAck) {
+            try { window.meetTeamAck(); } catch (err) {}
+          }
+          return;
+        }
         // NAME CUE IN A MEETING (build 2026.10.23-26, owner bug
         // report Oct 23, 2026: "I say Lumi and she doesn't pick it
         // up"): the aim follows the NAME she leads with -- bare or
@@ -2394,6 +2449,42 @@
       }
       return null;
     }
+    // "HEY TEAM" — THE WHOLE-ROOM CUE (build 2026.10.23-31, owner
+    // order Oct 23, 2026): in the team meeting, "hey team" means
+    // she is addressing EVERYONE in the room, not the one aimed
+    // agent. The utterance must BE the cue or LEAD with it, as
+    // whole tokens — the same discipline as the name cues — so
+    // "tell the team about..." never fires, and neither do
+    // "steam" / "theme" (the match is anchored at the start and
+    // the character after the cue must not be a letter).
+    // Recognizer variants ride along: "hey teem", "hey teams",
+    // "ok team" / "okay team". A bare "team" counts only as a
+    // WHOLE utterance, never as a lead ("team meeting at three"
+    // stays ordinary words). "a team" is deliberately NOT a
+    // variant — it leads ordinary noun phrases far too often.
+    // Returns { rest } — what follows, cue stripped, recognizer
+    // casing kept — or null when the cue is not there.
+    const TEAM_CUE_LEADS = ['hey team', 'hey teem', 'hey teams', 'okay team', 'ok team'];
+    function teamCueRest(raw, t, lead) {
+      let s = String(raw || '').trim();
+      const n = lead.split(' ').length;
+      for (let i = 0; i < n; i++) s = s.replace(/^[^\s,!.?]+[\s,!.?]*/, '');
+      s = s.replace(/^[\s,!.?]+/, '').trim();
+      if (s) return s;
+      return t.slice(lead.length).replace(/^[\s,!.]+/, '').trim();
+    }
+    function teamCueFor(text) {
+      const t = normCueText(text).replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!t) return null;
+      if (t === 'team') return { rest: '' };
+      for (const lead of TEAM_CUE_LEADS) {
+        if (t === lead) return { rest: '' };
+        if (t.indexOf(lead) === 0 && !/[a-z]/.test(t.charAt(lead.length))) {
+          return { rest: teamCueRest(text, t, lead) };
+        }
+      }
+      return null;
+    }
     function concludeConversation(nameId) {
       let who = nameId || currentAgent;
       if (window.meetMode && nameId && window.meetRoster && !window.meetRoster.has(nameId)) who = currentAgent;
@@ -2423,6 +2514,7 @@
       cue: cueAgentFor,
       goodbye: function (t) { const g = goodbyeCue(t); return g ? (g.nameId || true) : null; },
       transfer: transferCueFor,
+      team: teamCueFor,
       names: NAME_CUES,
     };
     function bindWake(rec) {
@@ -2443,6 +2535,20 @@
           if (window.meetMode || window.callMode) {
             const byeW = goodbyeCue(heard);
             if (byeW) { concludeConversation(byeW.nameId); break; }
+          }
+          // "HEY TEAM" heard by the wake ears while a meeting is
+          // open (build 2026.10.23-31): the whole room's attention
+          // — the aim switches to Everyone and the mic opens so she
+          // can talk to them all. The wake ears only re-aim (the
+          // same contract as a wake name); a full "hey team,
+          // <words>" rides the dictation path above instead.
+          if (window.meetMode && teamCueFor(heard)) {
+            wakeHold = true;
+            stopWake();
+            flashMic();
+            if (window.meetSelectEveryone) { try { window.meetSelectEveryone(); } catch (e) {} }
+            startVoiceInput();
+            break;
           }
           const id = wakeAgentFor(heard);
           if (id) {
@@ -2948,6 +3054,30 @@
       meetEveryone.classList.remove('active');
       Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', k === id));
       meetCaption.textContent = AGENTS[id].name + ' is listening...';
+    };
+    // "HEY TEAM" — THE WHOLE-ROOM AIM (build 2026.10.23-31, owner
+    // order Oct 23, 2026): the Everyone aim, taken by voice cue
+    // instead of the 👥 button — same state the button sets. Only
+    // agents actually in the room are ever addressed: meetSend's
+    // 'all' round walks roomIds(), so a removed agent hears nothing.
+    window.meetSelectEveryone = () => {
+      meetAgent = 'all';
+      meetEveryone.classList.add('active');
+      Object.keys(tiles).forEach((k) => tiles[k].classList.toggle('selected', false));
+      meetCaption.textContent = 'The team is listening…';
+    };
+    // Bare "hey team" (nothing after it) = attention only: Lumi,
+    // as host, gives ONE spoken acknowledgment — her own rotating
+    // greeting line, the same pool the meeting opens with and a
+    // tap-to-talk answers from, so no new persona line is invented.
+    // If someone is mid-sentence she never talks over the room:
+    // the "team is listening" caption stands as the acknowledgment.
+    window.meetTeamAck = () => {
+      if (speechNow()) return;
+      const host = rosterSet.has('lumi') ? 'lumi' : (roomIds()[0] || 'lumi');
+      const line = pickGreeting(host);
+      meetCaption.innerHTML = '<b>' + AGENTS[host].emoji + ' ' + AGENTS[host].name + ':</b> ' + line.replace(/</g, '&lt;');
+      speakInMeeting(line, host, meetCaption.innerHTML);
     };
     // --- One-by-one slide view (build 2026.10.22-4, owner spec: "I
     // want to be able to scroll through them and slide one by one and
