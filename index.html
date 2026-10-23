@@ -159,7 +159,27 @@
        position. The overlay is inset:0 with no transformed ancestors,
        so fixed lands exactly where absolute did at scroll 0 — the
        tablet look she approved is unchanged. */
-    #meetOverlay > #meetForm { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(23,26,59,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); }
+    #meetOverlay > #meetForm { position: fixed; left: 50%; transform: translateX(-50%); bottom: 0; z-index: 5; background: rgba(23,26,59,0.97); padding: 8px 2px calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 28px); overflow-x: auto; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    /* (build 2026.10.23-27) THE ASK-BAR SLIDES + FITS: owner report
+       Oct 23, 2026 -- on her phone she could not slide the bottom
+       "Ask the team" bar left or right and could not reach a way
+       out of it. Code truth: the bar's four 52px round buttons +
+       gaps + the input's intrinsic width overflow the bar's fixed
+       width on a narrow phone, pushing the Leave (X) button off
+       the right edge; the bar had no overflow-x of its own, and
+       the overlay's touch-action: pan-y leaves horizontal gestures
+       with nowhere to go -- the bar could not slide, so the exit
+       was unreachable. Now: the bar is a horizontal scroller
+       (pan-x allowed, scrollbar hidden), children do not crush,
+       and on narrow screens the buttons shrink so the whole bar --
+       exit included -- fits with no sliding needed. */
+    #meetForm::-webkit-scrollbar { display: none; }
+    #meetForm > button { flex-shrink: 0; }
+    #meetInput { min-width: 110px; }
+    @media (max-width: 560px) {
+      #meetForm { gap: 6px; }
+      #meetForm button { width: 46px; height: 46px; font-size: 18px; }
+    }
     #meetViewBar { display: flex; gap: 8px; width: 100%; max-width: 520px; }
     #meetViewBar button { flex: 1; padding: 10px 6px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
     #meetViewBar button.active { background: #72edfa; }
@@ -558,7 +578,7 @@
         <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
         <button id="meetSendBtn" type="button" title="Send">➤</button>
         <button id="meetCamBtn" type="button" title="Toggle your camera">📷</button>
-        <button id="meetCloseBtn" type="button" title="Leave meeting">❌</button>
+        <button id="meetCloseBtn" type="button" title="Leave meeting" aria-label="Leave meeting">❌</button>
     </div>
 </div>
 <div id="callOverlay">
@@ -580,11 +600,11 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-26</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-27</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
-  // LUMI BUILD BOOTSTRAP (build 2026.10.23-26) — deliberately a
+  // LUMI BUILD BOOTSTRAP (build 2026.10.23-27) — deliberately a
   // SEPARATE tiny script in front of the main app script, so the
   // self-update check and the audio-unlock chip work even if the
   // main script ever fails to load.
@@ -596,7 +616,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-26';
+  var LUMI_BUILD_STAMP = '2026.10.23-27';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1618,7 +1638,26 @@
       clearTimeout(convoTimer);
       convoTimer = setTimeout(() => { if (convoOn && !listening && !speechHold) startVoiceInput(); }, 350);
     }
-    window.LumiConvo = { on: () => convoOn, context: () => convoContext, stop: () => { convoOn = false; } };
+    window.LumiConvo = {
+      on: () => convoOn,
+      context: () => convoContext,
+      stop: () => { convoOn = false; clearTimeout(convoTimer); if (listening) { try { recognition.stop(); } catch (e) {} } },
+      // ARM (build 2026.10.23-27, owner rule: a call listens for as
+      // long as it is open, for EVERY agent): entering a one-on-one
+      // call turns conversation mode ON. The mic itself opens via
+      // pumpConvo once the greeting's speech ends (the speech-end
+      // hook re-pumps) -- arming stamps convoSentAt so the greeting
+      // counts as "the reply she is owed" and the mic never opens
+      // over the agent's own voice. Closing the call stops it.
+      arm: (ctx) => {
+        convoOn = true;
+        convoContext = ctx || convoContextNow();
+        convoSentAt = Date.now();
+        convoSpeechDoneAt = 0;
+        emptyDictStreak = 0;
+        pumpConvo();
+      },
+    };
     setInterval(() => { try { micBtn.classList.toggle('convo', convoOn); } catch (e) {} }, 700);
     // Test/diagnostic hook, same pattern as LumiCam / LumiSky.
     window.LumiWake = {
@@ -2103,8 +2142,16 @@
     // the corner PiP and this assistant can see her. If she already had
     // the camera on elsewhere, it simply stays on.
     if (window.LumiCam) LumiCam.start('call');
+    // CONTINUOUS LISTENING ON CALLS (build 2026.10.23-27): a call is
+    // a conversation, not a tap-to-talk -- conversation mode arms
+    // for whichever agent she called, so she is heard, answered,
+    // and heard again after every reply until the call closes.
+    try { if (window.LumiConvo && LumiConvo.arm) LumiConvo.arm('call'); } catch (e) {}
   }
   function closeCall() {
+    // Closing the call DEACTIVATES listening (build 2026.10.23-27) --
+    // conversation mode off and any live dictation ended, at once.
+    try { if (window.LumiConvo && LumiConvo.stop) LumiConvo.stop(); } catch (e) {}
     callOverlay.classList.remove('open');
     try { if (window.LumiAnim && LumiAnim.stopLiving) LumiAnim.stopLiving(document.getElementById('callAvatar')); } catch (e) {}
     if (window.LumiCam) LumiCam.stopIfOwner('call');
