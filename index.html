@@ -86,6 +86,13 @@
     #meetGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; }
     .meetTile { position: relative; border-radius: 16px; overflow: hidden; border: 3px solid #333; background: #111; cursor: pointer; aspect-ratio: 1; padding: 0; }
     .meetTile video, .meetTile img.mtile { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* (build 2026.10.24-40 lifelike) The still tile's portrait + its
+       face overlays (lids, brows, mouth) ride in ONE wrapper so the
+       motion loop moves them together — before this the loop moved
+       only the <img> while the overlays sat on the static tile, so
+       blinks and mouths landed off the eyes and mouth mid-sway. */
+    .meetTile .meetMedia { position: relative; display: block; width: 100%; height: 100%; }
+    .meetTile .meetMedia img.mtile { width: 100%; height: 100%; object-fit: cover; display: block; }
     .meetTile .meetLabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 4px; background: rgba(0,0,0,0.68); color: #fff; font-size: 14px; text-align: center; }
     .meetTile.selected { border-color: #72edfa; }
     .meetTile.speaking { border-color: #72edfa; animation: talkPulse 0.6s ease-in-out infinite; box-shadow: 0 0 24px #72edfa; }
@@ -216,7 +223,7 @@
        (the LumiAnim livingStill engine: sway + breathe + tilt);
        will-change keeps that motion on the compositor so it stays
        smooth on the owner's phone instead of repainting. === */
-    #lumiAvatar, #callAvatar, #meetCardMedia .slideStage img, .meetTile img.mtile { will-change: transform; }
+    #lumiAvatar, #callAvatar, #meetCardMedia .slideStage img, #meetCardMedia .slideStage, .meetTile img.mtile, .meetTile .meetMedia { will-change: transform; }
     .meetNoVoice { display: none; position: absolute; left: 50%; transform: translateX(-50%); bottom: 38px; z-index: 4; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #72edfa; border-radius: 999px; padding: 3px 10px; font-size: 11px; white-space: nowrap; pointer-events: none; }
     .meetNoVoice.show { display: block; }
     #meetCardNoVoice { display: none; margin: 8px auto 0; width: fit-content; max-width: 92%; background: rgba(20,20,20,0.92); color: #ffd7e7; border: 1px solid #72edfa; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
@@ -643,7 +650,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-39</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-40</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -659,7 +666,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-39';
+  var LUMI_BUILD_STAMP = '2026.10.24-40';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -3723,7 +3730,7 @@
       tile.dataset.agent = id;
       const media = a.video
         ? '<video loop muted playsinline preload="metadata" src="' + a.video + '"></video>'
-        : '<img class="mtile" src="' + a.avatar + '" alt="' + a.name + '">';
+        : '<span class="meetMedia"><img class="mtile" src="' + a.avatar + '" alt="' + a.name + '"></span>';
       tile.innerHTML = media + '<div class="meetLabel">' + a.emoji + ' ' + a.name + '</div><div class="meetNoVoice">🔇 no voice on this device yet</div>';
       tile.addEventListener('click', () => {
         meetAgent = id;
@@ -4509,6 +4516,25 @@
     // It also owns the element's transform outright: any other
     // running transform loop on the same element (breathe) is
     // cancelled first, so no second loop can mask this one.
+    // LIFELIKE UPGRADE (build 2026.10.24-40, owner report Oct 24,
+    // 2026: on the meeting screen the new four ONLY sway side to
+    // side -- heads, ears, bodies, shoulders and hands read as
+    // still, no blinking, no mouthing): two real defects, not one.
+    // (1) The loop moved only the portrait while the face overlays
+    // (lids, brows, mouth) sat on the static tile/stage, so blinks
+    // and mouths landed OFF the eyes and mouth mid-sway -- fixed by
+    // moving the wrapper/stage (rigTile, rigSlideStage) instead of
+    // the bare <img>. (2) The mouth overlay opened ONLY while that
+    // agent was audibly speaking, so an idle grid showed eight shut
+    // mouths -- fixed by the idle babble in mouthTick below. This
+    // loop adds the missing axes: a real vertical bob (rise AND a
+    // downward dip), a nod beat mid-loop, and a shoulder/body read
+    // via lean-in scale pulses. HONEST LIMIT, stated plainly: code
+    // transforms on a still portrait CANNOT move hands, wiggle ears
+    // separately, or truly mouth words -- only a baked video does
+    // that, and the full-motion previews for the four are still
+    // awaiting the owner's approval (see report). This loop is the
+    // most life honestly available from stills.
     function livingFull(el) {
       if (!el || !motionOn) return null;
       try { if (el._livingAnim) el._livingAnim.cancel(); } catch (e) {}
@@ -4517,12 +4543,13 @@
       try { w = el.clientWidth || 0; } catch (e) {}
       if (!w) w = 300;
       var tx = Math.max(8, Math.round(w * 0.09));
-      var ty = Math.max(4, Math.round(w * 0.03));
+      var ty = Math.max(5, Math.round(w * 0.05));
       var a = track(el.animate([
         { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' },
-        { transform: 'translate(' + tx + 'px,' + (-ty) + 'px) scale(1.20) rotate(2.2deg)', offset: 0.27 },
-        { transform: 'translate(' + Math.round(tx * 0.3) + 'px,' + Math.round(ty * 0.5) + 'px) scale(1.16) rotate(0.4deg)', offset: 0.5 },
-        { transform: 'translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotate(-2.2deg)', offset: 0.74 },
+        { transform: 'translate(' + tx + 'px,' + (-ty) + 'px) scale(1.20) rotate(2.2deg)', offset: 0.22 },
+        { transform: 'translate(' + Math.round(tx * 0.45) + 'px,' + ty + 'px) scale(1.16) rotate(0.8deg)', offset: 0.40 },
+        { transform: 'translate(' + Math.round(-tx * 0.25) + 'px,' + Math.round(-ty * 0.5) + 'px) scale(1.19) rotate(-0.8deg)', offset: 0.58 },
+        { transform: 'translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotate(-2.2deg)', offset: 0.78 },
         { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' }
       ], { duration: Math.round(rnd(5800, 7000)), iterations: Infinity, easing: 'ease-in-out' }));
       el._livingAnim = a || null;
@@ -4634,17 +4661,23 @@
     }
     function rigTile(tile, id) {
       if (!tile || !id || tile.querySelector('video')) return;
-      if (!tile.querySelector('.mouth')) {
+      // (build 2026.10.24-40 lifelike) The face rig lives on the
+      // .meetMedia wrapper, and the motion loop moves the WRAPPER —
+      // portrait, lids, brows and mouth travel together, so blinks
+      // land on the eyes and the mouth lands on the mouth even
+      // mid-sway. Before this the loop moved only the <img> while
+      // the overlays sat on the static tile.
+      var wrap = tile.querySelector('.meetMedia') || tile;
+      if (!wrap.querySelector('.mouth')) {
         var m = document.createElement('div');
         m.className = 'mouth';
-        tile.appendChild(m);
+        wrap.appendChild(m);
       }
-      rigFace(tile, id);
-      blinkChain(tile);
-      registerMeetMouth(tile, id);
+      rigFace(wrap, id);
+      blinkChain(wrap);
+      registerMeetMouth(wrap, id);
       // Parity (build -24): her portrait itself moves, not just lids.
-      var timg = tile.querySelector('img.mtile');
-      if (timg) livingFull(timg);
+      livingFull(wrap);
     }
     function rigSlideStage(stage, id, isVideo) {
       if (!stage) return;
@@ -4658,8 +4691,10 @@
       var m2 = stage.querySelector('.mouth');
       if (m2) m2.style.display = '';
       rigFace(stage, id);
-      var media = stage.querySelector('img');
-      if (media && motionOn) livingFull(media);
+      // (build 2026.10.24-40 lifelike) Move the STAGE, not just the
+      // <img>: portrait, lids, brows and mouth travel together, so
+      // blinks and the mouth stay on the face mid-sway.
+      if (motionOn) livingFull(stage);
       blinkChain(stage);
       registerMeetMouth(stage, id);
     }
@@ -4742,14 +4777,28 @@
       var callOpen = $('callOverlay') && $('callOverlay').classList.contains('open');
       mouthFor($('avatarWrap'), mouthLevel, active && !callOpen);
       mouthFor($('callAvatarWrap'), mouthLevel, active && !!callOpen);
-      // Meeting faces: a tile/stage mouth opens ONLY while the voice
-      // truth bus names THIS agent as audibly speaking — never on a
-      // timer, never for someone else's voice.
+      // Meeting faces: a tile/stage mouth opens fully while the voice
+      // truth bus names THIS agent as audibly speaking. IDLE BABBLE
+      // (build 2026.10.24-40 lifelike, owner report Oct 24, 2026):
+      // an idle grid used to show eight shut mouths, which read as
+      // frozen next to the first four's looping videos -- so a
+      // non-speaking tile/stage mouth now gently opens and closes
+      // on its own slow rhythm (small amplitude, soft opacity), and
+      // the speech path above still wins the moment that agent
+      // actually speaks. This is idle life, not lip-sync: it never
+      // pretends to say words.
       var who = null;
       try { who = window.__lumiSpeechAgent || null; } catch (e) {}
       for (var mi = 0; mi < meetMouths.length; mi++) {
         var me = meetMouths[mi];
-        if (me.wrap && me.wrap.isConnected !== false) mouthFor(me.wrap, mouthLevel, active && who === me.id);
+        if (!me.wrap || me.wrap.isConnected === false) continue;
+        if (active && who === me.id) { mouthFor(me.wrap, mouthLevel, true); continue; }
+        if (document.hidden) { mouthFor(me.wrap, 0.12, false); continue; }
+        if (typeof me._idlePhase !== 'number') me._idlePhase = rnd(0, 6.28);
+        var idleLevel = 0.15 + 0.28 * (0.5 + 0.5 * Math.sin(Date.now() / 850 + me._idlePhase));
+        mouthFor(me.wrap, idleLevel, true);
+        var mm = me.wrap.querySelector('.mouth');
+        if (mm) mm.style.opacity = '0.55';
       }
     }
 
@@ -4816,7 +4865,11 @@
       try { document.querySelectorAll('.meetTile video').forEach(function (m) { breathe(m, true); }); } catch (e) {}
       try { document.querySelectorAll('.meetTile').forEach(function (t) { rigTile(t, t.dataset.agent); }); } catch (e) {}
       try { stillMotion($('lumiAvatar'), currentAgent, false); } catch (e) {}
-      try { document.querySelectorAll('.meetTile img.mtile').forEach(function (m) { livingFull(m); }); } catch (e) {}
+      // (build 2026.10.24-40 lifelike) No separate tile-img loop:
+      // rigTile already moves each still tile's .meetMedia wrapper,
+      // and a second loop on the bare <img> would move the portrait
+      // inside its own moving wrapper -- double motion, overlays
+      // off the face again.
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
       try { every(stageTick, 3400); } catch (e) {}
@@ -4833,7 +4886,7 @@
         if (w) { w.style.transform = ''; w._blinkOn = false; }
       });
       try { stopLiving($('lumiAvatar')); stopLiving($('callAvatar')); } catch (e) {}
-      try { document.querySelectorAll('.meetTile img.mtile, .slideStage img').forEach(function (m) { stopLiving(m); }); } catch (e) {}
+      try { document.querySelectorAll('.meetTile img.mtile, .meetTile .meetMedia, .slideStage img, .slideStage').forEach(function (m) { stopLiving(m); }); } catch (e) {}
       mouthFor($('avatarWrap'), 0.12, false);
       mouthFor($('callAvatarWrap'), 0.12, false);
       meetMouths.forEach(function (e) { mouthFor(e.wrap, 0.12, false); });
