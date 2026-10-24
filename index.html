@@ -643,7 +643,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-38</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-39</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -659,7 +659,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-38';
+  var LUMI_BUILD_STAMP = '2026.10.24-39';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4493,25 +4493,52 @@
     // the base scale keeps headroom so a drift never bares an edge.
     // Same _livingAnim slot as livingStill, so stopLiving() /
     // stopAll() cancel it identically and re-rigging replaces,
-    // never stacks. Meeting surfaces ONLY (grid tiles + big card);
-    // #lumiAvatar / #callAvatar keep livingStill exactly as before.
+    // never stacks.
+    // BUG FIX (build 2026.10.24-39 headsway, owner report Oct 24,
+    // 2026: the new four's heads do not move side to side): the
+    // -35 motion ran on MEETING surfaces only, while the 1:1 home
+    // and call avatars the owner actually talks to kept the
+    // near-invisible livingStill sway (+/-1.8px home, +/-3.2px
+    // call) -- next to the baked videos, the new four read as
+    // frozen. So livingFull is now THE still-agent motion
+    // everywhere a still portrait shows (meeting tiles + big
+    // card + 1:1 home + 1:1 call), via stillMotion() below, and
+    // its sway is lateral-first: a wider side-to-side drift with
+    // a real head tilt, on a slightly quicker loop, so the head
+    // visibly turns left and right instead of slowly panning.
+    // It also owns the element's transform outright: any other
+    // running transform loop on the same element (breathe) is
+    // cancelled first, so no second loop can mask this one.
     function livingFull(el) {
       if (!el || !motionOn) return null;
       try { if (el._livingAnim) el._livingAnim.cancel(); } catch (e) {}
+      try { el.getAnimations().forEach(function (a) { try { a.cancel(); } catch (e) {} }); } catch (e) {}
       var w = 0;
       try { w = el.clientWidth || 0; } catch (e) {}
       if (!w) w = 300;
-      var tx = Math.max(6, Math.round(w * 0.065));
-      var ty = Math.max(5, Math.round(w * 0.05));
+      var tx = Math.max(8, Math.round(w * 0.09));
+      var ty = Math.max(4, Math.round(w * 0.03));
       var a = track(el.animate([
         { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' },
-        { transform: 'translate(' + tx + 'px,' + (-ty) + 'px) scale(1.21) rotate(1.3deg)', offset: 0.27 },
-        { transform: 'translate(' + Math.round(tx * 0.35) + 'px,' + Math.round(ty * 0.5) + 'px) scale(1.16) rotate(0.4deg)', offset: 0.5 },
-        { transform: 'translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotate(-1.3deg)', offset: 0.74 },
+        { transform: 'translate(' + tx + 'px,' + (-ty) + 'px) scale(1.20) rotate(2.2deg)', offset: 0.27 },
+        { transform: 'translate(' + Math.round(tx * 0.3) + 'px,' + Math.round(ty * 0.5) + 'px) scale(1.16) rotate(0.4deg)', offset: 0.5 },
+        { transform: 'translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotate(-2.2deg)', offset: 0.74 },
         { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' }
-      ], { duration: Math.round(rnd(7600, 9200)), iterations: Infinity, easing: 'ease-in-out' }));
+      ], { duration: Math.round(rnd(5800, 7000)), iterations: Infinity, easing: 'ease-in-out' }));
       el._livingAnim = a || null;
       return a;
+    }
+    // Still-agent motion router (build 2026.10.24-39): an agent
+    // with no baked video gets livingFull wherever her portrait
+    // shows; a video agent keeps exactly the livingStill home
+    // still she has always had (her video carries her motion in
+    // meeting/call views). Unknown agent ids fall back to
+    // livingStill, never to nothing.
+    function stillMotion(el, id, big) {
+      try {
+        if (typeof AGENTS !== 'undefined' && AGENTS[id] && !AGENTS[id].video) return livingFull(el);
+      } catch (e) {}
+      return livingStill(el, big);
     }
     function stopLiving(el) {
       try { if (el && el._livingAnim) { el._livingAnim.cancel(); el._livingAnim = null; } } catch (e) {}
@@ -4786,9 +4813,9 @@
       if (!motionOn) return;
       try { breathe($('avatarWrap'), false); } catch (e) {}
       try { document.querySelectorAll('.agentCard img').forEach(function (img) { breathe(img, false); }); } catch (e) {}
-      try { document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); }); } catch (e) {}
+      try { document.querySelectorAll('.meetTile video').forEach(function (m) { breathe(m, true); }); } catch (e) {}
       try { document.querySelectorAll('.meetTile').forEach(function (t) { rigTile(t, t.dataset.agent); }); } catch (e) {}
-      try { livingStill($('lumiAvatar'), false); } catch (e) {}
+      try { stillMotion($('lumiAvatar'), currentAgent, false); } catch (e) {}
       try { document.querySelectorAll('.meetTile img.mtile').forEach(function (m) { livingFull(m); }); } catch (e) {}
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
@@ -4831,7 +4858,7 @@
         if (videoShown) { stopLiving($('callAvatar')); return; }
         rigFace(wrap, id);
         blinkChain(wrap);
-        livingStill($('callAvatar'), true);
+        livingFull($('callAvatar'));
         hop(wrap, 10);
         var cap = $('callCaption');
         if (cap && typeof AGENTS !== 'undefined' && AGENTS[id]) cap.textContent = (window.LumiGreet && LumiGreet.currentCall(id)) || AGENTS[id].greeting;
@@ -4846,7 +4873,7 @@
         await _applyAgent(id, announce);
         rigFace($('avatarWrap'), id);
         rigFace($('callAvatarWrap'), id);
-        try { livingStill($('lumiAvatar'), false); } catch (e) {}
+        try { stillMotion($('lumiAvatar'), id, false); } catch (e) {}
         if (announce) popIn(id, false);
       };
     }
@@ -4875,7 +4902,7 @@
             // motion they have always had.
             try { rigFace(wrap, currentAgent); } catch (e) {}
             try { blinkChain(wrap); } catch (e) {}
-            try { livingStill($('callAvatar'), true); } catch (e) {}
+            try { livingFull($('callAvatar')); } catch (e) {}
             try { hop(wrap, 10); } catch (e) {}
             var cap = $('callCaption');
             if (cap) cap.textContent = (window.LumiGreet && LumiGreet.currentCall(currentAgent)) || AGENTS[currentAgent].greeting;
