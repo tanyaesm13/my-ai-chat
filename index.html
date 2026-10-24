@@ -641,7 +641,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-35</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-36</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -657,7 +657,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-35';
+  var LUMI_BUILD_STAMP = '2026.10.24-36';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1145,6 +1145,132 @@
       return;
     }
     performChatSwitch(hit);
+  });
+  // ================================================================
+  // MEETING ENTRY BY VOICE OR TEXT (build 2026.10.24-36, owner
+  // order Oct 24, 2026, Addendum 56): "Hey Lumi, put me in a
+  // private meeting" — said from across the room or typed in chat
+  // — puts her in the team meeting herself: Lumi confirms in her
+  // own voice, then the app opens the EXISTING meeting (the same
+  // #meetStartBtn click the Home button uses — no second meeting
+  // is built). Anchored patterns only, the -26/-34 discipline:
+  // the utterance must LEAD with a meeting-entry phrase (after a
+  // leading "hey" or agent address is stripped); talk ABOUT
+  // meetings never fires, and a bare "meeting" asks instead of
+  // opening. Self-contained on purpose, like the transfer block:
+  // the name table is restated so typed chat works even where
+  // SpeechRecognition (and with it the voice block) is absent.
+  // ================================================================
+  // --- meetentry matcher (pure; extracted by tests) ---
+  const MEET_ADDR_NAMES = ['lumi', 'loomy', 'loomie', 'loom', 'luz', 'luiz', 'luce', 'loose', 'sol', 'soul', 'sal', 'stella', 'stela', 'stellar', 'cielo', 'cello', 'sielo', 'astra', 'astro', 'alba', 'alva', 'vega', 'vegas', 'viga', 'bega', 'team'];
+  const MEET_FILLER = ['', 'please', 'now', 'please now', 'for me', 'thanks', 'thank you', 'right now', 'right away'];
+  const MEET_EXACT = [
+    'put me in a private meeting', 'put me in private meeting',
+    'put me in the meeting', 'put me in a meeting',
+    'put me into a private meeting', 'put me into private meeting',
+    'put me into the meeting', 'put me into a meeting',
+    'take me to the meeting', 'take me to a meeting',
+    'take me into the meeting', 'take me into a private meeting',
+    'start the meeting', 'start a meeting', 'start a private meeting',
+    'start a team meeting', 'start our meeting', 'start meeting',
+    'open the meeting', 'open a meeting', 'open a private meeting',
+    'open the team meeting', 'open meeting',
+    'join the meeting', 'join a meeting', 'join meeting',
+    'go to the meeting', 'go into the meeting',
+    'lets start the meeting', 'lets start a meeting',
+    'lets start a private meeting', 'lets start the team meeting',
+    'lets have a meeting', 'lets have the meeting',
+    'private meeting', 'team meeting'
+  ];
+  function meetNormText(s) {
+    return String(s || '').toLowerCase().replace(/['\u2019\u2018]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  // Strip a leading "hey" and/or agent address ("hey lumi",
+  // "lumi", "hey team") so "Hey Lumi, put me in a private
+  // meeting" matches the same phrase as the bare request.
+  function meetStripAddress(t) {
+    if (!t) return '';
+    if (t.indexOf('hey ') === 0) {
+      var rest = t.slice(4);
+      var first = rest.split(' ')[0];
+      if (MEET_ADDR_NAMES.indexOf(first) !== -1) {
+        var cut = rest.slice(first.length).trim();
+        return cut || rest;
+      }
+      return rest;
+    }
+    var f0 = t.split(' ')[0];
+    if (t.indexOf(' ') !== -1 && MEET_ADDR_NAMES.indexOf(f0) !== -1) return t.slice(f0.length).trim();
+    return t;
+  }
+  // Match one normalized utterance against the phrase list.
+  function meetMatch(t) {
+    if (!t) return null;
+    if (t === 'meeting' || t === 'the meeting') return { clarify: true };
+    for (var i = 0; i < MEET_EXACT.length; i++) {
+      var p = MEET_EXACT[i];
+      if (t === p) return { go: true };
+      if (t.indexOf(p + ' ') === 0) {
+        var rest = t.slice(p.length + 1).trim();
+        if (MEET_FILLER.indexOf(rest) !== -1) return { go: true };
+      }
+    }
+    return null;
+  }
+  // { go: true } — open the meeting · { clarify: true } — the
+  // phrase is ambiguous ("meeting" alone) · null — ordinary text.
+  // The bare utterance is tried first, so "team meeting" fires as
+  // its own command instead of being stripped to "meeting"; the
+  // address-stripped form is tried second, so "Hey Lumi, put me
+  // in a private meeting" fires too.
+  function meetingIntentFor(text) {
+    var raw = meetNormText(text);
+    var hit = meetMatch(raw);
+    if (hit) return hit;
+    var stripped = meetStripAddress(raw);
+    if (stripped && stripped !== raw) return meetMatch(stripped);
+    return null;
+  }
+  // --- end meetentry matcher ---
+  const MEET_CONFIRM_LINE = 'Putting you in the meeting now 💛';
+  const MEET_ALREADY_LINE = 'You are already in the meeting, T 💛';
+  const MEET_CLARIFY_LINE = 'Want me to put you in the team meeting, T? Just say "put me in the meeting" 💛';
+  function performMeetingEntry() {
+    if (window.meetMode) {
+      try { addMsg(MEET_ALREADY_LINE, 'ai'); } catch (e) {}
+      try { speak(MEET_ALREADY_LINE, 'lumi'); } catch (e) {}
+      return;
+    }
+    try { addMsg(MEET_CONFIRM_LINE, 'ai'); } catch (e) {}
+    try { speak(MEET_CONFIRM_LINE, 'lumi'); } catch (e) {}
+    // speak() cancels the previous utterance, and openMeet speaks
+    // its own host greeting — so the meeting opens after the
+    // confirmation has had its moment, not on top of it.
+    setTimeout(function () {
+      var b = document.getElementById('meetStartBtn');
+      if (b) { try { b.click(); } catch (e) {} }
+    }, 1800);
+  }
+  function performMeetingClarify() {
+    try { addMsg(MEET_CLARIFY_LINE, 'ai'); } catch (e) {}
+    try { speak(MEET_CLARIFY_LINE, 'lumi'); } catch (e) {}
+  }
+  window.LumiMeetIntent = { intent: meetingIntentFor, enter: performMeetingEntry, clarify: performMeetingClarify };
+  // Typed + dictated one-on-one chat interception. Registered here
+  // — after the transfer listener, before the app's own send
+  // handler — so a meeting request stops the submit and is
+  // performed above instead of going out as chat text. In a call
+  // or a meeting the chat form is not the channel (call routing
+  // and meeting routing own those), so this listener stays out.
+  form.addEventListener('submit', function (e) {
+    if (window.meetMode || window.callMode) return;
+    var raw = input.value || '';
+    if (!raw.trim()) return;
+    var hit = meetingIntentFor(raw);
+    if (!hit) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (hit.clarify) { performMeetingClarify(); return; }
+    performMeetingEntry();
   });
   // ================================================================
   // WELCOME BUBBLE — ONCE A DAY (build 2026.10.23-29, owner order
@@ -2635,6 +2761,16 @@
       const bye = goodbyeCue(transcript);
       if (bye) { concludeConversation(bye.nameId); return; }
       if (window.meetMode) {
+        // MEETING ENTRY, ALREADY IN (build 2026.10.24-36): she is
+        // dictating inside a meeting and asks to be put in one —
+        // Lumi says she is already there instead of sending the
+        // words on to the team as chat text.
+        var meetHitM = meetingIntentFor(transcript);
+        if (meetHitM && meetHitM.go) {
+          convoSentAt = Date.now();
+          try { speak(MEET_ALREADY_LINE, 'lumi'); } catch (err) {}
+          return;
+        }
         // "HEY TEAM" CUE IN A MEETING (build 2026.10.23-31, owner
         // order Oct 23, 2026): "hey team" addresses the WHOLE room.
         // The aim switches to Everyone (the in-room roster only —
@@ -2921,6 +3057,27 @@
             if (window.meetSelectEveryone) { try { window.meetSelectEveryone(); } catch (e) {} }
             startVoiceInput();
             break;
+          }
+          // MEETING ENTRY BY WAKE WORD (build 2026.10.24-36):
+          // "Hey Lumi, put me in a private meeting" — the whole
+          // utterance, wake phrase included — puts her in the
+          // meeting herself instead of just waking dictation.
+          // Call mode is out: a call's routing owns it. A bare
+          // "meeting" from the wake ears is a fragment, not a
+          // command, so it falls through to the wake contract.
+          if (!window.callMode) {
+            var meetHitW = meetingIntentFor(heard);
+            if (meetHitW && meetHitW.go) {
+              wakeHold = true;
+              stopWake();
+              flashMic();
+              if (window.meetMode) {
+                try { speak(MEET_ALREADY_LINE, 'lumi'); } catch (err) {}
+              } else {
+                performMeetingEntry();
+              }
+              break;
+            }
           }
           const id = wakeAgentFor(heard);
           if (id) {
