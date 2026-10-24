@@ -527,6 +527,7 @@
     <div class="hbtns">
         <button id="homeBtn" title="Home">🏠</button>
         <button id="voiceToggle" title="Toggle voice">🔊</button>
+        <button id="alertHoursBtn" title="Video alert hours">🔔</button>
         <button id="wakeToggle" title="Wake words: Hey Lumi, Hey Luz, Hey Sol, Hey Stella, Hey Cielo, Hey Astra, Hey Alba, Hey Vega">🎧</button>
         <button id="motionBtn" class="active" title="Toggle character motion">🕺</button>
         <button id="voicePickBtn" title="Pick voice">🎭</button>
@@ -641,7 +642,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-36</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-37</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -657,7 +658,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-36';
+  var LUMI_BUILD_STAMP = '2026.10.24-37';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1271,6 +1272,234 @@
     e.preventDefault(); e.stopImmediatePropagation();
     if (hit.clarify) { performMeetingClarify(); return; }
     performMeetingEntry();
+  });
+  // ================================================================
+  // PHASE A VIDEO-NOTE ALERTS (build 2026.10.24-37, owner order Oct 24,
+  // 2026, Addendum 57 + corrections): the staged Galaxy alert pop-out,
+  // wired into the LIVE app for the owner's OWN device first. What
+  // ships here: (1) the alert pop-out itself — Lumi rises from the
+  // bottom of the screen with her animated video note, like any app
+  // notification; (2) the per-hour alert grid in settings — all 24
+  // hours listed, each switchable, default ALL ON, no preset quiet
+  // window (owner correction Oct 24, 2026); (3) a TEST TRIGGER so the
+  // owner can see it work on her phone: say or type "Lumi, test my
+  // video alert" and Lumi pops the test video note herself.
+  // Honest scope notes: the app's talking videos (lumi-video.mp4)
+  // are VISUAL loops — the voice of a note rides speak()/the /tts
+  // pipeline, exactly as the meeting tiles already do. The test
+  // trigger ALWAYS pops (it is her explicit test command); real
+  // alerts — duty alerts and later Galaxy friend notes — go through
+  // alertShouldPop(), which enforces the master switch + hour grid
+  // + (for friends) mute. Nothing here touches the Worker, the
+  // relay, or Twilio. Roster-note rule unchanged: no roster text
+  // is added anywhere in the meeting UI.
+  // ================================================================
+  // --- alertphasea pure helpers (extracted by tests) ---
+  const ALERT_ADDR_NAMES = ['lumi', 'loomy', 'loomie', 'loom', 'luz', 'luiz', 'luce', 'loose', 'sol', 'soul', 'sal', 'stella', 'stela', 'cielo', 'cello', 'sielo', 'astra', 'astro', 'alba', 'alva', 'vega', 'vegas', 'viga', 'bega', 'team'];
+  const ALERT_TEST_FILLER = ['', 'please', 'now', 'please now', 'for me', 'thanks', 'thank you', 'right now'];
+  const ALERT_TEST_EXACT = [
+    'test my video alert', 'test video alert', 'test my video note',
+    'test video note', 'test my alert', 'test alert',
+    'send me a test video alert', 'send me a test video note',
+    'send me a test alert', 'show me a test video alert',
+    'show me a test video note'
+  ];
+  function alertNormText(s) {
+    return String(s || '').toLowerCase().replace(/['\u2019\u2018]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function alertStripAddress(t) {
+    if (!t) return '';
+    if (t.indexOf('hey ') === 0) {
+      var rest = t.slice(4);
+      var first = rest.split(' ')[0];
+      if (ALERT_ADDR_NAMES.indexOf(first) !== -1) {
+        var cut = rest.slice(first.length).trim();
+        return cut || rest;
+      }
+      return rest;
+    }
+    var f0 = t.split(' ')[0];
+    if (t.indexOf(' ') !== -1 && ALERT_ADDR_NAMES.indexOf(f0) !== -1) return t.slice(f0.length).trim();
+    return t;
+  }
+  function alertTestMatch(t) {
+    if (!t) return null;
+    for (var i = 0; i < ALERT_TEST_EXACT.length; i++) {
+      var ph = ALERT_TEST_EXACT[i];
+      if (t === ph) return { go: true };
+      if (t.indexOf(ph + ' ') === 0) {
+        var rest = t.slice(ph.length + 1).trim();
+        if (ALERT_TEST_FILLER.indexOf(rest) !== -1) return { go: true };
+      }
+    }
+    return null;
+  }
+  // Bare utterance tried first, address-stripped form second — the
+  // -36 meeting-entry discipline, so "Hey Lumi, test my video
+  // alert" fires exactly like the bare phrase.
+  function alertTestIntentFor(text) {
+    var raw = alertNormText(text);
+    var hit = alertTestMatch(raw);
+    if (hit) return hit;
+    var stripped = alertStripAddress(raw);
+    if (stripped && stripped !== raw) return alertTestMatch(stripped);
+    return null;
+  }
+  // Per-hour grid: alertHours[0] = 12 AM … alertHours[23] = 11 PM.
+  // Default ALL ON. Stored per device in localStorage (never sent
+  // anywhere — the relay must never learn her settings).
+  const ALERT_HOURS_KEY = 'lumi_alert_hours_v1';
+  const ALERT_MASTER_KEY = 'lumi_alert_master_v1';
+  function alertHourLabels() {
+    var out = [];
+    for (var h = 0; h < 24; h++) {
+      var h12 = h % 12 === 0 ? 12 : h % 12;
+      out.push(h12 + (h < 12 ? ' AM' : ' PM'));
+    }
+    return out;
+  }
+  function alertDefaultHours() {
+    var out = [];
+    for (var i = 0; i < 24; i++) out.push(true);
+    return out;
+  }
+  function alertLoadHours() {
+    try {
+      var raw = localStorage.getItem(ALERT_HOURS_KEY);
+      if (!raw) return alertDefaultHours();
+      var arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || arr.length !== 24) return alertDefaultHours();
+      return arr.map(function (v) { return !!v; });
+    } catch (e) { return alertDefaultHours(); }
+  }
+  function alertSaveHours(hours) {
+    try { localStorage.setItem(ALERT_HOURS_KEY, JSON.stringify(hours)); } catch (e) {}
+  }
+  function alertNormHour(hour) {
+    // Accepts 0-23 or a Date (its local hour). Anything else fails
+    // OPEN (null = treated as allowed) so a bad value can never
+    // silently swallow a video note.
+    if (hour instanceof Date) return hour.getHours();
+    var n = Math.floor(Number(hour));
+    if (isNaN(n) || n < 0 || n > 23) return null;
+    return n;
+  }
+  function alertHourAllowed(hour, hours) {
+    var list = hours || alertLoadHours();
+    var n = alertNormHour(hour);
+    return n === null ? true : !!list[n];
+  }
+  // The delivery decision real alert senders must call: pop out only
+  // when the master switch is on and the receiving hour is on.
+  // (Friend mute joins here when Phase B lands.)
+  function alertShouldPop(hour, masterOn, hours) {
+    if (masterOn === false) return false;
+    return alertHourAllowed(hour, hours);
+  }
+  function alertLoadMaster() {
+    try {
+      var raw = localStorage.getItem(ALERT_MASTER_KEY);
+      return raw === null ? true : raw !== '0';
+    } catch (e) { return true; }
+  }
+  function alertSaveMaster(on) {
+    try { localStorage.setItem(ALERT_MASTER_KEY, on ? '1' : '0'); } catch (e) {}
+  }
+  // --- end alertphasea pure helpers ---
+  const ALERT_TEST_LINE = 'Hi T! This is a test video note — see me pop up with my little video, just like a friend\u2019s note would. 💛';
+  const ALERT_TEST_CHAT = 'Here comes your test video note! 💛';
+  function alertShowPopout() {
+    // Remove any previous test card first (never stack).
+    var prev = document.getElementById('lumiAlertPop');
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+    var card = document.createElement('div');
+    card.id = 'lumiAlertPop';
+    card.setAttribute('role', 'alert');
+    card.style.cssText = 'position:fixed;left:50%;bottom:0;z-index:9999;width:min(420px,92vw);transform:translateX(-50%);background:#242746;color:#fff;border:1px solid #72edfa;border-bottom:none;border-radius:20px 20px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.55);font-family:system-ui,-apple-system,sans-serif;padding:16px 18px calc(16px + env(safe-area-inset-bottom));';
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<img src="lumi-avatar.webp" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #72edfa;background:#0f1126;">' +
+      '<div><div style="font-size:19px;font-weight:700;">Lumi</div>' +
+      '<div style="font-size:13px;opacity:.75;">Video note for you</div></div></div>' +
+      '<video src="lumi-video.mp4" autoplay muted loop playsinline style="width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin:12px 0 2px;background:#0f1126;display:block;"></video>' +
+      '<div style="margin:12px 0 14px;font-size:16px;line-height:1.45;">' + ALERT_TEST_LINE + '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+      '<button type="button" id="lumiAlertChatBtn" style="flex:1;border:0;border-radius:12px;padding:11px 8px;font-size:15px;font-weight:700;cursor:pointer;background:#72edfa;color:#0f1126;">Open chat</button>' +
+      '<button type="button" id="lumiAlertDismissBtn" style="flex:1;border:0;border-radius:12px;padding:11px 8px;font-size:15px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;">Dismiss</button>' +
+      '</div>';
+    document.body.appendChild(card);
+    var done = function () {
+      if (card.parentNode) card.parentNode.removeChild(card);
+    };
+    document.getElementById('lumiAlertChatBtn').addEventListener('click', function () {
+      done();
+      try { var inp = document.querySelector('#chatInput, input[type="text"]'); if (inp) inp.focus(); } catch (e) {}
+    });
+    document.getElementById('lumiAlertDismissBtn').addEventListener('click', done);
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+  }
+  function alertPerformTest() {
+    try { addMsg(ALERT_TEST_CHAT, 'ai'); } catch (e) {}
+    alertShowPopout();
+    // The card's video is a visual loop; the voice rides speak(),
+    // the same split the meeting tiles already use.
+    try { speak(ALERT_TEST_LINE, 'lumi'); } catch (e) {}
+  }
+  // --- alert hours settings panel (bell in the top bar) ---
+  function alertOpenPanel() {
+    var old = document.getElementById('lumiAlertPanel');
+    if (old) { old.style.display = old.style.display === 'none' ? 'block' : 'none'; return; }
+    var hours = alertLoadHours();
+    var labels = alertHourLabels();
+    var panel = document.createElement('div');
+    panel.id = 'lumiAlertPanel';
+    panel.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10000;width:min(440px,92vw);max-height:86vh;overflow:auto;background:#242746;color:#fff;border:1px solid #72edfa;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.6);font-family:system-ui,-apple-system,sans-serif;padding:18px;';
+    var btns = labels.map(function (lb, h) {
+      return '<button type="button" data-hour="' + h + '" style="border:1px solid #72edfa;border-radius:10px;padding:9px 4px;font-size:13px;font-weight:700;cursor:pointer;background:' + (hours[h] ? '#72edfa;color:#0f1126;' : 'rgba(255,255,255,.12);color:#fff;') + '">' + lb + '</button>';
+    }).join('');
+    panel.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;"><div style="font-size:19px;font-weight:700;">🔔 Video alert hours</div>' +
+      '<button type="button" id="lumiAlertPanelClose" style="border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:8px 12px;font-size:15px;cursor:pointer;">✖</button></div>' +
+      '<p style="font-size:14px;line-height:1.5;opacity:.85;">Every hour has its own switch. All 24 start ON — flip off just the hours you want silent. A note landing in an OFF hour waits quietly in the inbox instead of popping (never lost). The test command always pops, so you can see it work.</p>' +
+      '<button type="button" id="lumiAlertMasterBtn" style="width:100%;border:0;border-radius:12px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;background:' + (alertLoadMaster() ? '#72edfa;color:#0f1126;' : 'rgba(255,255,255,.12);color:#fff;') + '">Video alerts: ' + (alertLoadMaster() ? 'ON' : 'OFF') + '</button>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + btns + '</div>';
+    document.body.appendChild(panel);
+    document.getElementById('lumiAlertPanelClose').addEventListener('click', function () { panel.style.display = 'none'; });
+    document.getElementById('lumiAlertMasterBtn').addEventListener('click', function (e) {
+      var on = !alertLoadMaster();
+      alertSaveMaster(on);
+      e.currentTarget.textContent = 'Video alerts: ' + (on ? 'ON' : 'OFF');
+      e.currentTarget.style.background = on ? '#72edfa' : 'rgba(255,255,255,.12)';
+      e.currentTarget.style.color = on ? '#0f1126' : '#fff';
+    });
+    var gridBtns = panel.querySelectorAll('[data-hour]');
+    gridBtns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var h = parseInt(b.getAttribute('data-hour'), 10);
+        var list = alertLoadHours();
+        list[h] = !list[h];
+        alertSaveHours(list);
+        b.style.background = list[h] ? '#72edfa' : 'rgba(255,255,255,.12)';
+        b.style.color = list[h] ? '#0f1126' : '#fff';
+      });
+    });
+  }
+  (function () {
+    var b = document.getElementById('alertHoursBtn');
+    if (b) b.addEventListener('click', alertOpenPanel);
+  })();
+  window.LumiAlertPhaseA = { intent: alertTestIntentFor, test: alertPerformTest, shouldPop: alertShouldPop, hourAllowed: alertHourAllowed, loadHours: alertLoadHours };
+  // Typed + dictated one-on-one chat interception, registered after
+  // the meeting-entry listener so a meeting request wins first (it
+  // stops propagation). Same guards: never inside a meeting or call.
+  form.addEventListener('submit', function (e) {
+    if (window.meetMode || window.callMode) return;
+    var raw = input.value || '';
+    if (!raw.trim()) return;
+    var hit = alertTestIntentFor(raw);
+    if (!hit) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    alertPerformTest();
   });
   // ================================================================
   // WELCOME BUBBLE — ONCE A DAY (build 2026.10.23-29, owner order
