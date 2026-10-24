@@ -641,7 +641,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.23-34</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-35</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -657,7 +657,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.23-34';
+  var LUMI_BUILD_STAMP = '2026.10.24-35';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4088,6 +4088,44 @@
       el._livingAnim = a || null;
       return a;
     }
+    // ---------- full-body meeting motion (build 2026.10.24-35) ----------
+    // Owner order (Oct 24, 2026): in the team meeting the original
+    // four (Lumi, Luz, Sol, Stella) move fully -- left and right, up
+    // and down, toward the screen and back, side to side -- and the
+    // new four (Cielo, Astra, Alba, Vega) must move the SAME way.
+    // Truth of the mechanism: the originals' big motion is baked
+    // into their talking-head VIDEO files; no code loop moves them
+    // (their tile <video> elements receive only breathe()). A still
+    // portrait has no video to copy, so livingFull is the code-level
+    // equivalent, applied to the stills' media elements only: one
+    // seamless WAAPI loop over the path the owner described --
+    // drift right while rising and leaning IN (toward the screen),
+    // settle, drift left while sinking and easing back, return --
+    // transforms only; the LOCKED portrait art is never redrawn or
+    // restyled. Amplitudes are measured off the element itself and
+    // the base scale keeps headroom so a drift never bares an edge.
+    // Same _livingAnim slot as livingStill, so stopLiving() /
+    // stopAll() cancel it identically and re-rigging replaces,
+    // never stacks. Meeting surfaces ONLY (grid tiles + big card);
+    // #lumiAvatar / #callAvatar keep livingStill exactly as before.
+    function livingFull(el) {
+      if (!el || !motionOn) return null;
+      try { if (el._livingAnim) el._livingAnim.cancel(); } catch (e) {}
+      var w = 0;
+      try { w = el.clientWidth || 0; } catch (e) {}
+      if (!w) w = 300;
+      var tx = Math.max(6, Math.round(w * 0.065));
+      var ty = Math.max(5, Math.round(w * 0.05));
+      var a = track(el.animate([
+        { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' },
+        { transform: 'translate(' + tx + 'px,' + (-ty) + 'px) scale(1.21) rotate(1.3deg)', offset: 0.27 },
+        { transform: 'translate(' + Math.round(tx * 0.35) + 'px,' + Math.round(ty * 0.5) + 'px) scale(1.16) rotate(0.4deg)', offset: 0.5 },
+        { transform: 'translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotate(-1.3deg)', offset: 0.74 },
+        { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' }
+      ], { duration: Math.round(rnd(7600, 9200)), iterations: Infinity, easing: 'ease-in-out' }));
+      el._livingAnim = a || null;
+      return a;
+    }
     function stopLiving(el) {
       try { if (el && el._livingAnim) { el._livingAnim.cancel(); el._livingAnim = null; } } catch (e) {}
     }
@@ -4192,7 +4230,7 @@
       registerMeetMouth(tile, id);
       // Parity (build -24): her portrait itself moves, not just lids.
       var timg = tile.querySelector('img.mtile');
-      if (timg) livingStill(timg, true);
+      if (timg) livingFull(timg);
     }
     function rigSlideStage(stage, id, isVideo) {
       if (!stage) return;
@@ -4207,7 +4245,7 @@
       if (m2) m2.style.display = '';
       rigFace(stage, id);
       var media = stage.querySelector('img');
-      if (media && motionOn) livingStill(media, true);
+      if (media && motionOn) livingFull(media);
       blinkChain(stage);
       registerMeetMouth(stage, id);
     }
@@ -4364,7 +4402,7 @@
       try { document.querySelectorAll('.meetTile video, .meetTile img.mtile').forEach(function (m) { breathe(m, true); }); } catch (e) {}
       try { document.querySelectorAll('.meetTile').forEach(function (t) { rigTile(t, t.dataset.agent); }); } catch (e) {}
       try { livingStill($('lumiAvatar'), false); } catch (e) {}
-      try { document.querySelectorAll('.meetTile img.mtile').forEach(function (m) { livingStill(m, true); }); } catch (e) {}
+      try { document.querySelectorAll('.meetTile img.mtile').forEach(function (m) { livingFull(m); }); } catch (e) {}
       try { blinkChain($('avatarWrap')); } catch (e) {}
       try { blinkChain($('callAvatarWrap')); } catch (e) {}
       try { every(stageTick, 3400); } catch (e) {}
