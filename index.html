@@ -512,6 +512,7 @@
     <p id="homeWelcome">Welcome home — your whole team is here. Talk with one of us, or bring everybody together.</p>
     <div id="homeBtns">
         <button id="homeChatBtn" type="button">💬 Chat with Lumi</button>
+        <button id="homeVideoBtn" type="button">📹 Video</button>
         <button id="homeTeamBtn" type="button">👥 Meet the team</button>
         <button id="homeMeetBtn" type="button">🎬 Team meeting</button>
     </div>
@@ -642,7 +643,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-37</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-38</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -658,7 +659,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-37';
+  var LUMI_BUILD_STAMP = '2026.10.24-38';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4967,6 +4968,16 @@
    if (teamGo) teamGo.addEventListener('click', function () { document.getElementById('teamBtn').click(); });
    var meetGo = document.getElementById('homeMeetBtn');
    if (meetGo) meetGo.addEventListener('click', function () { document.getElementById('meetStartBtn').click(); });
+   /* Home video (build 2026.10.24-38, owner order Oct 24, 2026):
+      from Home, one tap goes STRAIGHT to the one-on-one video
+      with Lumi — no detour through the team meeting. It reuses
+      the header's EXISTING video-call flow by clicking callBtn,
+      so the video view, voice, camera and close behavior are
+      identical to starting a video call from the chat header;
+      closing the call returns to Home, exactly as the team and
+      meeting buttons return to Home. It never opens the meeting. */
+   var videoGo = document.getElementById('homeVideoBtn');
+   if (videoGo) videoGo.addEventListener('click', function () { document.getElementById('callBtn').click(); });
    document.addEventListener('click', function (e) {
      paintChatBtn();
      if (!body.classList.contains('onHome')) return;
