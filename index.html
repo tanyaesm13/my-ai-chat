@@ -650,7 +650,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-41</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-42</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -666,7 +666,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-41';
+  var LUMI_BUILD_STAMP = '2026.10.24-42';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -733,6 +733,14 @@
   const sendBtn = document.getElementById('send');
   const GREETING = "Hi! I'm Lumi. What would you like to talk about?";
   // Lumi's agent team: each agent has its own persona (in the Worker), avatar, and animated video.
+  // FULL-MOTION VIDEOS (build 2026.10.24-42, owner approval Oct 24, 2026):
+  // Cielo, Astra, Alba and Vega now carry their baked talking-head videos
+  // (uploaded to the repo root by the owner), so every surface that keys
+  // off AGENTS[id].video — meeting tiles, slide card, 1:1 calls — treats
+  // all eight agents exactly the same way. The -41 shared livingFull
+  // code loop stays for code-driven surfaces (1:1 home avatar); the
+  // videos take over where the first four already use video. Lumi is
+  // the base reference; nothing else about any agent changes here.
   const AGENTS = {
     lumi: { name: 'Lumi', emoji: '🌟', avatar: 'lumi-avatar.webp', video: 'lumi-video.mp4',
       greeting: "Hi! I'm Lumi. What would you like to talk about?",
@@ -746,16 +754,16 @@
     quinn: { name: 'Stella', emoji: '📣', avatar: 'sam-avatar.webp', video: 'sam-video.mp4',
       greeting: "Hey, I'm Stella 📣 — Lumi's social media agent. Captions, hooks, hashtags, viral ideas — let's get those views up.",
       blurb: 'Social media agent — captions, hashtags, hooks, content ideas.' },
-    cielo: { name: 'Cielo', emoji: '🌦️', avatar: 'cielo-avatar.webp',
+    cielo: { name: 'Cielo', emoji: '🌦️', avatar: 'cielo-avatar.webp', video: 'media-generation-cielo-motion-v1-0-fd70d069-e196-4104-a062-4b61bace74ed.mp4',
       greeting: "¡Hola! I'm Cielo 🌦️ — your meteorologist. I keep watch over the skies for you, especially here in Laredo. Ask me about the weather anytime.",
       blurb: 'Weather agent — Laredo & worldwide watch, forecasts, storm alerts.' },
-    astra: { name: 'Astra', emoji: '⚖️', avatar: 'astra-avatar.webp',
+    astra: { name: 'Astra', emoji: '⚖️', avatar: 'astra-avatar.webp', video: 'media-generation-astra-motion-v1-0-81b6a565-309e-450e-bbbe-dc5c53bfd31e.mp4',
       greeting: "Hi, I'm Astra ⚖️ — your attorney and political researcher. Cases, dockets, elections, fact-checks — bring me the question and I'll find the truth of it.",
       blurb: 'Attorney & politics agent — law, cases, elections, fact-checking.' },
-    alba: { name: 'Alba', emoji: '🌅', avatar: 'alba-avatar.webp',
+    alba: { name: 'Alba', emoji: '🌅', avatar: 'alba-avatar.webp', video: 'media-generation-alba-motion-v1-0-d25c2d66-7f83-4943-81a9-23a40e486948.mp4',
       greeting: "Hi, I'm Alba 🌅 — I keep your mornings gentle and your wellness on track. Sleep, walks, energy, you. How did you rest?",
       blurb: 'Wellness agent — sleep, energy, walks, gentle morning starts.' },
-    vega: { name: 'Vega', emoji: '⭐', avatar: 'vega-avatar.webp',
+    vega: { name: 'Vega', emoji: '⭐', avatar: 'vega-avatar.webp', video: 'media-generation-vega-motion-v1-0-b6ba0f53-c75f-4d0e-994b-6df7597f8544.mp4',
       greeting: "Hi, I'm Vega ⭐ — your study coach. LSAT reps, study plans, steady progress toward that law school dream. Ready when you are.",
       blurb: 'Study coach — LSAT prep, study plans, steady daily progress.' },
   };
