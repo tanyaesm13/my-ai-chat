@@ -650,7 +650,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-40</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-41</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -666,7 +666,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-40';
+  var LUMI_BUILD_STAMP = '2026.10.24-41';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4535,6 +4535,14 @@
     // that, and the full-motion previews for the four are still
     // awaiting the owner's approval (see report). This loop is the
     // most life honestly available from stills.
+    // HEAD-TURN READ (build 2026.10.24-41): the shared loop now
+    // also turns the head in 3D -- a gentle rotateY drift
+    // (perspective + a few degrees each way) alongside the
+    // existing 2D tilt, so the head reads as TURNING left and
+    // right the way a talking-head video turns, not just
+    // leaning. Transform-only; the LOCKED portrait art is
+    // never redrawn or restyled, and the rhythm, amplitudes
+    // and durations of every other axis are unchanged.
     function livingFull(el) {
       if (!el || !motionOn) return null;
       try { if (el._livingAnim) el._livingAnim.cancel(); } catch (e) {}
@@ -4545,27 +4553,45 @@
       var tx = Math.max(8, Math.round(w * 0.09));
       var ty = Math.max(5, Math.round(w * 0.05));
       var a = track(el.animate([
-        { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' },
-        { transform: 'translate(' + tx + 'px,' + (-ty) + 'px) scale(1.20) rotate(2.2deg)', offset: 0.22 },
-        { transform: 'translate(' + Math.round(tx * 0.45) + 'px,' + ty + 'px) scale(1.16) rotate(0.8deg)', offset: 0.40 },
-        { transform: 'translate(' + Math.round(-tx * 0.25) + 'px,' + Math.round(-ty * 0.5) + 'px) scale(1.19) rotate(-0.8deg)', offset: 0.58 },
-        { transform: 'translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotate(-2.2deg)', offset: 0.78 },
-        { transform: 'translate(0px,0px) scale(1.14) rotate(0deg)' }
+        { transform: 'perspective(900px) translate(0px,0px) scale(1.14) rotateY(0deg) rotate(0deg)' },
+        { transform: 'perspective(900px) translate(' + tx + 'px,' + (-ty) + 'px) scale(1.20) rotateY(4.5deg) rotate(2.2deg)', offset: 0.22 },
+        { transform: 'perspective(900px) translate(' + Math.round(tx * 0.45) + 'px,' + ty + 'px) scale(1.16) rotateY(1.5deg) rotate(0.8deg)', offset: 0.40 },
+        { transform: 'perspective(900px) translate(' + Math.round(-tx * 0.25) + 'px,' + Math.round(-ty * 0.5) + 'px) scale(1.19) rotateY(-2deg) rotate(-0.8deg)', offset: 0.58 },
+        { transform: 'perspective(900px) translate(' + (-tx) + 'px,' + Math.round(ty * 0.7) + 'px) scale(1.15) rotateY(-4.5deg) rotate(-2.2deg)', offset: 0.78 },
+        { transform: 'perspective(900px) translate(0px,0px) scale(1.14) rotateY(0deg) rotate(0deg)' }
       ], { duration: Math.round(rnd(5800, 7000)), iterations: Infinity, easing: 'ease-in-out' }));
       el._livingAnim = a || null;
       return a;
     }
-    // Still-agent motion router (build 2026.10.24-39): an agent
-    // with no baked video gets livingFull wherever her portrait
-    // shows; a video agent keeps exactly the livingStill home
-    // still she has always had (her video carries her motion in
-    // meeting/call views). Unknown agent ids fall back to
-    // livingStill, never to nothing.
+    // SHARED motion router (build 2026.10.24-41, owner order
+    // Oct 24, 2026: Cielo, Astra, Alba and Vega get THE SAME
+    // coding and the SAME movements as Lumi, Luz, Sol and
+    // Stella -- Lumi is the original and the other four match
+    // her, not a separate variant). The -39 router split the
+    // team in two: video agents kept the near-invisible
+    // livingStill loop on the 1:1 home avatar while still
+    // agents got livingFull, so the two halves of the team
+    // visibly moved differently on the very surface the owner
+    // talks to most. That split is gone: every agent, video
+    // or still, now runs the SAME loop (livingFull) on the 1:1
+    // home avatar, with the same rhythm and amplitude.
+    // livingFull is the code-level equivalent of the baked
+    // video motion (see -35 note): unifying to the subtle
+    // livingStill loop instead would re-freeze the still
+    // portraits at home, the exact -39 defect. The (id, big)
+    // parameters stay so existing call sites keep working
+    // unchanged. livingStill stays defined and exported for
+    // compatibility, but no surface routes through it anymore.
+    // HONEST BOUNDARY, stated plainly: this unifies every
+    // CODE-driven surface. Where Lumi's motion is a baked video
+    // file itself -- meeting tile video, slide-card video, 1:1
+    // call video -- no code loop can reproduce it; those
+    // surfaces keep video for the first four and livingFull +
+    // rig + babble for the last four until the four approved
+    // full-motion preview videos are wired in (a separate
+    // owner approval, not part of this build).
     function stillMotion(el, id, big) {
-      try {
-        if (typeof AGENTS !== 'undefined' && AGENTS[id] && !AGENTS[id].video) return livingFull(el);
-      } catch (e) {}
-      return livingStill(el, big);
+      return livingFull(el);
     }
     function stopLiving(el) {
       try { if (el && el._livingAnim) { el._livingAnim.cancel(); el._livingAnim = null; } } catch (e) {}
