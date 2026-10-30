@@ -132,6 +132,13 @@
     #callOutBar .callOutRow button { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
     #callOutBar .callOutRow button:disabled { opacity: 0.45; cursor: default; }
     #callOutBar .callOutNote { text-align: center; font-size: 12px; opacity: 0.75; }
+    /* (build 2026.10.29-2) Audio device pickers + interrupt controls */
+    #callAudioBar { display: none; flex-direction: column; gap: 10px; align-items: center; max-width: 520px; width: 100%; }
+    #callAudioBar.open { display: flex; }
+    #callAudioBar .audioBarLabel { width: 100%; text-align: center; font-size: 14px; color: #9c89f4; }
+    #callAudioBar select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 15px; }
+    #callAudioBar .callOutRow button { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    #callAudioBar .callOutNote { text-align: center; font-size: 12px; opacity: 0.75; }
     /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
     #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #72edfa; color: #fff; border: 2px solid #9c89f4; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(114,237,250,0.45); cursor: pointer; }
@@ -650,10 +657,18 @@
         <button id="callCamBtn" type="button" title="Toggle your camera">📷</button>
         <button id="callTransferBtn" type="button" title="Transfer call" aria-label="Transfer call">🔀</button>
         <button id="callOutBtn" type="button" title="Call out from this video call" aria-label="Call out">📞</button>
+        <button id="callAudioBtn" type="button" title="Audio devices" aria-label="Audio devices">🎧</button>
         <button id="callCloseBtn" type="button" title="End call">❌</button>
     </div>
     <div id="callTransferBar" aria-label="Transfer this call to">
         <div class="xferLabel">Hand this call to…</div>
+    </div>
+    <div id="callAudioBar" aria-label="Audio devices for this call">
+        <div class="audioBarLabel">Audio devices for this call</div>
+        <select id="callAudioMicSel" aria-label="Microphone"></select>
+        <select id="callAudioSpkSel" aria-label="Headphones or speakers"></select>
+        <div class="callOutRow"><button id="callAudioRefreshBtn" type="button">Refresh devices</button></div>
+        <div id="callAudioNote" class="callOutNote">Pick your Yeti mic and headphones here. Voice recognition still uses your browser’s default mic — if the Yeti isn’t picked up, set it as your computer’s default mic.</div>
     </div>
     <div id="callOutBar" aria-label="Call out from this video call">
         <div class="xferLabel">Call out from this video call</div>
@@ -667,14 +682,18 @@
             <button id="callOutDialBtn" type="button" disabled>Yes, dial</button>
             <button id="callOutHangupBtn" type="button" disabled>Hang up</button>
         </div>
-        <div class="callOutNote">Lumi calls only people you name, 8 AM–9 PM their local time, and never redials on her own. Every call keeps a full transcript in the call log. Closing this panel does not end a live call — tap Hang up first.</div>
+        <div class="callOutRow">
+            <button id="callOutInterruptBtn" type="button" disabled>🎤 Interrupt — it's me</button>
+            <button id="callOutHandbackBtn" type="button" disabled>↩ Hand back to Lumi</button>
+        </div>
+        <div class="callOutNote">Lumi calls only people you name, any time you say so — day or night, 24/7 on your word — and never redials on her own. Every call keeps a full transcript in the call log. Closing this panel does not end a live call — tap Hang up first.</div>
     </div>
 </div>
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.29-1</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.29-2</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -690,7 +709,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.29-1';
+  var LUMI_BUILD_STAMP = '2026.10.29-2';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -3707,9 +3726,11 @@
   // "Yes, dial". RULES (owner, never weakened here): Lumi places
   // calls ONLY on Tanya's explicit instruction in this panel; every
   // call needs a message; the Worker resolves names against her
-  // saved contacts and never guesses a number; calls go out 8 AM–
-  // 9 PM the other person's local time and Lumi never redials on
-  // her own; every call keeps a full transcript in the call log.
+  // saved contacts and never guesses a number; calls go out any
+  // time Tanya says so — 24/7 on her word (owner override Oct 29,
+  // 2026: the old 8 AM–9 PM limit is struck) — and Lumi never
+  // redials on her own; every call keeps a full transcript in
+  // the call log.
   // Closing this panel does NOT end a live call — Hang up first.
   // Calling out is Lumi's job, so the panel only dials while the
   // video call is with Lumi herself.
@@ -3725,6 +3746,7 @@
   var callOutDialBtn = document.getElementById('callOutDialBtn');
   var callOutHangupBtn = document.getElementById('callOutHangupBtn');
   var callOutSid = null;
+  var callOutOwnerLive = false;
   var callOutPoll = null;
   var callOutBusy = false;
   var CALLOUT_ME_NUMBER = '9566069922'; // Tanya's own number (owner-known)
@@ -3757,6 +3779,9 @@
   function callOutResetDial() {
     callOutDialBtn.disabled = true;
     callOutHangupBtn.disabled = !callOutSid;
+    callOutInterruptBtn.disabled = !callOutSid;
+    callOutOwnerLive = false;
+    callOutHandbackBtn.disabled = true;
   }
   async function callOutRefreshPhone() {
     if (!callOutGate()) return;
@@ -3849,6 +3874,7 @@
       if (data.ok && data.callSid) {
         callOutSid = data.callSid;
         callOutHangupBtn.disabled = false;
+        callOutInterruptBtn.disabled = false;
         callOutSetStatus("Dialing now" + (data.toMasked ? " (" + data.toMasked + ")" : "") + ". The call record keeps the full transcript.", true);
         callOutStopPoll();
         callOutPoll = setInterval(callOutPollStatus, 15000);
@@ -3881,6 +3907,8 @@
       if (['answered', 'no-answer', 'busy', 'failed', 'canceled', 'voicemail-left', 'completed'].indexOf(call.outcome) !== -1) {
         callOutStopPoll();
         callOutHangupBtn.disabled = true;
+        callOutInterruptBtn.disabled = true;
+        callOutHandbackBtn.disabled = true;
       }
     } catch (e) {}
   }
@@ -3889,8 +3917,11 @@
     var sid = callOutSid;
     callOutStopPoll();
     callOutSid = null;
+    callOutOwnerLive = false;
     callOutHangupBtn.disabled = true;
     callOutDialBtn.disabled = true;
+    callOutInterruptBtn.disabled = true;
+    callOutHandbackBtn.disabled = true;
     callOutSetStatus("Hang-up sent. The call record stays in the call log.", true);
     try {
       await fetch(WORKER_URL + 'calls/hangup', {
@@ -3919,6 +3950,125 @@
   if (callOutHangupBtn) callOutHangupBtn.addEventListener('click', callOutHangup);
   if (callOutWho) callOutWho.addEventListener('input', function () { callOutDialBtn.disabled = true; });
   if (callOutMsg) callOutMsg.addEventListener('input', function () { callOutDialBtn.disabled = true; });
+
+  // (build 2026.10.29-2) Audio device pickers + live interrupt.
+  // Device pickers: enumerateDevices needs a mic permission grant first;
+  // the Refresh button requests one (audio only, no recording kept).
+  // SpeechRecognition takes no deviceId, so it always uses the
+  // browser's default mic — the note under the pickers says so plainly.
+  // Output selection uses setSinkId where the browser supports it
+  // (Chrome/Edge desktop); elsewhere the choice is stored and the
+  // note says the browser can't move output.
+  var callAudioBar = document.getElementById('callAudioBar');
+  var callAudioBtn = document.getElementById('callAudioBtn');
+  var callAudioMicSel = document.getElementById('callAudioMicSel');
+  var callAudioSpkSel = document.getElementById('callAudioSpkSel');
+  var callAudioNote = document.getElementById('callAudioNote');
+  var callOutInterruptBtn = document.getElementById('callOutInterruptBtn');
+  var callOutHandbackBtn = document.getElementById('callOutHandbackBtn');
+  function callAudioSetNote(text) { if (callAudioNote) callAudioNote.textContent = text; }
+  function callAudioApplyOutput() {
+    var id = null;
+    try { id = localStorage.getItem('lumi_output_device') || null; } catch (e) {}
+    if (!id) return;
+    document.querySelectorAll('audio, video').forEach(function (el) {
+      try { if (el.setSinkId) el.setSinkId(id); } catch (e) {}
+    });
+    try {
+      if (typeof cloudAudio !== 'undefined' && cloudAudio && cloudAudio.setSinkId) cloudAudio.setSinkId(id);
+      if (typeof directAudio !== 'undefined' && directAudio && directAudio.setSinkId) directAudio.setSinkId(id);
+    } catch (e) {}
+  }
+  async function callAudioRefreshDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      callAudioSetNote('This browser does not list audio devices. Pick the Yeti in your computer sound settings instead.');
+      return;
+    }
+    try { var s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); s.getTracks().forEach(function (tr) { tr.stop(); }); } catch (e) {}
+    var devices = [];
+    try { devices = await navigator.mediaDevices.enumerateDevices(); } catch (e) {}
+    var mics = devices.filter(function (d) { return d.kind === 'audioinput'; });
+    var outs = devices.filter(function (d) { return d.kind === 'audiooutput'; });
+    function fill(sel, list, storedKey, fallbackLabel) {
+      if (!sel) return;
+      sel.innerHTML = '';
+      if (!list.length) { var o = document.createElement('option'); o.textContent = fallbackLabel; sel.appendChild(o); return; }
+      list.forEach(function (d) {
+        var o = document.createElement('option');
+        o.value = d.deviceId;
+        o.textContent = d.label || d.deviceId.slice(0, 12);
+        sel.appendChild(o);
+      });
+      var stored = null;
+      try { stored = localStorage.getItem(storedKey); } catch (e) {}
+      if (stored && list.some(function (d) { return d.deviceId === stored; })) sel.value = stored;
+    }
+    fill(callAudioMicSel, mics, 'lumi_mic_device', 'No microphone found');
+    fill(callAudioSpkSel, outs, 'lumi_output_device', 'No speaker output found');
+    var outSupported = !!(document.createElement('audio').setSinkId);
+    callAudioSetNote(outs.length ? (outSupported ? 'Pick your Yeti mic and headphones here. Voice recognition still uses your browser\u2019s default mic \u2014 if the Yeti isn\u2019t picked up, set it as your computer\u2019s default mic.' : 'Pick your Yeti mic here. This browser can\u2019t move speaker output per page, so headphones must be picked in your computer sound settings.') : 'No audio devices listed yet \u2014 tap Refresh devices after allowing the mic.');
+    callAudioApplyOutput();
+  }
+  if (callAudioMicSel) callAudioMicSel.addEventListener('change', function () {
+    try { localStorage.setItem('lumi_mic_device', callAudioMicSel.value); } catch (e) {}
+    callAudioSetNote('Mic choice saved. Voice recognition still uses your browser\u2019s default mic \u2014 if the Yeti isn\u2019t picked up, set it as your computer\u2019s default mic.');
+  });
+  if (callAudioSpkSel) callAudioSpkSel.addEventListener('change', function () {
+    try { localStorage.setItem('lumi_output_device', callAudioSpkSel.value); } catch (e) {}
+    callAudioApplyOutput();
+    callAudioSetNote('Headphones/speakers choice saved and applied to this page\u2019s audio.');
+  });
+  var callAudioRefreshBtn = document.getElementById('callAudioRefreshBtn');
+  if (callAudioRefreshBtn) callAudioRefreshBtn.addEventListener('click', callAudioRefreshDevices);
+  if (callAudioBtn && callAudioBar) callAudioBtn.addEventListener('click', function () {
+    var opening = !callAudioBar.classList.contains('open');
+    callAudioBar.classList.toggle('open');
+    if (opening) callAudioRefreshDevices();
+  });
+  // Live interrupt: Tanya takes over a live Lumi phone call with her own
+  // mic, and hands back when done. The voice bridge itself is STAGED
+  // (see the interrupt design note): until the bridge deploys, the
+  // Worker has no /calls/interrupt route, and this button says so
+  // honestly instead of pretending she is live.
+  async function callOutInterruptPost(handBack) {
+    var res = await fetch(WORKER_URL + 'calls/interrupt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callSid: callOutSid, handBack: !!handBack })
+    });
+    var data = await res.json().catch(function () { return {}; });
+    return { httpOk: res.ok, data: data };
+  }
+  if (callOutInterruptBtn) callOutInterruptBtn.addEventListener('click', async function () {
+    if (!callOutSid) { callOutSetStatus('No live call to interrupt \u2014 dial first.'); return; }
+    callOutSetStatus('Interrupting \u2014 telling Lumi to hold\u2026');
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+    try { if (typeof stopCloudSpeech === 'function') stopCloudSpeech(); } catch (e) {}
+    var r = await callOutInterruptPost(false).catch(function () { return { httpOk: false, data: {} }; });
+    if (r.httpOk && r.data && r.data.ok && r.data.ownerLive) {
+      callOutOwnerLive = true;
+      callOutInterruptBtn.disabled = true;
+      callOutHandbackBtn.disabled = false;
+      callOutSetStatus('You\u2019re live \u2014 talk now, Lumi is holding. Tap \u201cHand back to Lumi\u201d when you\u2019re done.', true);
+    } else if (r.data && r.data.error === 'bridge-not-live') {
+      callOutSetStatus('Takeover bridge isn\u2019t live yet \u2014 the phone bridge deploy is still pending. Lumi keeps talking for now.');
+    } else {
+      callOutSetStatus('Couldn\u2019t interrupt that call \u2014 the takeover bridge isn\u2019t live yet. Lumi keeps talking for now.');
+    }
+  });
+  if (callOutHandbackBtn) callOutHandbackBtn.addEventListener('click', async function () {
+    if (!callOutSid) { callOutSetStatus('No live call to hand back.'); return; }
+    var r = await callOutInterruptPost(true).catch(function () { return { httpOk: false, data: {} }; });
+    if (r.httpOk && r.data && r.data.ok) {
+      callOutOwnerLive = false;
+      callOutHandbackBtn.disabled = true;
+      callOutInterruptBtn.disabled = false;
+      callOutSetStatus('Lumi is back on the call.', true);
+    } else {
+      callOutSetStatus('Couldn\u2019t hand back \u2014 the takeover bridge isn\u2019t live yet.');
+    }
+  });
+
   // Team meeting mode: 2x2 grid of the agents, tap one (or Everyone) to
   // direct your question. Your camera preview is optional and stays on-device.
   (function () {
