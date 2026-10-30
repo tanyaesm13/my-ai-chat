@@ -123,6 +123,15 @@
     #callTransferBar.open { display: flex; }
     #callTransferBar .xferLabel { width: 100%; text-align: center; font-size: 14px; color: #9c89f4; }
     .xferChip { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    /* (build 2026.10.29-1) Call out from video: panel + controls inside #callOverlay */
+    #callOutBar { display: none; flex-direction: column; gap: 10px; align-items: center; max-width: 520px; width: 100%; }
+    #callOutBar.open { display: flex; }
+    #callOutBar .callOutLine { text-align: center; font-size: 14px; color: #fff; }
+    #callOutBar input[type="text"] { width: 100%; padding: 12px 14px; border-radius: 12px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 15px; }
+    #callOutBar .callOutRow { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    #callOutBar .callOutRow button { padding: 10px 14px; min-height: 44px; border-radius: 20px; border: 2px solid #72edfa; background: #1a1a1a; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+    #callOutBar .callOutRow button:disabled { opacity: 0.45; cursor: default; }
+    #callOutBar .callOutNote { text-align: center; font-size: 12px; opacity: 0.75; }
     /* === Desktop fix (build 2026.10.21-3): visible build stamp + audio unlock chip === */
     #lumiBuildStamp { position: fixed; left: 8px; bottom: 6px; z-index: 60; font-size: 10px; line-height: 1; color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.45); padding: 3px 6px; border-radius: 8px; pointer-events: none; font-family: ui-monospace, monospace; }
     #audioUnlockChip { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 450; max-width: 92vw; background: #72edfa; color: #fff; border: 2px solid #9c89f4; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 8px 30px rgba(114,237,250,0.45); cursor: pointer; }
@@ -640,17 +649,32 @@
         <button id="callSpeakerBtn" type="button" title="Toggle voice">🔊</button>
         <button id="callCamBtn" type="button" title="Toggle your camera">📷</button>
         <button id="callTransferBtn" type="button" title="Transfer call" aria-label="Transfer call">🔀</button>
+        <button id="callOutBtn" type="button" title="Call out from this video call" aria-label="Call out">📞</button>
         <button id="callCloseBtn" type="button" title="End call">❌</button>
     </div>
     <div id="callTransferBar" aria-label="Transfer this call to">
         <div class="xferLabel">Hand this call to…</div>
+    </div>
+    <div id="callOutBar" aria-label="Call out from this video call">
+        <div class="xferLabel">Call out from this video call</div>
+        <div id="callOutStatus" class="callOutLine">Checking Lumi's phone…</div>
+        <div id="callOutContacts" class="callOutRow"></div>
+        <input id="callOutWho" type="text" placeholder="Name or number to call" autocomplete="off" />
+        <input id="callOutMsg" type="text" placeholder="What should Lumi tell them?" autocomplete="off" />
+        <div class="callOutRow">
+            <button id="callOutMeBtn" type="button">📞 Call me</button>
+            <button id="callOutCheckBtn" type="button">Check readback</button>
+            <button id="callOutDialBtn" type="button" disabled>Yes, dial</button>
+            <button id="callOutHangupBtn" type="button" disabled>Hang up</button>
+        </div>
+        <div class="callOutNote">Lumi calls only people you name, 8 AM–9 PM their local time, and never redials on her own. Every call keeps a full transcript in the call log. Closing this panel does not end a live call — tap Hang up first.</div>
     </div>
 </div>
 <div id="camPipWrap"><video id="camPip" autoplay muted playsinline></video><div id="camPipLabel">You 📷</div></div>
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.24-42</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.29-1</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -666,7 +690,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.24-42';
+  var LUMI_BUILD_STAMP = '2026.10.29-1';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -3670,6 +3694,231 @@
       callTransferBar.classList.toggle('open');
     });
   }
+
+  // ================================================================
+  // CALL OUT FROM VIDEO (build 2026.10.29-1, owner order Oct 29, 2026):
+  // "in the video section, Lumi says she can't call out." The phone
+  // system lives in the Worker (Twilio, /calls/*); the video screen
+  // had no way to reach it, so video Lumi answered honestly that
+  // she couldn't. The 📞 button opens this panel inside #callOverlay:
+  // pick a saved contact (from the Worker's /contacts — never a
+  // guessed list), or type a name or a number, write what Lumi
+  // should say, read the Worker's readback, and only then tap
+  // "Yes, dial". RULES (owner, never weakened here): Lumi places
+  // calls ONLY on Tanya's explicit instruction in this panel; every
+  // call needs a message; the Worker resolves names against her
+  // saved contacts and never guesses a number; calls go out 8 AM–
+  // 9 PM the other person's local time and Lumi never redials on
+  // her own; every call keeps a full transcript in the call log.
+  // Closing this panel does NOT end a live call — Hang up first.
+  // Calling out is Lumi's job, so the panel only dials while the
+  // video call is with Lumi herself.
+  // ================================================================
+  var callOutBar = document.getElementById('callOutBar');
+  var callOutBtn = document.getElementById('callOutBtn');
+  var callOutStatus = document.getElementById('callOutStatus');
+  var callOutContacts = document.getElementById('callOutContacts');
+  var callOutWho = document.getElementById('callOutWho');
+  var callOutMsg = document.getElementById('callOutMsg');
+  var callOutMeBtn = document.getElementById('callOutMeBtn');
+  var callOutCheckBtn = document.getElementById('callOutCheckBtn');
+  var callOutDialBtn = document.getElementById('callOutDialBtn');
+  var callOutHangupBtn = document.getElementById('callOutHangupBtn');
+  var callOutSid = null;
+  var callOutPoll = null;
+  var callOutBusy = false;
+  var CALLOUT_ME_NUMBER = '9566069922'; // Tanya's own number (owner-known)
+  function callOutSetStatus(text, speakIt) {
+    if (callOutStatus) callOutStatus.textContent = text;
+    if (callCaption) callCaption.textContent = text;
+    if (speakIt) { try { speak(text, currentAgent); } catch (e) {} }
+  }
+  function callOutStopPoll() {
+    if (callOutPoll) { clearInterval(callOutPoll); callOutPoll = null; }
+  }
+  function callOutGate() {
+    if (currentAgent !== 'lumi') {
+      callOutSetStatus("Phone calls go out through Lumi — hand this call back to Lumi first (🔀), then use this panel.");
+      return false;
+    }
+    return true;
+  }
+  function callOutIsNumber(text) {
+    var d = String(text || '').replace(/\D/g, '');
+    return d.length >= 7 && d.length <= 15;
+  }
+  function callOutPlaceBody(confirmed) {
+    var who = (callOutWho.value || '').trim();
+    var body = { message: (callOutMsg.value || '').trim() };
+    if (callOutIsNumber(who)) body.toNumber = who; else body.contactName = who;
+    if (confirmed) body.confirmed = true;
+    return body;
+  }
+  function callOutResetDial() {
+    callOutDialBtn.disabled = true;
+    callOutHangupBtn.disabled = !callOutSid;
+  }
+  async function callOutRefreshPhone() {
+    if (!callOutGate()) return;
+    callOutSetStatus("Checking Lumi's phone…");
+    try {
+      var res = await fetch(WORKER_URL + 'calls/status', { method: 'GET' });
+      var data = await res.json().catch(function () { return {}; });
+      if (!data.connected) {
+        callOutSetStatus("Lumi's phone is not connected yet, so calls can't go out from here.");
+        return;
+      }
+      callOutSetStatus("Lumi's phone is connected" + (data.numberMasked ? " (" + data.numberMasked + ")" : "") + ". Pick a contact, or type a name or number.");
+    } catch (e) {
+      callOutSetStatus("Couldn't reach Lumi's phone service. Check the connection and try again.");
+      return;
+    }
+    try {
+      var cres = await fetch(WORKER_URL + 'contacts', { method: 'GET' });
+      var cdata = await cres.json().catch(function () { return {}; });
+      callOutContacts.querySelectorAll('button').forEach(function (b) { b.remove(); });
+      (cdata.contacts || []).forEach(function (c) {
+        if (!c || !c.name) return;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = c.name;
+        b.addEventListener('click', function () { callOutWho.value = c.name; callOutMsg.focus(); });
+        callOutContacts.appendChild(b);
+      });
+    } catch (e) {}
+  }
+  async function callOutCheck() {
+    if (!callOutGate()) return;
+    var who = (callOutWho.value || '').trim();
+    var msg = (callOutMsg.value || '').trim();
+    if (!who) { callOutSetStatus("Tell Lumi who to call first — pick a contact, or type a name or number."); return; }
+    if (!msg) { callOutSetStatus("Write what Lumi should tell them first. She never places a call without a message."); return; }
+    if (callOutBusy) return;
+    callOutBusy = true;
+    callOutCheckBtn.disabled = true;
+    callOutSetStatus("Asking Lumi's phone to read that back…");
+    try {
+      var res = await fetch(WORKER_URL + 'calls/place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(callOutPlaceBody(false))
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (data.needsConfirm && data.readback) {
+        callOutSetStatus(data.readback, true);
+        callOutDialBtn.disabled = false;
+      } else if (data.error === 'phone-not-connected') {
+        callOutSetStatus("Lumi's phone is not connected yet, so calls can't go out from here.");
+      } else if (data.error === 'contact-not-found') {
+        callOutSetStatus("That name isn't on Lumi's contact list. Tap a contact above, or type the number itself.");
+      } else if (data.error === 'contact-ambiguous' && data.candidates && data.candidates.length) {
+        callOutSetStatus("That name matches more than one contact — tap the right one, then Check readback again.");
+        data.candidates.forEach(function (name) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = name;
+          b.addEventListener('click', function () { callOutWho.value = name; callOutCheck(); });
+          callOutContacts.appendChild(b);
+        });
+      } else if (data.error === 'message-required') {
+        callOutSetStatus("Write what Lumi should tell them first.");
+      } else if (data.error) {
+        callOutSetStatus("Lumi's phone said: " + data.error + ". Nothing was dialed.");
+      } else {
+        callOutSetStatus("Unexpected answer from Lumi's phone. Nothing was dialed.");
+      }
+    } catch (e) {
+      callOutSetStatus("Couldn't reach Lumi's phone service. Nothing was dialed.");
+    }
+    callOutBusy = false;
+    callOutCheckBtn.disabled = false;
+  }
+  async function callOutDial() {
+    if (!callOutGate()) return;
+    if (callOutBusy) return;
+    callOutBusy = true;
+    callOutDialBtn.disabled = true;
+    callOutSetStatus("Dialing…");
+    try {
+      var res = await fetch(WORKER_URL + 'calls/place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(callOutPlaceBody(true))
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (data.ok && data.callSid) {
+        callOutSid = data.callSid;
+        callOutHangupBtn.disabled = false;
+        callOutSetStatus("Dialing now" + (data.toMasked ? " (" + data.toMasked + ")" : "") + ". The call record keeps the full transcript.", true);
+        callOutStopPoll();
+        callOutPoll = setInterval(callOutPollStatus, 15000);
+      } else if (data.error === 'twilio-create-failed') {
+        callOutSetStatus("The call didn't go out: " + (data.detail || "phone service error") + ". Nothing was dialed.");
+      } else if (data.needsConfirm) {
+        callOutSetStatus("Read that back first — tap Check readback, then Yes, dial.");
+        callOutDialBtn.disabled = false;
+      } else if (data.error) {
+        callOutSetStatus("The call didn't go out: " + data.error + ".");
+      } else {
+        callOutSetStatus("The call didn't go out. Nothing was dialed.");
+      }
+    } catch (e) {
+      callOutSetStatus("Couldn't reach Lumi's phone service. Nothing was dialed.");
+    }
+    callOutBusy = false;
+  }
+  async function callOutPollStatus() {
+    if (!callOutSid) { callOutStopPoll(); return; }
+    if (!window.callMode) { callOutStopPoll(); return; }
+    try {
+      var res = await fetch(WORKER_URL + 'calls/' + encodeURIComponent(callOutSid), { method: 'GET' });
+      var data = await res.json().catch(function () { return {}; });
+      var call = data.call || {};
+      if (!call.callSid) return;
+      var line = "Call status: " + (call.outcome || "in progress") + ".";
+      if (call.summary) line += " " + call.summary;
+      callOutSetStatus(line);
+      if (['answered', 'no-answer', 'busy', 'failed', 'canceled', 'voicemail-left', 'completed'].indexOf(call.outcome) !== -1) {
+        callOutStopPoll();
+        callOutHangupBtn.disabled = true;
+      }
+    } catch (e) {}
+  }
+  async function callOutHangup() {
+    if (!callOutSid) return;
+    var sid = callOutSid;
+    callOutStopPoll();
+    callOutSid = null;
+    callOutHangupBtn.disabled = true;
+    callOutDialBtn.disabled = true;
+    callOutSetStatus("Hang-up sent. The call record stays in the call log.", true);
+    try {
+      await fetch(WORKER_URL + 'calls/hangup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callSid: sid })
+      });
+    } catch (e) {}
+  }
+  if (callOutBtn && callOutBar) {
+    callOutBtn.addEventListener('click', function () {
+      var opening = !callOutBar.classList.contains('open');
+      callOutBar.classList.toggle('open');
+      if (opening) { callOutResetDial(); callOutRefreshPhone(); }
+      else { callOutStopPoll(); }
+    });
+  }
+  if (callOutMeBtn) callOutMeBtn.addEventListener('click', function () {
+    if (!callOutGate()) return;
+    callOutWho.value = CALLOUT_ME_NUMBER;
+    callOutMsg.focus();
+    callOutSetStatus("Calling you — now write what Lumi should tell you, then Check readback.");
+  });
+  if (callOutCheckBtn) callOutCheckBtn.addEventListener('click', callOutCheck);
+  if (callOutDialBtn) callOutDialBtn.addEventListener('click', callOutDial);
+  if (callOutHangupBtn) callOutHangupBtn.addEventListener('click', callOutHangup);
+  if (callOutWho) callOutWho.addEventListener('input', function () { callOutDialBtn.disabled = true; });
+  if (callOutMsg) callOutMsg.addEventListener('input', function () { callOutDialBtn.disabled = true; });
   // Team meeting mode: 2x2 grid of the agents, tap one (or Everyone) to
   // direct your question. Your camera preview is optional and stays on-device.
   (function () {
