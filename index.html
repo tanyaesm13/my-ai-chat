@@ -374,7 +374,7 @@
       #chat { grid-area: chat; min-width: 0; }
       #chips { grid-area: chips; }
       #form { grid-area: form; }
-      #docBar, #routeBar { grid-column: 2; }
+      #docBar, #routeBar, #memoryBar { grid-column: 2; }
       #contact { grid-area: contact; }
       #lumiAvatar { width: 150px; height: 150px; }
       #popBubble, #audioUnlockChip { left: calc(300px + (100vw - 300px) / 2); }
@@ -520,8 +520,25 @@
     .fileCard { margin-top: 8px; padding: 10px 12px; background: rgba(90,70,160,.28); border: 1px solid rgba(180,160,255,.45); border-radius: 12px; }
     .fileCardName { font-size: 14px; margin-bottom: 6px; word-break: break-word; }
     .fileCardLink { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #6a4fd0; color: #fff; text-decoration: none; font-size: 14px; }
+    .fileMedia { width: 100%; border-radius: 10px; margin-top: 8px; background: #0f1126; display: block; }
+    .fileImg { width: 100%; border-radius: 10px; margin-top: 8px; display: block; }
+    .orderCard { margin-top: 8px; padding: 10px 12px; background: rgba(40,120,80,.22); border: 1px solid rgba(120,220,170,.45); border-radius: 12px; }
+    .orderCardName { font-size: 14px; margin-bottom: 4px; word-break: break-word; }
+    .orderCardTotal { font-size: 15px; font-weight: 700; margin: 4px 0 8px; }
+    .orderBtn { display: inline-block; padding: 6px 14px; border-radius: 999px; border: none; font-size: 14px; margin-right: 6px; cursor: pointer; }
+    .orderBtnYes { background: #2e9e6b; color: #fff; }
+    .orderBtnNo { background: rgba(255,255,255,.14); color: #fff; }
+    .ytCard { margin-top: 8px; border-radius: 12px; overflow: hidden; }
+    .ytCard iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; background: #0f1126; }
     .driveChip a { color: #fff; text-decoration: underline; }
     #routeBar { margin: 6px auto 0; max-width: 760px; padding: 8px 10px; background: rgba(40,32,80,.55); border: 1px solid rgba(180,160,255,.35); border-radius: 12px; }
+    /* (build 2026.11.08-6) Cross-device memory: where-she-left-off bar.
+       Shows the active novel + last approved chapter + next chapter on
+       every device, with a one-tap "Continue the book" button. Hidden
+       when no novel exists yet. Same layer rules as #routeBar. */
+    #memoryBar { margin: 6px auto 0; max-width: 760px; padding: 8px 10px; background: rgba(40,32,80,.55); border: 1px solid rgba(180,160,255,.35); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+    #memoryBar[hidden] { display: none; }
+    #memoryBar button { border-radius: 999px; border: none; background: #6a4fd0; color: #fff; padding: 6px 14px; cursor: pointer; font-size: 13px; white-space: nowrap; }
     /* (build 2026.10.23-31, owner phone report Oct 23, 2026): the
        attach bars must sit fully ABOVE the bottom bars, never
        layered under them — in chat they are unshrinkable flex
@@ -529,7 +546,7 @@
        stand before it in the page; in the meeting #meetDocBar
        lives inside #meetScroll, whose bottom padding clears the
        fixed #meetForm bar. */
-    #docBar, #routeBar { position: relative; z-index: 2; flex-shrink: 0; }
+    #docBar, #routeBar, #memoryBar { position: relative; z-index: 2; flex-shrink: 0; }
     #meetDocBar { position: relative; z-index: 2; }
     .routeHead { color: #fff; font-size: 14px; margin-bottom: 6px; }
     .routeRow { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -583,6 +600,7 @@
 </div>
 <div id="docBar" hidden></div>
 <div id="routeBar" hidden></div>
+<div id="memoryBar" hidden></div>
 <form id="form">
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="locBtn" type="button" title="Share location with next message">📍</button>
@@ -702,7 +720,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-1</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-6</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -718,7 +736,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-1';
+  var LUMI_BUILD_STAMP = '2026.11.08-6';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -810,8 +828,8 @@
       greeting: "¡Hola! I'm Cielo 🌦️ — your meteorologist. I keep watch over the skies for you, especially here in Laredo. Ask me about the weather anytime.",
       blurb: 'Weather agent — Laredo & worldwide watch, forecasts, storm alerts.' },
     astra: { name: 'Astra', emoji: '⚖️', avatar: 'astra-avatar.webp', video: 'media-generation-astra-motion-v1-0-81b6a565-309e-450e-bbbe-dc5c53bfd31e.mp4',
-      greeting: "Hi, I'm Astra ⚖️ — your attorney and political researcher. Cases, dockets, elections, fact-checks — bring me the question and I'll find the truth of it.",
-      blurb: 'Attorney & politics agent — law, cases, elections, fact-checking.' },
+      greeting: "Hi, I'm Astra ⚖️ — your researcher. Cases, dockets, elections, fact-checks — bring me the question and I'll find the truth of it.",
+      blurb: 'Research agent — law, cases, elections, fact-checking.' },
     alba: { name: 'Alba', emoji: '🌅', avatar: 'alba-avatar.webp', video: 'media-generation-alba-motion-v1-0-d25c2d66-7f83-4943-81a9-23a40e486948.mp4',
       greeting: "Hi, I'm Alba 🌅 — I keep your mornings gentle and your wellness on track. Sleep, walks, energy, you. How did you rest?",
       blurb: 'Wellness agent — sleep, energy, walks, gentle morning starts.' },
@@ -913,9 +931,9 @@
       "Cielo checking in 🌦️ — the sky report is ready whenever you are, T."
     ],
     astra: [
-      "Hi, I'm Astra ⚖️ — your attorney and political researcher. Cases, dockets, elections, fact-checks — bring me the question and I'll find the truth of it.",
+      "Hi, I'm Astra ⚖️ — your researcher. Cases, dockets, elections, fact-checks — bring me the question and I'll find the truth of it.",
       "Hello, T. Astra here ⚖️ — cases, dockets, elections, fact-checks. What are we looking into?",
-      "Hi! I'm Astra, your attorney and political researcher. Bring me the question and we'll find the truth of it.",
+      "Hi! I'm Astra, your researcher. Bring me the question and we'll find the truth of it.",
       "Astra at your service ⚖️ — research first, answers you can trust. Where do we dig in?"
     ],
     alba: [
@@ -958,7 +976,7 @@
       "Hello, T! I'm Cielo — forecasts and storm watch are my post. Any plans the weather could touch today?"
     ],
     astra: [
-      "Hi, T — I'm Astra, your attorney and political researcher. What are we looking into today?",
+      "Hi, T — I'm Astra, your researcher. What are we looking into today?",
       "Astra here, T ⚖️ — cases, dockets, and fact-checks. Is there a question you want answered properly today?",
       "Hello, T. I'm Astra — I research the law and the politics so you don't have to guess. What's on the docket?"
     ],
@@ -968,9 +986,9 @@
       "Hi, T! Alba here 🌅 — sleep, walks, and gentle starts. Did you get some good rest?"
     ],
     vega: [
-      "Hi, T — I'm Vega, your LSAT and study coach. Ready to put in a session today?",
+      "Hi, T — I'm Vega, your study coach. Ready to put in a session today?",
       "Vega here, T ⭐ — study plans and steady progress toward law school. What did you study last?",
-      "Hello, T! I'm Vega — your coach for the LSAT and your coursework. Where should we pick up?"
+      "Hello, T! I'm Vega — your study coach. Where should we pick up?"
     ]
   };
   const GREET_STATE_KEY = 'lumi_greet_rot_v1';
@@ -1026,7 +1044,7 @@
     bea:   { name: 'Sol',    duty: 'booking and calendar agent — schedules, reminders, and the team secretary who keeps the meeting minutes', voice: 'athena' },
     quinn: { name: 'Stella', duty: 'social media agent — captions, posts, and growing her accounts', voice: 'stella' },
     cielo: { name: 'Cielo',  duty: 'meteorologist — worldwide weather watch, forecasts, and storm alerts', voice: 'callista' },
-    astra: { name: 'Astra',  duty: 'attorney and political researcher — cases, dockets, fact-checks, and legal investigation', voice: 'hera' },
+    astra: { name: 'Astra',  duty: 'researcher — cases, dockets, fact-checks, and legal investigation', voice: 'hera' },
     alba:   { name: 'Alba',   duty: 'wellness keeper — sleep, walks, energy, and gentle mornings', voice: 'ophelia' },
     vega:   { name: 'Vega',   duty: 'study coach — LSAT prep, study plans, and coursework pacing', voice: 'andromeda' }
   };
@@ -1114,8 +1132,16 @@
   }
   // Hand-off leads. STRONG leads unmistakably ask for a hand-off;
   // WEAK leads act only when an agent actually resolves.
-  const XFER_STRONG_LEADS = ['transfer me over to', 'transfer this call to', 'transfer the call to', 'transfer me to', 'transfer to', 'hand me over to', 'hand me to', 'pass me over to', 'pass me to', 'switch me over to', 'switch me to', 'switch over to', 'switch to', 'put me through to', 'connect me to'];
-  const XFER_WEAK_LEADS = ['let me talk to', 'let me speak to', 'let me talk with', 'let me speak with', 'i want to talk to', 'i want to speak to', 'i wanna talk to', 'bring in', 'get me', 'get'];
+  const XFER_STRONG_LEADS = ['transfer me back to', 'transfer me over to', 'transfer this call to', 'transfer the call to', 'transfer me to', 'transfer to', 'hand me back to', 'hand me over to', 'hand me to', 'pass me back to', 'pass me over to', 'pass me to', 'switch me back to', 'switch me over to', 'switch me to', 'switch over to', 'switch to', 'take me back to', 'take me to', 'bring me to', 'send me to', 'put me through to', 'connect me to'];
+  const XFER_WEAK_LEADS = ['let me talk to', 'let me speak to', 'let me talk with', 'let me speak with', 'i want to talk to', 'i want to speak to', 'i wanna talk to', 'i need to talk to', 'i need to speak to', 'bring in', 'get me', 'get'];
+  // Leading frames T actually uses before the ask — a question
+  // ("can you transfer me to Stella?"), politeness ("please
+  // transfer me to Vega"), or "I want/need you to". Stripped, in
+  // order, before the anchored lead match, so the hand-off still
+  // fires; the words are never sent on as chat text. Nothing else
+  // is stripped — "tell me about transfers" still stays ordinary
+  // text.
+  const XFER_FRAMES = ['i would like you to', "i'd like you to", 'i want you to', 'i need you to', 'can you', 'could you', 'would you', 'will you', 'can i', 'could i', 'may i', 'please'];
   const XFER_BARE_WORDS = ['transfer me', 'transfer', 'switch me', 'hand me over', 'pass me', 'connect me', 'put me through'];
   const XFER_FILLER = ['', 'please', 'now', 'please now', 'for me', 'thanks', 'thank you'];
   // { id, rest } — a resolved hand-off ("rest" = the words after
@@ -1130,6 +1156,32 @@
     if (t.indexOf('hey ') === 0) { t = t.slice(4); leadSkip = 1; }
     else if (t.indexOf('okay ') === 0) { t = t.slice(5); leadSkip = 1; }
     else if (t.indexOf('ok ') === 0) { t = t.slice(3); leadSkip = 1; }
+    // Strip a leading agent address ("vega, transfer me to
+    // stella" / "hey vega transfer me to stella") and leading
+    // question/polite frames ("can you", "please", "i want you
+    // to"), tracking the words consumed so the "rest" after the
+    // hand-off still slices correctly from her original words.
+    let frameSkip = 0;
+    const XFER_ALL_VARIANTS = Object.keys(XFER_NAME_VARIANTS).map((k) => XFER_NAME_VARIANTS[k]).reduce((a, b) => a.concat(b), []);
+    let stripped = true;
+    while (stripped) {
+      stripped = false;
+      const firstTok = t.split(' ')[0];
+      if (firstTok && XFER_ALL_VARIANTS.indexOf(firstTok) !== -1) {
+        const afterAddr = t.slice(firstTok.length).trim();
+        if (afterAddr) { t = afterAddr; frameSkip++; stripped = true; continue; }
+      }
+      for (let fi = 0; fi < XFER_FRAMES.length; fi++) {
+        const fr = XFER_FRAMES[fi];
+        if (t === fr) break;
+        if (t.indexOf(fr) === 0 && !/[a-z]/.test(t.charAt(fr.length))) {
+          t = t.slice(fr.length).trim();
+          frameSkip += fr.split(' ').length;
+          stripped = true;
+          break;
+        }
+      }
+    }
     const leads = XFER_STRONG_LEADS.map((l) => [l, true]).concat(XFER_WEAK_LEADS.map((l) => [l, false]));
     for (const pair of leads) {
       const lead = pair[0], strong = pair[1];
@@ -1139,7 +1191,7 @@
         if (!after) { if (strong) return { bare: true }; continue; }
         const id = xferNameFrom(after);
         if (id) {
-          let p = leadSkip + lead.split(' ').length;
+          let p = leadSkip + frameSkip + lead.split(' ').length;
           if (rawToks[p] && ['hey', 'ok', 'okay'].indexOf(xferNormText(rawToks[p]).replace(/[^a-z]/g, '')) !== -1) p++;
           p++; // the name token itself
           let rest = rawToks.slice(p).join(' ').replace(/^[\s,!.?\u2014-]+/, '').trim();
@@ -1165,15 +1217,72 @@
   window.LumiTeamNote = { text: TEAM_NOTE_TEXT };
   window.LumiXferIntent = { intent: transferIntentFor };
   let xferResending = false;
+  // PENDING HANDOFF NOTE (build 2026.11.08-2): the context the new
+  // agent needs so T never re-explains herself. Built from the
+  // outgoing agent's thread BEFORE the switch; rides the next send
+  // to the new agent as hidden context (sent copy only, like the
+  // team note) and is never rendered or saved as her words.
+  let pendingHandoffNote = '';
+  function captureHandoffNote(targetId, reason) {
+    const fromName = (AGENTS[currentAgent] || {}).name || 'Lumi';
+    const toName = (AGENTS[targetId] || {}).name || 'Lumi';
+    const turns = (history || []).slice(-4).map((m) => {
+      const who = m.role === 'user' ? 'T' : fromName;
+      const txt = String(m.content || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      return txt ? who + ': ' + txt : '';
+    }).filter(Boolean).join(' | ');
+    return '[Handoff from ' + fromName + ' to ' + toName + ' — context only, not written by T: T asked to talk to ' + toName +
+      (reason ? ' (' + String(reason).replace(/\s+/g, ' ').trim().slice(0, 200) + ')' : '') +
+      '. Recent context: ' + (turns || 'none') + '. Pick up from there; greet briefly as ' + toName + ' and do not re-ask what was already covered.]';
+  }
+  function switchNoteFor(targetId) {
+    if (targetId === 'lumi') return '🔀 You are back with Lumi.';
+    return '🔀 You are now talking to ' + AGENTS[targetId].name + '. Say "take me back to Lumi" anytime to go back.';
+  }
+  // GREET AFTER A SWITCH (build 2026.11.08-2): when a hand-off
+  // lands with no message already going to the new agent, the new
+  // agent greets T herself, with the handoff context — the same
+  // courtesy the phone handoff already gives. The handoff note is
+  // the message; it is never rendered as one of her bubbles and
+  // never written into the saved history (the Worker drops
+  // [Handoff ...] turns before saving).
+  async function greetAfterSwitch(targetId) {
+    const note = pendingHandoffNote;
+    pendingHandoffNote = '';
+    if (!note || WORKER_URL.indexOf('PASTE_YOUR') !== -1) return;
+    try {
+      if (PENDING_AGENTS[targetId]) {
+        const reply = pendingReply(targetId, history);
+        addMsg(reply, 'ai');
+        history.push({ role: 'assistant', content: reply });
+        saveHistory();
+        speak(reply);
+        return;
+      }
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: note, messages: history.concat([{ role: 'user', content: note }]), agent: targetId, voice: voiceOn })
+      });
+      const data = await res.json();
+      const reply = (data && data.reply) || '';
+      if (!reply) return;
+      addMsg(reply, 'ai');
+      history.push({ role: 'assistant', content: reply });
+      saveHistory();
+      speak(String(reply).replace(/https?:\/\/[^\s]+/g, ' (link in chat) '));
+    } catch (e) {}
+  }
   async function performChatSwitch(hit) {
     const targetId = hit.id;
+    try { pendingHandoffNote = captureHandoffNote(targetId, hit.rest || ''); } catch (e) {}
     try { await applyAgent(targetId, false); } catch (e) {}
-    try { addMsg('🔀 You are now talking to ' + AGENTS[targetId].name + '.', 'ai'); } catch (e) {}
+    try { addMsg(switchNoteFor(targetId), 'ai'); } catch (e) {}
     const rest = (hit.rest || '').trim();
     const attachPending = !!((window.LumiDocs && LumiDocs.pending && LumiDocs.pending('chat')) ||
                              (window.LumiPhoto && LumiPhoto.pending && LumiPhoto.pending('chat')));
     input.value = rest;
-    if (!rest && !attachPending) return;
+    if (!rest && !attachPending) { try { await greetAfterSwitch(targetId); } catch (e) {} return; }
     // Words (or, with only an attachment pending, an empty box —
     // the consume listeners fill their own default line) go
     // through the normal send path for the NEW agent: a pending
@@ -1197,7 +1306,35 @@
     const raw = input.value || '';
     if (!raw.trim()) return;
     const hit = transferIntentFor(raw);
-    if (!hit) return;
+    if (!hit) {
+      // NAME CUE, TYPED (build 2026.11.08-2): leading with another
+      // agent's name addresses HER — the same -26 discipline the
+      // voice path already uses, so "Stella, can you take this
+      // over?" switches to Stella with the rest as her first
+      // message instead of reaching the Worker, where she could
+      // only promise a hand-off. Meeting and alert-test intents
+      // own their words first, so "Stella, put me in a meeting"
+      // still opens the meeting. On a call the call's own routing
+      // owns it, so this stays out.
+      if (!window.callMode) {
+        const nameId = xferNameFrom(raw);
+        if (nameId && nameId !== currentAgent) {
+          const isMeet = (typeof meetingIntentFor === 'function') && meetingIntentFor(raw);
+          const isAlert = (typeof alertTestIntentFor === 'function') && alertTestIntentFor(raw);
+          if (!isMeet && !isAlert) {
+            const rawToks = raw.trim().split(/\s+/).filter(Boolean);
+            let skip = 0;
+            if (/^(hey|ok|okay),?$/i.test(rawToks[0] || '')) skip = 1;
+            let rest = rawToks.slice(skip + 1).join(' ').replace(/^[\s,!.?\u2014-]+/, '').trim();
+            if (rest.indexOf('and ') === 0) rest = rest.slice(4).trim();
+            if (XFER_FILLER.indexOf(xferNormText(rest).replace(/[.!?]+$/, '')) !== -1) rest = '';
+            e.preventDefault(); e.stopImmediatePropagation();
+            performChatSwitch({ id: nameId, rest: rest });
+          }
+        }
+      }
+      return;
+    }
     if (hit.bare) {
       if (window.callMode) {
         e.preventDefault(); e.stopImmediatePropagation();
@@ -1516,7 +1653,7 @@
   // --- alert hours settings panel (bell in the top bar) ---
   function alertOpenPanel() {
     var old = document.getElementById('lumiAlertPanel');
-    if (old) { old.style.display = old.style.display === 'none' ? 'block' : 'none'; return; }
+    if (old) { var showIt = old.style.display === 'none'; old.style.display = showIt ? 'block' : 'none'; if (showIt) { flagsPoll(true).then(function () { flagsRenderInbox(); }); } return; }
     var hours = alertLoadHours();
     var labels = alertHourLabels();
     var panel = document.createElement('div');
@@ -1530,8 +1667,10 @@
       '<button type="button" id="lumiAlertPanelClose" style="border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:8px 12px;font-size:15px;cursor:pointer;">✖</button></div>' +
       '<p style="font-size:14px;line-height:1.5;opacity:.85;">Every hour has its own switch. All 24 start ON — flip off just the hours you want silent. A note landing in an OFF hour waits quietly in the inbox instead of popping (never lost). The test command always pops, so you can see it work.</p>' +
       '<button type="button" id="lumiAlertMasterBtn" style="width:100%;border:0;border-radius:12px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;background:' + (alertLoadMaster() ? '#72edfa;color:#0f1126;' : 'rgba(255,255,255,.12);color:#fff;') + '">Video alerts: ' + (alertLoadMaster() ? 'ON' : 'OFF') + '</button>' +
+      '<div id="lumiFlagsInbox" style="margin:2px 0 12px;"></div>' +
       '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">' + btns + '</div>';
     document.body.appendChild(panel);
+    flagsPoll(true).then(function () { flagsRenderInbox(); });
     document.getElementById('lumiAlertPanelClose').addEventListener('click', function () { panel.style.display = 'none'; });
     document.getElementById('lumiAlertMasterBtn').addEventListener('click', function (e) {
       var on = !alertLoadMaster();
@@ -1557,6 +1696,165 @@
     if (b) b.addEventListener('click', alertOpenPanel);
   })();
   window.LumiAlertPhaseA = { intent: alertTestIntentFor, test: alertPerformTest, shouldPop: alertShouldPop, hourAllowed: alertHourAllowed, loadHours: alertLoadHours };
+
+  // ================================================================
+  // DUTY FLAGS (build 2026.11.08-3, owner order Nov 8, 2026): every
+  // agent can flag T — Cielo for severe weather, Astra for case
+  // deadlines, Vega for syllabus/LSAT deadlines, Alba for checkups,
+  // Stella for social flags, Luz for important email, Sol for
+  // schedule conflicts, Lumi for anything. WHY THIS EXISTS: Cielo's
+  // prompt said "flag severe weather early" but the Worker could
+  // only answer when asked — the Nov 8 Flood Watch never reached T.
+  // Flags live in the Worker (KV "flags", raised with the raise_flag
+  // tool or by the Cielo NWS watch) and this app polls GET /flags
+  // once a minute. An unacknowledged flag pops in the alert pop-out
+  // — gated by the same alertShouldPop() master switch + hour grid
+  // as the Phase A video notes — and waits in the alert panel inbox
+  // until she acknowledges it (never lost). The test video alert
+  // (alertPerformTest) is untouched and still always pops.
+  // ================================================================
+  const FLAGS_POLL_MS = 60000;
+  const FLAGS_SEV_LABEL = { info: 'Info', urgent: 'Urgent', emergency: 'Emergency' };
+  const FLAGS_SEV_ICON = { info: 'ℹ️', urgent: '⚠️', emergency: '🚨' };
+  const FLAGS_SEV_COLOR = { info: '#72edfa', urgent: '#f5b301', emergency: '#ff5a5a' };
+  var flagsLast = [];
+  var flagsShownThisSession = {};
+  var flagsPollTimer = null;
+  function flagsWorkerBase() {
+    try { return WORKER_URL.replace(/\/$/, ''); } catch (e) { return ''; }
+  }
+  async function flagsFetch() {
+    var base = flagsWorkerBase();
+    if (!base || base.indexOf('PASTE_YOUR') !== -1) return null;
+    try {
+      var res = await fetch(base + '/flags');
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) { return null; }
+  }
+  async function flagsAck(id) {
+    var base = flagsWorkerBase();
+    if (!base) return;
+    try { await fetch(base + '/flags/' + encodeURIComponent(id) + '/ack', { method: 'POST' }); } catch (e) {}
+  }
+  function flagsOpen(list) {
+    var now = Date.now();
+    return (list || []).filter(function (f) {
+      if (!f || f.status !== 'open') return false;
+      if (f.expiresAt && new Date(f.expiresAt).getTime() <= now) return false;
+      return true;
+    });
+  }
+  function flagsPickNext(open) {
+    var rank = { emergency: 0, urgent: 1, info: 2 };
+    var sorted = open.slice().sort(function (a, b) {
+      var ra = rank[a.severity] === undefined ? 2 : rank[a.severity];
+      var rb = rank[b.severity] === undefined ? 2 : rank[b.severity];
+      if (ra !== rb) return ra - rb;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return sorted[0] || null;
+  }
+  function flagsAgentMeta(agentId) {
+    try {
+      var a = AGENTS[agentId];
+      if (a) return { name: a.name, emoji: a.emoji || '⭐', avatar: a.avatar || 'lumi-avatar.webp' };
+    } catch (e) {}
+    return { name: agentId || 'Lumi', emoji: '⭐', avatar: 'lumi-avatar.webp' };
+  }
+  function flagsEscape(s) {
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function alertShowFlagPopout(flag) {
+    var prev = document.getElementById('lumiFlagPop');
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+    var meta = flagsAgentMeta(flag.agent);
+    var sev = flag.severity || 'info';
+    var color = FLAGS_SEV_COLOR[sev] || FLAGS_SEV_COLOR.info;
+    var icon = FLAGS_SEV_ICON[sev] || FLAGS_SEV_ICON.info;
+    var card = document.createElement('div');
+    card.id = 'lumiFlagPop';
+    card.setAttribute('role', 'alert');
+    card.style.cssText = 'position:fixed;left:50%;bottom:0;z-index:9999;width:min(420px,92vw);transform:translateX(-50%);background:#242746;color:#fff;border:1px solid ' + color + ';border-bottom:none;border-radius:20px 20px 0 0;box-shadow:0 -8px 40px rgba(0,0,0,.55);font-family:system-ui,-apple-system,sans-serif;padding:16px 18px calc(16px + env(safe-area-inset-bottom));';
+    var until = '';
+    if (flag.expiresAt) {
+      try { until = '<div style="font-size:13px;opacity:.75;margin-top:6px;">Until ' + flagsEscape(new Date(flag.expiresAt).toLocaleString()) + '</div>'; } catch (e) {}
+    }
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<img src="' + flagsEscape(meta.avatar) + '" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ' + color + ';background:#0f1126;">' +
+      '<div><div style="font-size:19px;font-weight:700;">' + flagsEscape(meta.emoji + ' ' + meta.name) + '</div>' +
+      '<div style="font-size:13px;color:' + color + ';font-weight:700;">' + flagsEscape(icon + ' ' + (FLAGS_SEV_LABEL[sev] || FLAGS_SEV_LABEL.info)) + '</div></div></div>' +
+      '<div style="margin:12px 0 4px;font-size:17px;font-weight:700;line-height:1.35;">' + flagsEscape(flag.subject) + '</div>' +
+      '<div style="font-size:15px;line-height:1.45;opacity:.92;">' + flagsEscape(flag.message) + '</div>' + until +
+      '<div style="display:flex;gap:10px;margin-top:14px;">' +
+      '<button type="button" id="lumiFlagChatBtn" style="flex:1;border:0;border-radius:12px;padding:11px 8px;font-size:15px;font-weight:700;cursor:pointer;background:#72edfa;color:#0f1126;">Open chat</button>' +
+      '<button type="button" id="lumiFlagGotBtn" style="flex:1;border:0;border-radius:12px;padding:11px 8px;font-size:15px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;">Got it \u2713</button>' +
+      '</div>';
+    document.body.appendChild(card);
+    var done = function () { if (card.parentNode) card.parentNode.removeChild(card); };
+    document.getElementById('lumiFlagGotBtn').addEventListener('click', function () { flagsAck(flag.id); done(); });
+    document.getElementById('lumiFlagChatBtn').addEventListener('click', function () {
+      flagsAck(flag.id); done();
+      try {
+        if (flag.agent && flag.agent !== currentAgent) applyAgent(flag.agent, false);
+        addMsg(flag.subject + ' — ' + flag.message, 'ai');
+        var inp = document.querySelector('#chatInput, input[type="text"]'); if (inp) inp.focus();
+      } catch (e) {}
+    });
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+    if (sev === 'emergency') { try { speak(flag.subject + '. ' + flag.message, flag.agent || 'lumi'); } catch (e) {} }
+  }
+  function flagsRenderInbox() {
+    var box = document.getElementById('lumiFlagsInbox');
+    if (!box) return;
+    var open = flagsOpen(flagsLast);
+    if (!open.length) {
+      box.innerHTML = '<div style="font-size:14px;opacity:.8;">No flags waiting — you\u2019re all caught up. 💛</div>';
+      return;
+    }
+    var rows = open.map(function (f) {
+      var meta = flagsAgentMeta(f.agent);
+      var color = FLAGS_SEV_COLOR[f.severity] || FLAGS_SEV_COLOR.info;
+      var icon = FLAGS_SEV_ICON[f.severity] || FLAGS_SEV_ICON.info;
+      return '<div style="display:flex;gap:10px;align-items:flex-start;border:1px solid ' + color + ';border-radius:12px;padding:10px;margin-bottom:8px;">' +
+        '<div style="flex:1;"><div style="font-size:14px;font-weight:700;">' + flagsEscape(meta.emoji + ' ' + meta.name) + ' · ' + flagsEscape(icon + ' ' + (FLAGS_SEV_LABEL[f.severity] || 'Info')) + '</div>' +
+        '<div style="font-size:14px;line-height:1.4;">' + flagsEscape(f.subject) + '</div>' +
+        '<div style="font-size:13px;opacity:.8;line-height:1.4;">' + flagsEscape(f.message) + '</div></div>' +
+        '<button type="button" data-flagack="' + flagsEscape(f.id) + '" style="border:0;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;cursor:pointer;background:#72edfa;color:#0f1126;white-space:nowrap;">Got it \u2713</button></div>';
+    }).join('');
+    box.innerHTML = '<div style="font-size:15px;font-weight:700;margin-bottom:8px;">🚩 Flags waiting for you (' + open.length + ')</div>' + rows;
+    box.querySelectorAll('[data-flagack]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-flagack');
+        flagsAck(id);
+        flagsLast = flagsLast.filter(function (f) { return f.id !== id; });
+        flagsRenderInbox();
+      });
+    });
+  }
+  async function flagsPoll(quiet) {
+    var data = await flagsFetch();
+    if (!data || !Array.isArray(data.flags)) return;
+    flagsLast = data.flags;
+    if (quiet) return;
+    var open = flagsOpen(flagsLast);
+    if (!open.length) return;
+    var next = flagsPickNext(open);
+    if (!next || flagsShownThisSession[next.id]) return;
+    if (!alertShouldPop(new Date(), alertLoadMaster(), alertLoadHours())) return;
+    flagsShownThisSession[next.id] = true;
+    alertShowFlagPopout(next);
+  }
+  // Start the flags poller (once a minute; one immediate check a few
+  // seconds after load so it never fights the welcome bubble). Silent
+  // when the Worker URL is not configured yet.
+  if (typeof WORKER_URL !== 'undefined' && WORKER_URL.indexOf('PASTE_YOUR') === -1) {
+    setTimeout(function () { flagsPoll(false); }, 5000);
+    if (!flagsPollTimer) flagsPollTimer = setInterval(function () { flagsPoll(false); }, FLAGS_POLL_MS);
+  }
+  window.LumiFlags = { poll: flagsPoll, open: alertShowFlagPopout, ack: flagsAck, inbox: flagsRenderInbox };
+
   // Typed + dictated one-on-one chat interception, registered after
   // the meeting-entry listener so a meeting request wins first (it
   // stops propagation). Same guards: never inside a meeting or call.
@@ -2328,11 +2626,32 @@
   }
   const headerTitle = document.querySelector('header h1');
   const callName = document.getElementById('callName');
-  async function pullSharedHistory(id) {
-    // Shared memory lives in the Worker (KV) — every device sees the same
-    // conversation. Falls back to this device's local copy when offline.
+  // CROSS-DEVICE MEMORY (build 2026.11.08-6): the server is the source of
+  // truth — history, facts, and the novel live in the Worker's KV, so any
+  // device sees the same memory. localStorage is only a cache, and the
+  // server copy never wipes it. The restore is time-boxed (6 s) so a
+  // slow or unreachable Worker never blocks the first render.
+  let memoryStatus = null;
+  function fetchWithTimeout(url, opts, ms) {
+    return Promise.race([
+      fetch(url, opts),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms || 6000)),
+    ]);
+  }
+  async function fetchMemoryStatus() {
     try {
-      const r = await fetch(WORKER_URL + '?history=' + encodeURIComponent(id), { method: 'GET' });
+      const r = await fetchWithTimeout(WORKER_URL + 'memory/status', { method: 'GET' });
+      const d = await r.json();
+      if (d && d.ok) { memoryStatus = d; return d; }
+    } catch (e) {}
+    return null;
+  }
+  async function restoreServerMemory(id) {
+    // Server wins when it has history; the local cache is kept (never
+    // wiped) when the server has nothing yet. Returns true when the
+    // server copy was used.
+    try {
+      const r = await fetchWithTimeout(WORKER_URL + '?history=' + encodeURIComponent(id), { method: 'GET' });
       const d = await r.json();
       if (d && Array.isArray(d.messages) && d.messages.length) {
         history = d.messages
@@ -2343,6 +2662,30 @@
       }
     } catch (e) {}
     return false;
+  }
+  function renderMemoryBar() {
+    const bar = document.getElementById('memoryBar');
+    if (!bar) return;
+    const n = memoryStatus && memoryStatus.activeNovel;
+    if (!n) { bar.hidden = true; bar.innerHTML = ''; return; }
+    const last = n.lastApproved ? 'Last approved: Ch. ' + n.lastApproved.n + ' — ' + n.lastApproved.title + '. ' : 'No chapter approved yet. ';
+    const next = n.nextTitle ? 'Next: Ch. ' + n.nextChapter + ' — ' + n.nextTitle + '. ' : '';
+    bar.hidden = false;
+    bar.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = '📖 ' + n.title + ' — ' + last + next;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Continue the book';
+    btn.addEventListener('click', () => {
+      input.value = 'Continue the book';
+      form.requestSubmit();
+    });
+    bar.appendChild(span);
+    bar.appendChild(btn);
+  }
+  async function pullSharedHistory(id) {
+    return restoreServerMemory(id);
   }
   async function applyAgent(id, announce) {
     if (id !== currentAgent) { try { saveHistory(); } catch (e) {} }
@@ -2430,7 +2773,17 @@
     document.getElementById('teamOverlay').classList.remove('open');
   });
   history = loadHistory(currentAgent);
-  applyAgent(currentAgent, false);
+  // CROSS-DEVICE MEMORY (build 2026.11.08-6): restore from the server
+  // BEFORE the first render, so a new device never flashes an empty chat.
+  // Server history wins when it exists; the local cache is kept (never
+  // wiped) when the server has nothing yet.
+  (async () => {
+    try { await restoreServerMemory(currentAgent); } catch (e) {}
+    try { await fetchMemoryStatus(); } catch (e) {}
+    applyAgent(currentAgent, false);
+    renderHistory();
+    renderMemoryBar();
+  })();
   // Lumi voice: read replies aloud with the browser's built-in speech synthesis.
   let voiceOn = true;
   let spanishOn = false;
@@ -2834,6 +3187,75 @@
     a.href = file.url; a.target = '_blank'; a.rel = 'noopener'; a.className = 'fileCardLink';
     a.textContent = 'Open / download';
     card.appendChild(a);
+    renderMediaPreview(card, file);
+    container.appendChild(card);
+  }
+  // IN-CHAT PREVIEW (build 2026.11.08-5): video/audio play inline, images
+  // show a thumbnail. Best-effort only — Drive's direct media URL needs
+  // her Google sign-in in this browser; when it fails the element hides
+  // itself and the Open/download link above still works. The plain link
+  // in the reply words is the durable copy: cards do not survive a
+  // history re-render, the link does.
+  function renderMediaPreview(container, file) {
+    if (!file || !file.url) return;
+    var m = /\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(file.url || '');
+    if (!m) return;
+    var src = 'https://drive.google.com/uc?export=download&id=' + m[1];
+    var mt = String(file.mimeType || '');
+    var el = null;
+    if (mt.indexOf('video/') === 0) { el = document.createElement('video'); el.controls = true; el.preload = 'metadata'; el.playsInline = true; el.className = 'fileMedia'; }
+    else if (mt.indexOf('audio/') === 0) { el = document.createElement('audio'); el.controls = true; el.preload = 'metadata'; el.className = 'fileMedia'; }
+    else if (mt.indexOf('image/') === 0) { el = document.createElement('img'); el.className = 'fileImg'; el.alt = file.name || 'Image'; }
+    if (!el) return;
+    el.src = src;
+    el.onerror = function () { try { el.remove(); } catch (e) {} };
+    container.appendChild(el);
+  }
+  // ORDER CARD (build 2026.11.08-5): tap-to-approve for a food order
+  // draft. Approve sends her yes as a chat turn (the Worker records her
+  // exact words); Change/Cancel do the same. Nothing is paid here.
+  function renderOrderCard(container, order) {
+    if (!order || !order.id) return;
+    var card = document.createElement('div');
+    card.className = 'orderCard';
+    var name = document.createElement('div');
+    name.className = 'orderCardName';
+    name.textContent = '🍽️ ' + (order.restaurantName || 'Order') + ' — ' + (order.fulfillment || '');
+    card.appendChild(name);
+    var items = document.createElement('div');
+    items.className = 'orderCardName';
+    items.textContent = (order.items || []).map(function (it) { return (it.name || it) + (it.qty ? ' x' + it.qty : ''); }).join(', ');
+    card.appendChild(items);
+    var total = document.createElement('div');
+    total.className = 'orderCardTotal';
+    total.textContent = 'Total: $' + Number((order.totals && order.totals.total) || 0).toFixed(2) + '  (' + (order.status || 'draft') + ')';
+    card.appendChild(total);
+    function sendAs(text) { try { input.value = text; if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true })); } catch (e) {} }
+    var yes = document.createElement('button');
+    yes.className = 'orderBtn orderBtnYes'; yes.textContent = 'Yes, place it';
+    yes.addEventListener('click', function () { sendAs('Yes, place order ' + order.id + ' — ' + (order.restaurantName || '') + ' total $' + Number((order.totals && order.totals.total) || 0).toFixed(2)); });
+    card.appendChild(yes);
+    var chg = document.createElement('button');
+    chg.className = 'orderBtn orderBtnNo'; chg.textContent = 'Change it';
+    chg.addEventListener('click', function () { sendAs('Change order ' + order.id + ': '); });
+    card.appendChild(chg);
+    var cx = document.createElement('button');
+    cx.className = 'orderBtn orderBtnNo'; cx.textContent = 'Cancel';
+    cx.addEventListener('click', function () { sendAs('Cancel order ' + order.id); });
+    card.appendChild(cx);
+    container.appendChild(card);
+  }
+  // YOUTUBE CARD (build 2026.11.08-5): in-chat player for a video Lumi
+  // picked. The watch link stays in the reply words too.
+  function renderYouTubeCard(container, video) {
+    if (!video || !video.videoId) return;
+    var card = document.createElement('div');
+    card.className = 'ytCard';
+    var fr = document.createElement('iframe');
+    fr.src = 'https://www.youtube.com/embed/' + video.videoId;
+    fr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    fr.allowFullscreen = true;
+    card.appendChild(fr);
     container.appendChild(card);
   }
   function setBubbleText(el, text) {
@@ -2892,10 +3314,21 @@
           if (outMsgs[i] && outMsgs[i].role === 'user') { outMsgs[i] = { role: 'user', content: outText }; break; }
         }
       }
+      // HANDOFF NOTE (build 2026.11.08-2): the context from the
+      // agent T just left rides this send only, sent-copy only —
+      // her bubble and her saved history keep her exact words.
+      if (pendingHandoffNote) {
+        outText = outText + '\n' + pendingHandoffNote;
+        outMsgs = outMsgs.slice();
+        for (let i = outMsgs.length - 1; i >= 0; i--) {
+          if (outMsgs[i] && outMsgs[i].role === 'user') { outMsgs[i] = { role: 'user', content: outText }; break; }
+        }
+        pendingHandoffNote = '';
+      }
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ message: outText, messages: outMsgs, agent: currentAgent, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
+        body: JSON.stringify(Object.assign({ message: outText, messages: outMsgs, agent: currentAgent, voice: voiceOn, tz: deviceTz(), clientTime: deviceNowIso() }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
       });
       return res.json();
     }
@@ -2911,11 +3344,33 @@
       const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
       setBubbleText(thinking, reply);
       if (data.file) renderFileCard(thinking, data.file);
+      if (data.order) renderOrderCard(thinking, data.order);
+      if (data.video) renderYouTubeCard(thinking, data.video);
       history.push({ role: 'assistant', content: reply });
       saveHistory();
       // Spoken reply skips bare URLs (they are tappable links in the
       // bubble instead) — hearing a web address read aloud helps nobody.
       speak(String(reply).replace(/https?:\/\/[^\s]+/g, ' (link in chat) '));
+      // WORKER-DRIVEN TRANSFER (build 2026.11.08-2): the agent
+      // performed the hand-off with the transfer_agent tool — her
+      // hand-over line was already shown and spoken by the old
+      // agent, so the switch lands now, never as a promise. On a
+      // video call the call itself hands over (same 🔀 path as the
+      // picker); in chat the thread switches and the new agent
+      // greets her with the handoff context.
+      if (data.transfer && data.transfer.agent && AGENTS[data.transfer.agent] && data.transfer.agent !== currentAgent) {
+        const xTarget = data.transfer.agent;
+        const xName = AGENTS[xTarget].name;
+        try { pendingHandoffNote = captureHandoffNote(xTarget, data.transfer.reason || ''); } catch (e) {}
+        if (window.callMode && window.LumiCall && LumiCall.transfer) {
+          try { addMsg('🔀 Handing this call to ' + xName + '…', 'ai'); } catch (e) {}
+          setTimeout(() => { try { LumiCall.transfer(xTarget); } catch (e) {} }, 1200);
+        } else {
+          try { await applyAgent(xTarget, false); } catch (e) {}
+          try { addMsg(switchNoteFor(xTarget), 'ai'); } catch (e) {}
+          try { await greetAfterSwitch(xTarget); } catch (e) {}
+        }
+      }
     } catch (err) {
       thinking.textContent = "Sorry, I couldn't reach the Worker. Check your Worker URL and that the Worker is deployed.";
     }
@@ -3018,6 +3473,12 @@
   // so the team answers weather / "near me" for where she actually IS.
   let myCoords = null;
   try { const _lc = JSON.parse(localStorage.getItem('lumi_coords') || 'null'); if (_lc && isFinite(_lc.lat) && isFinite(_lc.lon)) myCoords = _lc; } catch (e) {}
+  // Device timezone + local clock (no permission needed): ride with
+  // every chat/meeting request so the team always knows what time it
+  // is for T. Location itself stays opt-in via the location button —
+  // the Worker falls back to her Laredo home base when no GPS arrives.
+  function deviceTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  function deviceNowIso() { try { return new Date().toISOString(); } catch (e) { return ''; } }
   function refreshLocation() {
     if (!('geolocation' in navigator)) return;
     navigator.geolocation.getCurrentPosition(
@@ -3268,6 +3729,16 @@
         const xi = transferIntentFor(transcript);
         if (xi && xi.id && xi.id !== currentAgent) { if (transferCall(xi.id)) return; }
         if (xi && xi.bare) { const tb = document.getElementById('callTransferBtn'); if (tb) { try { tb.click(); } catch (err) {} } return; }
+      }
+      // TRANSFER WORDS, PLAIN CHAT (build 2026.11.08-2): "transfer
+      // me to Stella" said in a one-on-one voice chat hands her
+      // over in the chat itself — the same switch the typed box
+      // does — instead of the words going to the Worker, where the
+      // agent could only promise a transfer it cannot perform.
+      // The call and meeting paths above own their own routing.
+      if (!window.meetMode && !window.callMode) {
+        const xiChat = transferIntentFor(transcript);
+        if (xiChat && xiChat.id && xiChat.id !== currentAgent) { performChatSwitch(xiChat); return; }
       }
       // GOODBYE CUE (build 2026.10.23-26): she said goodbye -- the
       // conversation concludes here, in every mode, instead of the
@@ -4662,7 +5133,7 @@
         const res = await fetch(WORKER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('meet')) ? { frame: LumiPhoto.frameFor('meet') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
+          body: JSON.stringify(Object.assign({ message: text, messages: mh, agent: id, voice: voiceOn, tz: deviceTz(), clientTime: deviceNowIso() }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, meetThreadText() ? { meeting: meetThreadText() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('meet')) ? { frame: LumiPhoto.frameFor('meet') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
         });
         return res.json();
       }
