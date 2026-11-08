@@ -104,6 +104,58 @@
     .foodStore .foodState { display: block; font-size: 11px; opacity: 0.8; margin-top: 4px; }
     .foodStore[data-state="setting up"] { opacity: 0.65; border-style: dashed; }
     #foodClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* Company sub-folder (build 2026.11.08-14, owner order Nov 8,
+       2026): tapping a linked company opens its own folder inside
+       the Food overlay — this week's specials & coupons on top,
+       then the full menu with numbered, tappable items. Same look
+       as the food grid buttons; nothing here invents a price,
+       coupon, special, or menu item — every line comes from the
+       Worker (/rewards/status, /menu) or the empty/fallback states. */
+    #foodCompanyView { width: min(420px, 90vw); text-align: left; }
+    #foodCompanyView[hidden] { display: none; }
+    #foodCompanyTitle { margin: 0 0 4px; font-size: 22px; color: #9c89f4; text-align: center; }
+    #foodSpecials h4, #foodMenu h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
+    #foodPointsLine { margin: 0 0 6px; font-size: 14px; color: #fff; font-weight: 700; }
+    .specialItem { background: #242746; border: 1px solid #72edfa; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+    .specialTitle { font-size: 14px; color: #fff; }
+    .specialExpiry { font-size: 12px; color: #ffd166; margin-top: 3px; }
+    .specialDetail { font-size: 12px; color: #bbb; margin-top: 3px; }
+    .menuSectionTitle { margin: 12px 0 6px; font-size: 15px; color: #9c89f4; }
+    .menuItem { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 14px; padding: 11px 12px; font-size: 15px; text-align: left; cursor: pointer; margin-bottom: 8px; }
+    .menuItem:active { background: #72edfa; color: #171a3b; }
+    .menuItemNum { font-weight: 700; }
+    .menuItemPrice { float: right; font-weight: 700; color: #ffd166; }
+    .menuItemDesc { display: block; font-size: 12px; color: #bbb; margin-top: 3px; }
+    .foodCompanyEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
+    /* Entertainment tab (build 2026.11.08-15, owner order Nov 8,
+       2026): same overlay pattern as Food — a grid of service
+       buttons, each opening its own sub-folder with a
+       "Currently watching" shell (placeholder until linked, never
+       invented shows) plus the not-linked note. NOTHING is linked
+       yet; no sign-in, no playback, no subscription from here. */
+    #entOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
+    #entOverlay.open { display: flex; }
+    #entOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #entHint, #entNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
+    #entGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(420px, 90vw); }
+    .entService { background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; cursor: pointer; }
+    .entService:active { background: #72edfa; color: #171a3b; }
+    .entService .entState { display: block; font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    .entService[data-state="not linked"] { opacity: 0.65; border-style: dashed; }
+    #entClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    #entServiceView { width: min(420px, 90vw); text-align: left; }
+    #entServiceView[hidden] { display: none; }
+    #entServiceTitle { margin: 0 0 4px; font-size: 22px; color: #9c89f4; text-align: center; }
+    #entWatching h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
+    .entServiceEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
+    .entServiceNote { font-size: 13px; color: #bbb; margin: 12px 0; }
+    #entServiceBack { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    .foodCompanyLoading { font-size: 13px; color: #bbb; margin: 4px 0; }
+    #foodMenuAdded { min-height: 18px; font-size: 13px; color: #7dff9e; text-align: center; margin: 8px 0; }
+    .foodMenuBtn { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin: 6px 0; }
+    .foodMenuBtn:active { background: #72edfa; color: #171a3b; }
+    #foodOrderChatBtn { display: block; width: 100%; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 10px 12px; font-size: 14px; cursor: pointer; margin: 10px 0 4px; }
+    #foodCompanyBack { display: block; margin: 10px auto 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
     .agentCard { background: #1a1a1a; border: 2px solid #72edfa; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
     .agentCard.active { background: #72edfa; }
@@ -566,6 +618,13 @@
     .orderBtn { display: inline-block; padding: 6px 14px; border-radius: 999px; border: none; font-size: 14px; margin-right: 6px; cursor: pointer; }
     .orderBtnYes { background: #2e9e6b; color: #fff; }
     .orderBtnNo { background: rgba(255,255,255,.14); color: #fff; }
+    /* FULFILLMENT TAP BUTTONS (build 2026.11.08-13, owner order Nov 8,
+       2026: tap Pickup / Delivery / Curbside instead of typing it):
+       row under Lumi's fulfillment question; same look as the food
+       company buttons, 44px min tap height for iPhone/tablet. */
+    .fulfillRow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .fulfillBtn { background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 12px 18px; font-size: 15px; font-weight: 700; min-height: 44px; cursor: pointer; }
+    .fulfillBtn:active { background: #72edfa; color: #171a3b; }
     .ytCard { margin-top: 8px; border-radius: 12px; overflow: hidden; }
     .ytCard iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; background: #0f1126; }
     .driveChip a { color: #fff; text-decoration: underline; }
@@ -604,6 +663,7 @@
         <button id="homeMeetBtn" type="button">🎬 Team meeting</button>
         <button id="homeFoodBtn" type="button">🍔 Food &amp; Groceries</button>
         <button id="homeShopBtn" type="button">🛍️ Shopping</button>
+        <button id="homeEntertainmentBtn" type="button">🎬 Entertainment</button>
     </div>
     <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
 </div>
@@ -708,8 +768,53 @@
         <button type="button" class="foodStore" data-store="Tremendo Taco" data-state="setting up">🌮 Tremendo Taco <span class="foodState">setting up</span></button>
         <button type="button" class="foodStore" data-store="Cosmos Bar &amp; Grill" data-state="setting up">🍹 Cosmos Bar &amp; Grill <span class="foodState">setting up</span></button>
     </div>
+    <div id="foodCompanyView" hidden>
+        <h3 id="foodCompanyTitle"></h3>
+        <div id="foodSpecials">
+            <h4>🎉 This week's specials &amp; coupons</h4>
+            <p id="foodPointsLine"></p>
+            <div id="foodSpecialsList"><p class="foodCompanyLoading">Loading specials…</p></div>
+        </div>
+        <div id="foodMenu">
+            <h4>📋 Menu</h4>
+            <div id="foodMenuList"><p class="foodCompanyLoading">Loading menu…</p></div>
+        </div>
+        <p id="foodMenuAdded" aria-live="polite"></p>
+        <button id="foodOrderChatBtn" type="button">💬 Order with Lumi in chat</button>
+        <button id="foodCompanyBack" type="button">← Back to Food &amp; Groceries</button>
+    </div>
     <p id="foodNote">More places are added as they're linked.</p>
     <button id="foodClose" type="button">← Back to home</button>
+</div>
+<div id="entOverlay">
+    <h2>🎬 Entertainment</h2>
+    <p id="entHint">Lumi keeps you posted on new episodes, new music, and new artists from the services you already have — she never signs you up for anything new without your yes.</p>
+    <div id="entGrid">
+        <button type="button" class="entService" data-service="Spotify" data-state="not linked">🎵 Spotify <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="YouTube" data-state="not linked">▶️ YouTube <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Hulu" data-state="not linked">📺 Hulu <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Netflix" data-state="not linked">🎬 Netflix <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Paramount+" data-state="not linked">⭐ Paramount+ <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="HBO Max" data-state="not linked">🎭 HBO Max <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Pluto TV" data-state="not linked">📡 Pluto TV <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Disney+" data-state="not linked">✨ Disney+ <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Apple TV+" data-state="not linked">🍎 Apple TV+ <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Peacock" data-state="not linked">🦚 Peacock <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Prime Video" data-state="not linked">📦 Prime Video <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Tubi" data-state="not linked">🎞️ Tubi <span class="entState">not linked</span></button>
+    </div>
+    <div id="entServiceView" hidden>
+        <h3 id="entServiceTitle"></h3>
+        <div id="entWatching">
+            <h4>📺 Currently watching</h4>
+            <p id="entWatchingEmpty" class="entServiceEmpty"></p>
+            <div id="entWatchingList"></div>
+        </div>
+        <p id="entServiceNote" class="entServiceNote"></p>
+        <button id="entServiceBack" type="button">← Back to Entertainment</button>
+    </div>
+    <p id="entNote">More services are added as they're linked.</p>
+    <button id="entClose" type="button">← Back to home</button>
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
@@ -814,7 +919,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-12</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-15</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -830,7 +935,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-12';
+  var LUMI_BUILD_STAMP = '2026.11.08-15';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -3443,6 +3548,37 @@
     card.appendChild(fr);
     container.appendChild(card);
   }
+  // FULFILLMENT TAP BUTTONS (build 2026.11.08-13, owner order Nov 8,
+  // 2026): when Lumi asks pickup / delivery / curbside, show three
+  // tappable buttons under her reply so T taps instead of typing.
+  // Only Lumi's LIVE replies (hooked in the chat submit handler, not
+  // in addMsg, so history re-renders never grow buttons), only when
+  // the reply names all three options. A tap sends that one word
+  // through the same form-submit path the food chips and order card
+  // use, then hides every fulfillment row — a later question gets a
+  // fresh row of its own.
+  function isFulfillmentQuestion(text) {
+    var t = String(text || '').toLowerCase();
+    return t.indexOf('pickup') !== -1 && t.indexOf('delivery') !== -1 && t.indexOf('curbside') !== -1;
+  }
+  function renderFulfillmentButtons(container, reply) {
+    if (!container || currentAgent !== 'lumi') return;
+    if (!isFulfillmentQuestion(reply)) return;
+    var row = document.createElement('div');
+    row.className = 'fulfillRow';
+    ['Pickup', 'Delivery', 'Curbside'].forEach(function (choice) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'fulfillBtn';
+      b.textContent = choice;
+      b.addEventListener('click', function () {
+        try { document.querySelectorAll('.fulfillRow').forEach(function (r) { r.remove(); }); } catch (e) {}
+        try { input.value = choice; if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true })); } catch (e) {}
+      });
+      row.appendChild(b);
+    });
+    container.appendChild(row);
+  }
   function setBubbleText(el, text) {
     el.innerHTML = '';
     appendLinkified(el, text);
@@ -3532,6 +3668,7 @@
       if (data.file) renderFileCard(thinking, data.file);
       if (data.order) renderOrderCard(thinking, data.order);
       if (data.video) renderYouTubeCard(thinking, data.video);
+      renderFulfillmentButtons(thinking, reply);
       history.push({ role: 'assistant', content: reply });
       saveHistory();
       // Spoken reply skips bare URLs (they are tappable links in the
@@ -6441,17 +6578,16 @@
        var store = btn.getAttribute('data-store') || '';
        var state = btn.getAttribute('data-state') || '';
        var customNote = btn.getAttribute('data-note') || '';
-       if (foodOverlay) foodOverlay.classList.remove('open');
-       showChat();
        if (state === 'linked') {
-         var fInput = document.getElementById('input');
-         var fForm = document.getElementById('form');
-         if (fInput) fInput.value = 'I want to order from ' + store;
-         if (fForm) {
-           if (fForm.requestSubmit) fForm.requestSubmit();
-           else fForm.dispatchEvent(new Event('submit', { cancelable: true }));
-         }
+         /* Company sub-folder (build 2026.11.08-14): the folder
+            opens inside the overlay — specials + menu, tap items
+            to add them. The overlay stays open; nothing is sent
+            to chat until she taps an item, "Show me the menu",
+            or "Order with Lumi in chat". */
+         openCompanyView(store);
        } else {
+         if (foodOverlay) foodOverlay.classList.remove('open');
+         showChat();
          /* Plain note in the chat. addMsg lives in an earlier
             script block's scope, so build the bubble directly. */
          var chatEl = document.getElementById('chat');
@@ -6465,6 +6601,224 @@
        }
      });
    });
+   /* Company sub-folder (build 2026.11.08-14, owner order Nov 8,
+      2026: tap a company in Food & Groceries and get its own
+      folder — this week's specials & coupons on top, then the
+      full menu, numbered, tappable to add items to the order):
+      specials come live from GET /rewards/status (the Worker's
+      underscore store ids: whataburger, chick_fil_a,
+      raising_canes, dominos, taco_palenque, chilis, heb,
+      walmart), re-fetched every time the folder opens — never
+      cached, never invented; a store with nothing stored shows
+      the plain empty line, and a failed fetch shows the
+      "couldn't load" line while the menu keeps working.
+      The menu comes from GET /menu?store=<id> per the Worker
+      contract {ok, store, sections:[{name, items:[{name, price,
+      description}]}]}. That endpoint is NOT live yet (Nov 8:
+      GET /menu returns 405 "Use POST", POST returns a 502 chat
+      error), so until it answers ok with sections the folder
+      shows the "Show me the menu" fallback button, which sends
+      "Show me the <Company> menu" into chat — Lumi's existing
+      show_menu flow — and never an empty or invented menu.
+      Tapping a menu item sends "Add <item> to my order" through
+      the same form-submit path the food grid uses, shows a brief
+      "Added" line, and KEEPS the folder open so she can keep
+      adding and customizing. The draft itself lives in chat with
+      Lumi; this view keeps no cart of its own. */
+   var FOOD_STORE_IDS = { "Whataburger": "whataburger", "Chick-fil-A": "chick_fil_a", "Raising Cane's": "raising_canes", "Domino's": "dominos", "Taco Palenque": "taco_palenque", "Chili's": "chilis", "H-E-B": "heb", "Walmart": "walmart" };
+   var FOOD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+   var currentFoodCompany = '';
+   function foodSend(text) {
+     var fInput = document.getElementById('input');
+     var fForm = document.getElementById('form');
+     if (fInput) fInput.value = text;
+     if (fForm) {
+       if (fForm.requestSubmit) fForm.requestSubmit();
+       else fForm.dispatchEvent(new Event('submit', { cancelable: true }));
+     }
+   }
+   function formatFoodExpiry(iso) {
+     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+     if (!m) return String(iso || '');
+     var y = parseInt(m[1], 10), mo = parseInt(m[2], 10), d = parseInt(m[3], 10);
+     if (mo < 1 || mo > 12 || d < 1 || d > 31) return String(iso || '');
+     return 'Expires ' + FOOD_MONTHS[mo - 1] + ' ' + d + ', ' + y;
+   }
+   function openCompanyView(store) {
+     currentFoodCompany = store;
+     var title = document.getElementById('foodCompanyTitle');
+     if (title) title.textContent = store;
+     var grid = document.getElementById('foodGrid');
+     var hint = document.getElementById('foodHint');
+     var note = document.getElementById('foodNote');
+     var closeBtn = document.getElementById('foodClose');
+     if (grid) grid.style.display = 'none';
+     if (hint) hint.style.display = 'none';
+     if (note) note.style.display = 'none';
+     if (closeBtn) closeBtn.style.display = 'none';
+     var view = document.getElementById('foodCompanyView');
+     if (view) view.hidden = false;
+     var added = document.getElementById('foodMenuAdded');
+     if (added) added.textContent = '';
+     renderFoodSpecials(FOOD_STORE_IDS[store] || '');
+     renderFoodMenu(FOOD_STORE_IDS[store] || '', store);
+   }
+   function closeCompanyView() {
+     var view = document.getElementById('foodCompanyView');
+     if (view) view.hidden = true;
+     var grid = document.getElementById('foodGrid');
+     var hint = document.getElementById('foodHint');
+     var note = document.getElementById('foodNote');
+     var closeBtn = document.getElementById('foodClose');
+     if (grid) grid.style.display = '';
+     if (hint) hint.style.display = '';
+     if (note) note.style.display = '';
+     if (closeBtn) closeBtn.style.display = '';
+   }
+   var foodCompanyBack = document.getElementById('foodCompanyBack');
+   if (foodCompanyBack) foodCompanyBack.addEventListener('click', function () { closeCompanyView(); });
+   var foodOrderChatBtn = document.getElementById('foodOrderChatBtn');
+   if (foodOrderChatBtn) foodOrderChatBtn.addEventListener('click', function () {
+     var store = currentFoodCompany;
+     closeCompanyView();
+     if (foodOverlay) foodOverlay.classList.remove('open');
+     showChat();
+     foodSend('I want to order from ' + store);
+   });
+   function renderFoodSpecials(storeId) {
+     var list = document.getElementById('foodSpecialsList');
+     var pointsLine = document.getElementById('foodPointsLine');
+     if (pointsLine) pointsLine.textContent = '';
+     if (!list) return;
+     list.textContent = '';
+     var loading = document.createElement('p');
+     loading.className = 'foodCompanyLoading';
+     loading.textContent = 'Loading specials…';
+     list.appendChild(loading);
+     fetch(WORKER_URL + 'rewards/status', { method: 'GET' }).then(function (r) { return r.json(); }).then(function (data) {
+       var store = (data && data.stores && data.stores[storeId]) || null;
+       var coupons = (store && store.coupons) || [];
+       var specials = (store && store.specials) || [];
+       var items = coupons.concat(specials);
+       if (pointsLine) {
+         if (store && store.kind === 'points' && typeof store.points === 'number') {
+           pointsLine.textContent = '⭐ ' + store.points + ' points' + (typeof store.cashOutThreshold === 'number' ? ' · cash out at ' + store.cashOutThreshold + ' points' : '');
+         } else {
+           pointsLine.textContent = '';
+         }
+       }
+       list.textContent = '';
+       if (!items.length) {
+         var empty = document.createElement('p');
+         empty.className = 'foodCompanyEmpty';
+         empty.textContent = 'No coupons or specials listed right now — check back soon.';
+         list.appendChild(empty);
+         return;
+       }
+       items.forEach(function (it) {
+         var row = document.createElement('div');
+         row.className = 'specialItem';
+         var t = document.createElement('div');
+         t.className = 'specialTitle';
+         t.textContent = it.title || '';
+         row.appendChild(t);
+         if (it.expires) {
+           var e = document.createElement('div');
+           e.className = 'specialExpiry';
+           e.textContent = formatFoodExpiry(it.expires);
+           row.appendChild(e);
+         }
+         if (it.detail) {
+           var d = document.createElement('div');
+           d.className = 'specialDetail';
+           d.textContent = it.detail;
+           row.appendChild(d);
+         }
+         list.appendChild(row);
+       });
+     }).catch(function () {
+       if (pointsLine) pointsLine.textContent = '';
+       list.textContent = '';
+       var err = document.createElement('p');
+       err.className = 'foodCompanyEmpty';
+       err.textContent = "Couldn't load specials right now — ask Lumi in chat.";
+       list.appendChild(err);
+     });
+   }
+   function renderFoodMenu(storeId, storeName) {
+     var list = document.getElementById('foodMenuList');
+     if (!list) return;
+     list.textContent = '';
+     var loading = document.createElement('p');
+     loading.className = 'foodCompanyLoading';
+     loading.textContent = 'Loading menu…';
+     list.appendChild(loading);
+     fetch(WORKER_URL + 'menu?store=' + encodeURIComponent(storeId), { method: 'GET' }).then(function (r) { return r.json(); }).then(function (data) {
+       var sections = (data && data.ok && data.sections) || [];
+       list.textContent = '';
+       if (!sections.length) { renderMenuFallback(list, storeName); return; }
+       sections.forEach(function (sec) {
+         var items = (sec && sec.items) || [];
+         if (!items.length) return;
+         var h = document.createElement('h5');
+         h.className = 'menuSectionTitle';
+         h.textContent = sec.name || 'Menu';
+         list.appendChild(h);
+         items.forEach(function (it, i) {
+           var b = document.createElement('button');
+           b.type = 'button';
+           b.className = 'menuItem';
+           var num = document.createElement('span');
+           num.className = 'menuItemNum';
+           num.textContent = (i + 1) + '. ';
+           b.appendChild(num);
+           var nm = document.createElement('span');
+           nm.className = 'menuItemName';
+           nm.textContent = it.name || '';
+           b.appendChild(nm);
+           if (it.price) {
+             var pr = document.createElement('span');
+             pr.className = 'menuItemPrice';
+             pr.textContent = ' ' + it.price;
+             b.appendChild(pr);
+           }
+           if (it.description) {
+             var d = document.createElement('span');
+             d.className = 'menuItemDesc';
+             d.textContent = it.description;
+             b.appendChild(d);
+           }
+           b.addEventListener('click', function () {
+             foodSend('Add ' + (it.name || '') + ' to my order');
+             var added = document.getElementById('foodMenuAdded');
+             if (added) added.textContent = 'Added ' + (it.name || '') + ' — tell Lumi any changes.';
+           });
+           list.appendChild(b);
+         });
+       });
+       if (!list.hasChildNodes()) renderMenuFallback(list, storeName);
+     }).catch(function () {
+       list.textContent = '';
+       renderMenuFallback(list, storeName);
+     });
+   }
+   function renderMenuFallback(list, storeName) {
+     var b = document.createElement('button');
+     b.type = 'button';
+     b.className = 'foodMenuBtn';
+     b.textContent = 'Show me the menu';
+     b.addEventListener('click', function () {
+       closeCompanyView();
+       if (foodOverlay) foodOverlay.classList.remove('open');
+       showChat();
+       foodSend('Show me the ' + storeName + ' menu');
+     });
+     list.appendChild(b);
+     var hint = document.createElement('p');
+     hint.className = 'foodCompanyEmpty';
+     hint.textContent = 'Lumi will show the live menu in chat.';
+     list.appendChild(hint);
+   }
    /* Home Shopping (build 2026.11.08-10, owner order Nov 8, 2026):
       from Home, one tap opens the Shopping view — a grid of store
       buttons — and sends the "I want to shop" starter into the
@@ -6521,6 +6875,69 @@
            chatEl.scrollTop = chatEl.scrollHeight;
          }
        }
+     });
+   });
+   /* Entertainment tab (build 2026.11.08-15, owner order Nov 8,
+      2026): a home-screen tab for the streaming + music services
+      Lumi will follow once linked — Spotify, YouTube, Hulu,
+      Netflix, Paramount+, HBO Max, Pluto TV, Disney+, Apple TV+,
+      Peacock, Prime Video, Tubi. NONE is linked yet and none is
+      marked linked: tapping a service opens its own sub-folder
+      (same pattern as the Food company folders) with a
+      "Currently watching" shell — placeholder only until that
+      service is linked, never invented shows — plus the
+      not-linked note. No sign-in, no chat send, no external
+      navigation, no subscription of any kind from these buttons;
+      she links a service one by one, by her word, later.
+      Playback comes after linking (next step, not this build). */
+   var entOverlay = document.getElementById('entOverlay');
+   var entGo = document.getElementById('homeEntertainmentBtn');
+   if (entGo) entGo.addEventListener('click', function () {
+     showChat();
+     if (entOverlay) entOverlay.classList.add('open');
+   });
+   var entClose = document.getElementById('entClose');
+   if (entClose) entClose.addEventListener('click', function () {
+     if (entOverlay) entOverlay.classList.remove('open');
+     showHome();
+   });
+   var currentEntService = '';
+   function openEntServiceView(service) {
+     currentEntService = service;
+     var title = document.getElementById('entServiceTitle');
+     if (title) title.textContent = service;
+     var watching = document.getElementById('entWatchingEmpty');
+     if (watching) watching.textContent = 'Link ' + service + " to see what you're watching here.";
+     var note = document.getElementById('entServiceNote');
+     if (note) note.textContent = service + " isn't linked yet — tell Lumi you have it when you're ready and she'll set it up. She'll only follow what you already subscribe to.";
+     var grid = document.getElementById('entGrid');
+     var hint = document.getElementById('entHint');
+     var foot = document.getElementById('entNote');
+     var closeBtn = document.getElementById('entClose');
+     if (grid) grid.style.display = 'none';
+     if (hint) hint.style.display = 'none';
+     if (foot) foot.style.display = 'none';
+     if (closeBtn) closeBtn.style.display = 'none';
+     var view = document.getElementById('entServiceView');
+     if (view) view.hidden = false;
+   }
+   function closeEntServiceView() {
+     var view = document.getElementById('entServiceView');
+     if (view) view.hidden = true;
+     var grid = document.getElementById('entGrid');
+     var hint = document.getElementById('entHint');
+     var foot = document.getElementById('entNote');
+     var closeBtn = document.getElementById('entClose');
+     if (grid) grid.style.display = '';
+     if (hint) hint.style.display = '';
+     if (foot) foot.style.display = '';
+     if (closeBtn) closeBtn.style.display = '';
+   }
+   var entServiceBack = document.getElementById('entServiceBack');
+   if (entServiceBack) entServiceBack.addEventListener('click', function () { closeEntServiceView(); });
+   Array.prototype.forEach.call(document.querySelectorAll('.entService'), function (btn) {
+     btn.addEventListener('click', function () {
+       openEntServiceView(btn.getAttribute('data-service') || '');
      });
    });
    document.addEventListener('click', function (e) {
