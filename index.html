@@ -73,6 +73,37 @@
     #threadsOverlay input { width: min(420px, 90vw); border-radius: 12px; border: 1px solid rgba(180,160,255,.4); background: rgba(255,255,255,.08); color: #fff; padding: 10px 12px; font-size: 15px; }
     #teamOverlay.open { display: flex; }
     #teamOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    /* Shopping overlay (build 2026.11.08-10, owner order Nov 8, 2026):
+       same overlay pattern as #teamOverlay / #threadsOverlay — a
+       grid of store buttons. Store list is BUILT IN for now
+       (Walmart + H-E-B linked; Amazon, Academy Sports +
+       Outdoors, Betsey Johnson, Zales setting up). A Worker
+       /stores endpoint replaces this list in a later build. */
+    #shopOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+    #shopOverlay.open { display: flex; }
+    #shopOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #shopHint, #shopNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
+    #shopGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(420px, 90vw); }
+    .shopStore { background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; cursor: pointer; }
+    .shopStore:active { background: #72edfa; color: #171a3b; }
+    .shopStore .shopState { display: block; font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    .shopStore[data-state="setting up"] { opacity: 0.65; border-style: dashed; }
+    #shopClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* Food sub-folder (build 2026.11.08-12, owner order Nov 8, 2026):
+       same overlay pattern as Shopping, one button per food/grocery
+       company — 8 linked, 12 setting up. The grid is long, so the
+       overlay scrolls (overflow-y) and starts at the top instead
+       of centering, so every button is reachable on a phone. */
+    #foodOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
+    #foodOverlay.open { display: flex; }
+    #foodOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #foodHint, #foodNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
+    #foodGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(420px, 90vw); }
+    .foodStore { background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; cursor: pointer; }
+    .foodStore:active { background: #72edfa; color: #171a3b; }
+    .foodStore .foodState { display: block; font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    .foodStore[data-state="setting up"] { opacity: 0.65; border-style: dashed; }
+    #foodClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
     .agentCard { background: #1a1a1a; border: 2px solid #72edfa; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
     .agentCard.active { background: #72edfa; }
@@ -572,6 +603,7 @@
         <button id="homeTeamBtn" type="button">👥 Meet the team</button>
         <button id="homeMeetBtn" type="button">🎬 Team meeting</button>
         <button id="homeFoodBtn" type="button">🍔 Food &amp; Groceries</button>
+        <button id="homeShopBtn" type="button">🛍️ Shopping</button>
     </div>
     <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
 </div>
@@ -636,6 +668,48 @@
     <input id="newThreadTopic" type="text" placeholder="Topic (optional) — e.g. the novel" maxlength="80">
     <button id="threadCreateBtn" type="button">＋ Make this side chat</button>
     <button id="threadsClose" type="button">Close</button>
+</div>
+<div id="shopOverlay">
+    <h2>🛍️ Shopping</h2>
+    <p id="shopHint">Tap a store to shop there with Lumi.</p>
+    <div id="shopGrid">
+        <button type="button" class="shopStore" data-store="Walmart" data-state="linked">🛒 Walmart <span class="shopState">linked</span></button>
+        <button type="button" class="shopStore" data-store="H-E-B" data-state="linked">🛒 H-E-B <span class="shopState">linked</span></button>
+        <button type="button" class="shopStore" data-store="Amazon" data-state="setting up">📦 Amazon <span class="shopState">setting up</span></button>
+        <button type="button" class="shopStore" data-store="Academy Sports + Outdoors" data-state="setting up">🏈 Academy Sports + Outdoors <span class="shopState">setting up</span></button>
+        <button type="button" class="shopStore" data-store="Betsey Johnson" data-state="setting up">👗 Betsey Johnson <span class="shopState">setting up</span></button>
+        <button type="button" class="shopStore" data-store="Zales" data-state="setting up">💎 Zales <span class="shopState">setting up</span></button>
+    </div>
+    <p id="shopNote">More stores are added as they're linked.</p>
+    <button id="shopClose" type="button">Close</button>
+</div>
+<div id="foodOverlay">
+    <h2>🍔 Food &amp; Groceries</h2>
+    <p id="foodHint">Tap a place to order from it with Lumi.</p>
+    <div id="foodGrid">
+        <button type="button" class="foodStore" data-store="Whataburger" data-state="linked">🍔 Whataburger <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Chick-fil-A" data-state="linked">🐔 Chick-fil-A <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Raising Cane's" data-state="linked">🍗 Raising Cane's <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Domino's" data-state="linked">🍕 Domino's <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Taco Palenque" data-state="linked">🌮 Taco Palenque <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Chili's" data-state="linked">🌶️ Chili's <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="H-E-B" data-state="linked">🛒 H-E-B <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Walmart" data-state="linked">🛒 Walmart <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Chipotle" data-state="setting up">🌯 Chipotle <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Texas Roadhouse" data-state="setting up">🥩 Texas Roadhouse <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Olive Garden" data-state="setting up">🍝 Olive Garden <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Golden Corral" data-state="setting up">🍽️ Golden Corral <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="McDonald's" data-state="setting up" data-note="McDonald's orders in the McDonald's app — check back soon.">🍟 McDonald's <span class="foodState">setting up · app-only</span></button>
+        <button type="button" class="foodStore" data-store="Danny's" data-state="setting up">🍳 Danny's <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Logan's Roadhouse" data-state="setting up">🥩 Logan's Roadhouse <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Lin's Grand Buffet" data-state="setting up">🥡 Lin's Grand Buffet <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="La Roca" data-state="setting up">🌮 La Roca <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Suarez" data-state="setting up">🍽️ Suarez <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Tremendo Taco" data-state="setting up">🌮 Tremendo Taco <span class="foodState">setting up</span></button>
+        <button type="button" class="foodStore" data-store="Cosmos Bar &amp; Grill" data-state="setting up">🍹 Cosmos Bar &amp; Grill <span class="foodState">setting up</span></button>
+    </div>
+    <p id="foodNote">More places are added as they're linked.</p>
+    <button id="foodClose" type="button">← Back to home</button>
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
@@ -740,7 +814,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-9</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-12</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -756,7 +830,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-9';
+  var LUMI_BUILD_STAMP = '2026.11.08-12';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1282,7 +1356,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: note, messages: history.concat([{ role: 'user', content: note }]), agent: targetId, voice: voiceOn })
+        body: JSON.stringify(Object.assign({ message: note, messages: history.concat([{ role: 'user', content: note }]), agent: targetId, voice: voiceOn, tz: deviceTz(), clientTime: deviceNowIso() }, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}))
       });
       const data = await res.json();
       const reply = (data && data.reply) || '';
@@ -3385,6 +3459,7 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     unlockAudio();
+    refreshDeviceLocation(); // fresh fix for the NEXT message; never blocks this send
     let text = input.value.trim();
     if (!text) return;
     if (pendingLocation) {
@@ -3585,44 +3660,66 @@
     bigTextBtn.classList.toggle('active', bigText);
     try { localStorage.setItem('lumi_bigtext', bigText ? '1' : '0'); } catch (e) {}
   });
-  // GPS (phase 2): once T shares her location (the 📍 button), keep fresh
-  // coords and send them as structured {lat, lon} with every chat request,
-  // so the team answers weather / "near me" for where she actually IS.
+  // GPS (build 2026.11.08-11, owner order Nov 8, 2026): per-device
+  // location for order-anywhere. On chat open the browser is asked
+  // for THIS device's position — the permission prompt is the ask;
+  // nothing is forced, and the chat works exactly as before when
+  // permission is denied, unavailable, or slow. Coords live in
+  // memory only for this page session: never cached, never stored
+  // in localStorage, never reused from another device. They ride
+  // every chat/meeting POST as structured {lat, lon} while this
+  // page is open; the Worker falls back to her Laredo home base
+  // when no GPS arrives. One-time cleanup: drop the stale cached
+  // coords / opt-in flag older builds kept in localStorage.
   let myCoords = null;
-  try { const _lc = JSON.parse(localStorage.getItem('lumi_coords') || 'null'); if (_lc && isFinite(_lc.lat) && isFinite(_lc.lon)) myCoords = _lc; } catch (e) {}
+  let locState = 'unknown'; // 'granted' | 'denied' | 'unavailable'
+  try { localStorage.removeItem('lumi_coords'); localStorage.removeItem('lumi_loc'); } catch (e) {}
   // Device timezone + local clock (no permission needed): ride with
   // every chat/meeting request so the team always knows what time it
-  // is for T. Location itself stays opt-in via the location button —
-  // the Worker falls back to her Laredo home base when no GPS arrives.
+  // is for T.
   function deviceTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
   function deviceNowIso() { try { return new Date().toISOString(); } catch (e) { return ''; } }
-  function refreshLocation() {
-    if (!('geolocation' in navigator)) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        myCoords = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) };
-        try { localStorage.setItem('lumi_coords', JSON.stringify(myCoords)); } catch (e) {}
-      },
-      () => {},
-      { maximumAge: 600000, timeout: 9000 }
-    );
+  function requestDeviceLocation(opts, onOk, onErr) {
+    if (!('geolocation' in navigator)) { locState = 'unavailable'; return false; }
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (!pos || !pos.coords || !isFinite(pos.coords.latitude) || !isFinite(pos.coords.longitude)) return;
+          myCoords = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) };
+          locState = 'granted';
+          if (onOk) { try { onOk(myCoords); } catch (e) {} }
+        },
+        () => {
+          locState = 'denied'; myCoords = null;
+          if (onErr) { try { onErr(); } catch (e) {} }
+        },
+        opts || { maximumAge: 60000, timeout: 8000 }
+      );
+    } catch (e) { locState = 'unavailable'; }
+    return true;
   }
-  try { if (localStorage.getItem('lumi_loc') === 'on') refreshLocation(); } catch (e) {}
-  // Location button: attach coords to the next message.
+  // Background refresh: keeps the in-memory fix fresh for the NEXT
+  // message. Fire-and-forget — a send never waits on location.
+  function refreshDeviceLocation() {
+    if (locState !== 'granted') return;
+    requestDeviceLocation({ maximumAge: 300000, timeout: 3000 });
+  }
+  // Ask on chat open: the browser shows its permission prompt the
+  // first time; later visits reuse her answer without asking again.
+  requestDeviceLocation();
+  // Location button: refresh this device's fix now and attach it to
+  // the next message.
   const locBtn = document.getElementById('locBtn');
   if (!('geolocation' in navigator)) {
     locBtn.style.display = 'none';
   } else {
     locBtn.addEventListener('click', () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          pendingLocation = pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
-          myCoords = { lat: +pos.coords.latitude.toFixed(5), lon: +pos.coords.longitude.toFixed(5) };
-          try { localStorage.setItem('lumi_loc', 'on'); localStorage.setItem('lumi_coords', JSON.stringify(myCoords)); } catch (e) {}
+      requestDeviceLocation({ maximumAge: 0, timeout: 10000 },
+        (c) => {
+          pendingLocation = c.lat.toFixed(5) + ', ' + c.lon.toFixed(5);
           addMsg('📍 Location ready — it will go with your next message.', 'ai');
         },
-        () => { addMsg('Location not available.', 'error'); },
-        { timeout: 10000 }
+        () => { addMsg('Location not available.', 'error'); }
       );
     });
   }
@@ -5279,6 +5376,7 @@
       const text = meetInput.value.trim();
       if (!text || meetBusy) return;
       meetBusy = true;
+      refreshDeviceLocation(); // fresh fix for the NEXT message; never blocks this send
       meetInput.value = '';
       meetThreadAdd('T', text);
       if (meetAgent === 'all') {
@@ -6305,22 +6403,125 @@
       meeting buttons return to Home. It never opens the meeting. */
    var videoGo = document.getElementById('homeVideoBtn');
    if (videoGo) videoGo.addEventListener('click', function () { document.getElementById('callBtn').click(); });
-   /* Home Food & Groceries (build 2026.11.08-9, owner order Nov 8, 2026):
-      from Home, one tap starts the guided food flow — the same
-      starter as the "I want food" chip: "I want food" sent into
-      the current thread through the chat form. It leaves Home for
-      the chat first, then submits, so the flow is identical to
-      tapping the chip in chat. */
+   /* Home Food & Groceries — sub-folder view (build 2026.11.08-12,
+      owner order Nov 8, 2026: "when I click from the home screen
+      the food and groceries I want there to be another sub folder
+      with different buttons where I can choose and see all of
+      everything that I can choose from all the different companies
+      and each company needs to have their own button"):
+      from Home, one tap opens the Food view — a grid with one
+      button per food/grocery company, same overlay pattern as
+      Shopping. It does NOT send "I want food" by itself; the
+      company button does the talking. Tapping a LINKED company
+      closes the view and sends "I want to order from <Company>"
+      into the current thread, which starts that place's order
+      flow (menu, exact total, her yes before ordering). Tapping
+      a company that is SETTING UP closes the view and shows a
+      plain "setting up — check back soon" note in the chat —
+      never an order, never a dead link. McDonald's carries its
+      own note: it orders in the McDonald's app. The "I want
+      food" and "Groceries" chips in chat are untouched — the
+      grid is an addition, not a replacement.
+      Company list is BUILT IN for now (8 linked, 12 setting
+      up). A Worker /stores endpoint replaces this list in a
+      later build — update the grid there, not here. */
+   var foodOverlay = document.getElementById('foodOverlay');
    var foodGo = document.getElementById('homeFoodBtn');
    if (foodGo) foodGo.addEventListener('click', function () {
      showChat();
-     var foodInput = document.getElementById('input');
-     var foodForm = document.getElementById('form');
-     if (foodInput) foodInput.value = 'I want food';
-     if (foodForm) {
-       if (foodForm.requestSubmit) foodForm.requestSubmit();
-       else foodForm.dispatchEvent(new Event('submit', { cancelable: true }));
+     if (foodOverlay) foodOverlay.classList.add('open');
+   });
+   var foodClose = document.getElementById('foodClose');
+   if (foodClose) foodClose.addEventListener('click', function () {
+     if (foodOverlay) foodOverlay.classList.remove('open');
+     showHome();
+   });
+   Array.prototype.forEach.call(document.querySelectorAll('.foodStore'), function (btn) {
+     btn.addEventListener('click', function () {
+       var store = btn.getAttribute('data-store') || '';
+       var state = btn.getAttribute('data-state') || '';
+       var customNote = btn.getAttribute('data-note') || '';
+       if (foodOverlay) foodOverlay.classList.remove('open');
+       showChat();
+       if (state === 'linked') {
+         var fInput = document.getElementById('input');
+         var fForm = document.getElementById('form');
+         if (fInput) fInput.value = 'I want to order from ' + store;
+         if (fForm) {
+           if (fForm.requestSubmit) fForm.requestSubmit();
+           else fForm.dispatchEvent(new Event('submit', { cancelable: true }));
+         }
+       } else {
+         /* Plain note in the chat. addMsg lives in an earlier
+            script block's scope, so build the bubble directly. */
+         var chatEl = document.getElementById('chat');
+         if (chatEl) {
+           var note = document.createElement('div');
+           note.className = 'msg ai';
+           note.textContent = customNote || (store + ' is still being set up — check back soon.');
+           chatEl.appendChild(note);
+           chatEl.scrollTop = chatEl.scrollHeight;
+         }
+       }
+     });
+   });
+   /* Home Shopping (build 2026.11.08-10, owner order Nov 8, 2026):
+      from Home, one tap opens the Shopping view — a grid of store
+      buttons — and sends the "I want to shop" starter into the
+      current thread through the chat form, the same starter pattern
+      as the "I want food" chip. Tapping a LINKED store closes the
+      view and sends a shopping request for that store. Tapping a
+      store that is SETTING UP closes the view and shows a plain
+      "setting up — check back soon" note in the chat — never an
+      order, never a claim that it is linked.
+      Store list is BUILT IN for now (Walmart + H-E-B linked;
+      Amazon, Academy Sports + Outdoors, Betsey Johnson, Zales
+      setting up). A Worker /stores endpoint replaces this list
+      in a later build — update the grid there, not here. */
+   var shopOverlay = document.getElementById('shopOverlay');
+   var shopGo = document.getElementById('homeShopBtn');
+   if (shopGo) shopGo.addEventListener('click', function () {
+     showChat();
+     var shopInput = document.getElementById('input');
+     var shopForm = document.getElementById('form');
+     if (shopInput) shopInput.value = 'I want to shop';
+     if (shopForm) {
+       if (shopForm.requestSubmit) shopForm.requestSubmit();
+       else shopForm.dispatchEvent(new Event('submit', { cancelable: true }));
      }
+     if (shopOverlay) shopOverlay.classList.add('open');
+   });
+   var shopClose = document.getElementById('shopClose');
+   if (shopClose) shopClose.addEventListener('click', function () {
+     if (shopOverlay) shopOverlay.classList.remove('open');
+   });
+   Array.prototype.forEach.call(document.querySelectorAll('.shopStore'), function (btn) {
+     btn.addEventListener('click', function () {
+       var store = btn.getAttribute('data-store') || '';
+       var state = btn.getAttribute('data-state') || '';
+       if (shopOverlay) shopOverlay.classList.remove('open');
+       showChat();
+       if (state === 'linked') {
+         var sInput = document.getElementById('input');
+         var sForm = document.getElementById('form');
+         if (sInput) sInput.value = 'I want to shop at ' + store;
+         if (sForm) {
+           if (sForm.requestSubmit) sForm.requestSubmit();
+           else sForm.dispatchEvent(new Event('submit', { cancelable: true }));
+         }
+       } else {
+         /* Plain note in the chat. addMsg lives in an earlier
+            script block's scope, so build the bubble directly. */
+         var chatEl = document.getElementById('chat');
+         if (chatEl) {
+           var note = document.createElement('div');
+           note.className = 'msg ai';
+           note.textContent = store + ' is still being set up — check back soon.';
+           chatEl.appendChild(note);
+           chatEl.scrollTop = chatEl.scrollHeight;
+         }
+       }
+     });
    });
    document.addEventListener('click', function (e) {
      paintChatBtn();
