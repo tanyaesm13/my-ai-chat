@@ -512,6 +512,15 @@
     .imgChip img { width: 34px; height: 34px; object-fit: cover; border-radius: 8px; }
     .docSent img { width: 30px; height: 30px; object-fit: cover; border-radius: 7px; }
     .sentPhoto { display: block; max-width: 190px; max-height: 190px; border-radius: 10px; margin-bottom: 6px; }
+    /* (build 2026.11.08-1) Two-way file exchange: tappable links in
+       replies + the file card Lumi sends back. Links are real <a>
+       elements (see appendLinkified); nothing is rendered via innerHTML. */
+    .chatLink { color: #9fd8ff; text-decoration: underline; word-break: break-all; }
+    .msg.user .chatLink { color: #cfeaff; }
+    .fileCard { margin-top: 8px; padding: 10px 12px; background: rgba(90,70,160,.28); border: 1px solid rgba(180,160,255,.45); border-radius: 12px; }
+    .fileCardName { font-size: 14px; margin-bottom: 6px; word-break: break-word; }
+    .fileCardLink { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #6a4fd0; color: #fff; text-decoration: none; font-size: 14px; }
+    .driveChip a { color: #fff; text-decoration: underline; }
     #routeBar { margin: 6px auto 0; max-width: 760px; padding: 8px 10px; background: rgba(40,32,80,.55); border: 1px solid rgba(180,160,255,.35); border-radius: 12px; }
     /* (build 2026.10.23-31, owner phone report Oct 23, 2026): the
        attach bars must sit fully ABOVE the bottom bars, never
@@ -578,8 +587,8 @@
     <input id="input" type="text" placeholder="Type your message..." autocomplete="off" />
     <button id="locBtn" type="button" title="Share location with next message">📍</button>
     <button id="camBtn" type="button" title="Turn your camera on or off — while it is on, the team can see you">📷</button>
-    <button id="attachBtn" type="button" title="Attach a PDF or a photo">📎</button>
-    <input id="docFile" type="file" accept=".pdf,.txt,application/pdf,text/plain,image/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif" hidden />
+    <button id="attachBtn" type="button" title="Attach a file or a photo">📎</button>
+    <input id="docFile" type="file" accept=".pdf,.txt,.md,.csv,.docx,.pptx,.xlsx,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif" hidden />
     <button id="micBtn" type="button" title="Talk instead of typing">🎤</button>
     <button id="send" type="submit">Send</button>
 </form>
@@ -635,8 +644,8 @@
     </div>
     <div id="meetForm">
         <button id="meetMicBtn" type="button" title="Talk">🎤</button>
-        <button id="meetAttachBtn" type="button" title="Attach a PDF or a photo for the team">📎</button>
-        <input id="meetDocFile" type="file" accept=".pdf,.txt,application/pdf,text/plain,image/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif" hidden />
+        <button id="meetAttachBtn" type="button" title="Attach a file or a photo for the team">📎</button>
+        <input id="meetDocFile" type="file" accept=".pdf,.txt,.md,.csv,.docx,.pptx,.xlsx,application/pdf,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif" hidden />
         <input id="meetInput" type="text" placeholder="Ask the team..." autocomplete="off" />
         <button id="meetSendBtn" type="button" title="Send">➤</button>
         <button id="meetCamBtn" type="button" title="Toggle your camera">📷</button>
@@ -693,7 +702,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.10.29-2</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-1</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -709,7 +718,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.10.29-2';
+  var LUMI_BUILD_STAMP = '2026.11.08-1';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -1689,9 +1698,37 @@
   // out on that agent's normal send path), picks a different agent
   // instead, or keeps it with Lumi. Never a silent move.
   // ================================================================
+  // -- ADDENDUM (build 2026.11.08-1, owner order Nov 8, 2026 — two-way
+  // file exchange): the paragraph above still holds for the IN-CHAT
+  // path (small PDFs/text: extracted on her device, text rides the
+  // message, nothing uploaded). Two things changed. (1) CHUNKED
+  // READING: long documents are no longer cut to the first 12,000
+  // characters and abandoned — the text is split into ~10,000-
+  // character chunks; chunk 1 rides her message and the rest are
+  // stored with the Worker (KV, 1-hour TTL) for the assistant to
+  // pull with the doc_chunk tool. (2) DRIVE SEND: Office files
+  // (.docx/.pptx/.xlsx) and anything over 25 MB now go to the
+  // shared Drive folder "Lumi — Shared with T" via POST /drive/upload
+  // — the file DOES leave her device, but only into her own Drive,
+  // converted to a Google Doc/Sheet/Slides so she can edit it in
+  // place; her message carries a [Drive file] marker with the link.
+  // (3) LUMI SENDS FILES BACK: Worker replies may carry a `file`
+  // object; it renders as a tappable download card, and reply URLs
+  // are real links now (addMsg linkifies). The Oct 23 -31 attach-bar
+  // layer fix (#docBar/#routeBar z-index 2, above #form) is present
+  // and untouched — see the CSS below.
   const DOC_TEXT_CAP = 12000;
   const DOC_PAGE_CAP = 50;
   const DOC_MAX_BYTES = 25 * 1024 * 1024;
+  // DRIVE FILE EXCHANGE (build 2026.11.08-1, owner order Nov 8, 2026):
+  // chunked reading for long documents + the shared Drive folder as
+  // the file store ("Lumi — Shared with T"). DOC_CHUNK is the chunk
+  // size for both the in-chat text chunks and the Worker's
+  // drive_download chunks — keep them the same number.
+  const DOC_CHUNK = 10000;
+  const DOC_CHUNK_STORE_TTL_SEC = 3600;
+  const OFFICE_EXT_RE = /\.(docx|pptx|xlsx)$/i;
+  const drivePending = { chat: null, meet: null };
   const PDFJS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const docPending = { chat: null, meet: null };
@@ -1796,7 +1833,7 @@
   }
   async function extractFileText(file) {
     const name = (file && file.name) || 'document';
-    if (/\.txt$/i.test(name) || (file && file.type === 'text/plain')) {
+    if (/\.(txt|md|csv)$/i.test(name) || (file && (file.type === 'text/plain' || file.type === 'text/markdown' || file.type === 'text/csv'))) {
       return { text: await file.text(), pages: 0 };
     }
     const lib = await loadPdfjs();
@@ -1823,16 +1860,22 @@
     return bestScore > 0 ? best : 'lumi';
   }
   function docMarker(doc) {
+    // CHUNKED (build 2026.11.08-1): chunk 1 rides the message; the rest
+    // live with the Worker (KV, 1-hour TTL) under doc.chunksId, and the
+    // assistant pulls them with the doc_chunk tool when she needs more.
+    const n = (doc.chunks && doc.chunks.length) || 1;
+    const first = (doc.chunks && doc.chunks[0]) || doc.text.slice(0, DOC_TEXT_CAP);
     let head = '[Attached document: ' + doc.name + ']';
-    if (doc.truncated) head += '\n[Note to the assistant: this document is longer than one message can carry — ' + doc.totalChars + ' characters of text in all — so only the first part is included below. Say plainly that you received the first part only.]';
-    return head + '\n' + doc.text.slice(0, DOC_TEXT_CAP) + '\n[End of attached document: ' + doc.name + ']';
+    if (n > 1) head += '\n[Note to the assistant: this document is ' + doc.totalChars + ' characters in all, sent in ' + n + ' chunks of about ' + DOC_CHUNK + ' characters. This message carries chunk 1 of ' + n + ' (doc id ' + doc.chunksId + '). Use the doc_chunk tool to read further chunks when you need them — including the LAST chunk when she asks about the end. Say plainly which chunks you have read.]';
+    else if (doc.truncated) head += '\n[Note to the assistant: this document is longer than one message can carry — ' + doc.totalChars + ' characters of text in all — so only the first part is included below. Say plainly that you received the first part only.]';
+    return head + '\n' + first + '\n[End of attached document: ' + doc.name + ' — chunk 1 of ' + n + ']';
   }
   function appendDocChip(bar, ctx) {
     const doc = docPending[ctx];
     if (!doc) return;
     const chip = document.createElement('span');
     chip.className = 'docChip';
-    chip.textContent = '📄 ' + doc.name + (doc.truncated ? ' — long document: only the first part will be sent' : ' — ready to send with your next message');
+    chip.textContent = '📄 ' + doc.name + (doc.truncated ? ' — long document: first part goes now, Lumi pulls the rest as needed' : ' — ready to send with your next message');
     const x = document.createElement('button');
     x.type = 'button'; x.className = 'docChipX'; x.textContent = '✕'; x.title = 'Remove attachment'; x.setAttribute('aria-label', 'Remove attachment');
     x.addEventListener('click', () => { clearDoc(ctx); });
@@ -1865,7 +1908,8 @@
     bar.innerHTML = '';
     appendDocChip(bar, ctx);
     appendImgChip(bar, ctx);
-    bar.hidden = !(docPending[ctx] || imgPending[ctx]);
+    appendDriveChip(bar, ctx);
+    bar.hidden = !(docPending[ctx] || imgPending[ctx] || drivePending[ctx]);
   }
   function renderDocChip(ctx) { paintAttachBar(ctx); }
   function renderImgChip(ctx) { paintAttachBar(ctx); }
@@ -1878,15 +1922,44 @@
     if (ctx === 'meet') { const cap = document.getElementById('meetCaption'); if (cap) cap.textContent = msg; }
     else { try { addMsg(msg, 'error'); } catch (e) {} }
   }
+  function splitChunks(text) {
+    const out = [];
+    for (let i = 0; i < text.length; i += DOC_CHUNK) out.push(text.slice(i, i + DOC_CHUNK));
+    return out.length ? out : [''];
+  }
   function ingestDoc(ctx, name, text, pages) {
     const clean = String(text || '');
-    docPending[ctx] = { name: name, text: clean, totalChars: clean.length, truncated: clean.length > DOC_TEXT_CAP, pages: pages || 0 };
+    const chunks = splitChunks(clean);
+    const chunksId = 'doc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    docPending[ctx] = { name: name, text: clean, chunks: chunks, chunksId: chunksId, totalChars: clean.length, truncated: clean.length > DOC_TEXT_CAP, pages: pages || 0 };
     renderDocChip(ctx);
     if (ctx === 'chat') renderRouteBar();
+    // Store chunks 2..N with the Worker so the assistant can pull them
+    // on demand (chunk 1 rides her message). Fire-and-forget: if the
+    // store fails, the marker still says chunk 1 only.
+    if (chunks.length > 1) storeDocChunks(chunksId, chunks);
+  }
+  async function storeDocChunks(docId, chunks) {
+    try {
+      const res = await fetch(WORKER_URL.replace(/\/$/, '') + '/doc/chunks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ docId: docId, chunks: chunks.slice(1).map((t, i) => ({ n: i + 2, text: t })) })
+      });
+      if (!res.ok) throw new Error('store-failed');
+    } catch (e) { /* chunk 1 still goes with the message; the assistant will say so */ }
   }
   async function onDocFile(ctx, file) {
     if (!file) return;
-    if (file.size > DOC_MAX_BYTES) { docError(ctx, isImageFile(file) ? 'That photo is too big to send from here (25 MB limit) — try a smaller photo.' : 'That file is too big for me to read here (25 MB limit) — try a smaller PDF.'); return; }
+    // OFFICE + BIG FILES go via the shared Drive (build 2026.11.08-1):
+    // the browser cannot read .docx/.pptx/.xlsx text, and anything over
+    // 25 MB cannot ride a chat message — Drive carries both, and the
+    // file comes back as a real file she can open and edit.
+    if (OFFICE_EXT_RE.test(file.name || '')) { await sendViaDrive(ctx, file); return; }
+    if (file.size > DOC_MAX_BYTES) {
+      if (isImageFile(file)) { docError(ctx, 'That photo is too big to send from here (25 MB limit) — try a smaller photo.'); return; }
+      await sendViaDrive(ctx, file); return;
+    }
     if (isImageFile(file)) { await onImageFile(ctx, file); return; }
     try {
       const out = await extractFileText(file);
@@ -1896,6 +1969,93 @@
     } catch (e) {
       if (e && (e.message === 'pdfjs-load' || e.message === 'pdfjs-missing')) docError(ctx, 'I couldn\'t load the PDF reader just now — check your connection and tap 📎 to try again.');
       else docError(ctx, 'I couldn\'t read "' + file.name + '" — the file may be damaged. Try a different copy of it.');
+    }
+  }
+  // ================================================================
+  // DRIVE SEND (build 2026.11.08-1, owner order Nov 8, 2026 — two-way
+  // file exchange): Office files and anything over the 25 MB in-chat
+  // cap are uploaded to the Worker, which streams them into the shared
+  // Drive folder "Lumi — Shared with T" (converted to a Google
+  // Doc/Sheet/Slides so T can edit it in place, and re-uploads of the
+  // same name become a new revision of the same file). Her message
+  // then carries a [Drive file] marker with the link, and the
+  // assistant reads it from Drive with the drive_download tool. The
+  // file lands in Drive as a real file she can open, edit, and send
+  // back — the round trip the in-chat path could never do.
+  // ================================================================
+  function driveMarker(d) {
+    return '[Drive file: ' + d.name + ']\n[Drive file id: ' + d.id + ']\n[Open it here: ' + d.webViewLink + ']\n[Note to the assistant: this file lives in the shared Drive folder. Read its text with the drive_download tool when you need it — it may be long, so read it in chunks. If T edited it and sent it back, read the NEW version from Drive and say what changed.]';
+  }
+  function paintDriveProgress(ctx, name) {
+    const bar = document.getElementById(ctx === 'meet' ? 'meetDocBar' : 'docBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    const chip = document.createElement('span');
+    chip.className = 'docChip';
+    chip.textContent = '📤 Sending "' + name + '" to the shared Drive…';
+    bar.appendChild(chip);
+    bar.hidden = false;
+  }
+  async function sendViaDrive(ctx, file) {
+    paintDriveProgress(ctx, file.name);
+    try {
+      const res = await fetch(WORKER_URL.replace(/\/$/, '') + '/drive/upload', {
+        method: 'POST',
+        headers: { 'X-Drive-Name': encodeURIComponent(file.name), 'X-Drive-Mime': file.type || '', 'X-Drive-Size': String(file.size) },
+        body: file
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error((data && data.error) || ('drive-' + res.status));
+      drivePending[ctx] = { name: data.name || file.name, id: data.id, webViewLink: data.webViewLink || '', mimeType: data.mimeType || file.type || '', size: data.size || file.size };
+      paintAttachBar(ctx);
+      if (ctx === 'chat') renderRouteBar();
+    } catch (e) {
+      paintAttachBar(ctx);
+      docError(ctx, 'I couldn\'t send "' + file.name + '" to the shared Drive (' + (e && e.message ? e.message : 'try again') + '). The file is still on your device — nothing was lost.');
+    }
+  }
+  function appendDriveChip(bar, ctx) {
+    const d = drivePending[ctx];
+    if (!d) return;
+    const chip = document.createElement('span');
+    chip.className = 'docChip driveChip';
+    const a = document.createElement('a');
+    a.href = d.webViewLink || '#';
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = '📁 ' + d.name + ' — in the shared Drive, ready to send';
+    chip.appendChild(a);
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'docChipX'; x.textContent = '✕'; x.title = 'Remove Drive file'; x.setAttribute('aria-label', 'Remove Drive file');
+    x.addEventListener('click', () => { clearDrive(ctx); });
+    chip.appendChild(x);
+    bar.appendChild(chip);
+  }
+  function clearDrive(ctx) { drivePending[ctx] = null; paintAttachBar(ctx); }
+  function renderDriveSent(d) {
+    // Meeting-side Drive proof (mirrors renderDocSent): the meeting has
+    // no chat thread to leave a note in.
+    const bar = document.getElementById('meetDocBar');
+    if (!bar) return;
+    if (!bar.querySelector('.docSent')) bar.innerHTML = '';
+    const chip = document.createElement('span');
+    chip.className = 'docChip docSent';
+    chip.textContent = '📁 ' + d.name + ' sent via Drive — the team has the link.';
+    bar.appendChild(chip);
+    bar.hidden = false;
+  }
+  function consumeDriveInto(inputEl, ctx) {
+    const d = drivePending[ctx];
+    if (!d || !inputEl) return;
+    const typed = inputEl.value.trim();
+    const base = typed || (ctx === 'chat' ? 'I sent you a file through the shared Drive.' : 'I sent the team a file through the shared Drive.');
+    inputEl.value = base + '\n\n' + driveMarker(d);
+    drivePending[ctx] = null;
+    paintAttachBar(ctx);
+    if (ctx === 'chat') {
+      const recvName = (AGENTS[currentAgent] || {}).name || 'Lumi';
+      setTimeout(() => { try { addMsg('📁 ' + d.name + ' sent via Drive — ' + recvName + ' has the link.', 'ai'); } catch (e) {} }, 60);
+    } else {
+      renderDriveSent(d);
     }
   }
   function routeBtn(label, id, primary) {
@@ -2056,6 +2216,11 @@
   if (docMeetBtn) docMeetBtn.addEventListener('click', () => { consumeDocInto(document.getElementById('meetInput'), 'meet'); });
   const docMeetInput = document.getElementById('meetInput');
   if (docMeetInput) docMeetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') consumeDocInto(docMeetInput, 'meet'); });
+  // Drive marker rides the same sends, registered right after the
+  // document consume so one message can carry both.
+  if (docFormEl) docFormEl.addEventListener('submit', () => { consumeDriveInto(document.getElementById('input'), 'chat'); });
+  if (docMeetBtn) docMeetBtn.addEventListener('click', () => { consumeDriveInto(document.getElementById('meetInput'), 'meet'); });
+  if (docMeetInput) docMeetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') consumeDriveInto(docMeetInput, 'meet'); });
   // Photo consume rides the same sends, registered after the
   // document consume so a message can carry both.
   if (docFormEl) docFormEl.addEventListener('submit', () => { consumeImgInto(document.getElementById('input'), 'chat'); });
@@ -2078,7 +2243,14 @@
     ingest: ingestDoc,
     clear: clearDoc,
     extractPdfText: extractPdfText,
-    route: deliverRouted
+    route: deliverRouted,
+    drive: {
+      pending: function (ctx) { return drivePending[ctx || 'chat']; },
+      upload: sendViaDrive,
+      clear: clearDrive,
+      marker: driveMarker,
+      chunk: DOC_CHUNK
+    }
   };
   // The day's one welcome fires shortly after the app opens (the
   // chat is on screen by then); every later call is a no-op.
@@ -2617,10 +2789,61 @@
     stopCloudSpeech();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   });
+  // LINKIFY + FILE CARDS (build 2026.11.08-1, two-way file exchange):
+  // replies used to render as plain text only, so a Drive link arrived
+  // as dead text T could not tap. URLs are now real <a> links; everything
+  // else still goes through text nodes (no innerHTML, no injection).
+  // When the Worker replies with a `file` object, a tappable download
+  // card is rendered under the reply text.
+  const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g;
+  function appendLinkified(el, text) {
+    const s = String(text == null ? '' : text);
+    let last = 0, m;
+    URL_RE.lastIndex = 0;
+    while ((m = URL_RE.exec(s)) !== null) {
+      if (m.index > last) el.appendChild(document.createTextNode(s.slice(last, m.index)));
+      let url = m[1];
+      let trail = '';
+      while (/[.,;:!?)]$/.test(url)) { trail = url.slice(-1) + trail; url = url.slice(0, -1); }
+      if (url) {
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.className = 'chatLink';
+        a.textContent = url;
+        el.appendChild(a);
+      }
+      if (trail) el.appendChild(document.createTextNode(trail));
+      last = m.index + m[1].length;
+    }
+    if (last < s.length) el.appendChild(document.createTextNode(s.slice(last)));
+  }
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(0) + ' KB';
+    return (n / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  function renderFileCard(container, file) {
+    if (!file || !file.url) return;
+    const card = document.createElement('div');
+    card.className = 'fileCard';
+    const name = document.createElement('div');
+    name.className = 'fileCardName';
+    name.textContent = '📄 ' + (file.name || 'File') + (file.size ? ' — ' + fmtBytes(file.size) : '');
+    card.appendChild(name);
+    const a = document.createElement('a');
+    a.href = file.url; a.target = '_blank'; a.rel = 'noopener'; a.className = 'fileCardLink';
+    a.textContent = 'Open / download';
+    card.appendChild(a);
+    container.appendChild(card);
+  }
+  function setBubbleText(el, text) {
+    el.innerHTML = '';
+    appendLinkified(el, text);
+  }
   function addMsg(text, cls) {
     const div = document.createElement('div');
     div.className = 'msg ' + cls;
-    div.textContent = text;
+    appendLinkified(div, text);
     chat.appendChild(div);
     chat.scrollTop = chat.scrollHeight;
     return div;
@@ -2686,10 +2909,13 @@
         data = await postOnce();
       }
       const reply = data.reply || data.error || "Sorry, I didn't get a reply.";
-      thinking.textContent = reply;
+      setBubbleText(thinking, reply);
+      if (data.file) renderFileCard(thinking, data.file);
       history.push({ role: 'assistant', content: reply });
       saveHistory();
-      speak(reply);
+      // Spoken reply skips bare URLs (they are tappable links in the
+      // bubble instead) — hearing a web address read aloud helps nobody.
+      speak(String(reply).replace(/https?:\/\/[^\s]+/g, ' (link in chat) '));
     } catch (err) {
       thinking.textContent = "Sorry, I couldn't reach the Worker. Check your Worker URL and that the Worker is deployed.";
     }
