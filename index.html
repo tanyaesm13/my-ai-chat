@@ -720,7 +720,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-6</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-7</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -736,7 +736,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-6';
+  var LUMI_BUILD_STAMP = '2026.11.08-7';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2626,7 +2626,7 @@
   }
   const headerTitle = document.querySelector('header h1');
   const callName = document.getElementById('callName');
-  // CROSS-DEVICE MEMORY (build 2026.11.08-6): the server is the source of
+  // CROSS-DEVICE MEMORY (build 2026.11.08-7): the server is the source of
   // truth — history, facts, and the novel live in the Worker's KV, so any
   // device sees the same memory. localStorage is only a cache, and the
   // server copy never wipes it. The restore is time-boxed (6 s) so a
@@ -2647,16 +2647,22 @@
     return null;
   }
   async function restoreServerMemory(id) {
-    // Server wins when it has history; the local cache is kept (never
-    // wiped) when the server has nothing yet. Returns true when the
-    // server copy was used.
+    // MERGE (build 2026.11.08-7): server turns first, then any turns
+    // that live ONLY in this device's local cache (e.g. a conversation
+    // from before server memory went live). Never replace the local
+    // copy outright — replacing it would wipe device-only chats.
+    // Returns true when the server copy was used.
     try {
       const r = await fetchWithTimeout(WORKER_URL + '?history=' + encodeURIComponent(id), { method: 'GET' });
       const d = await r.json();
       if (d && Array.isArray(d.messages) && d.messages.length) {
-        history = d.messages
+        const server = d.messages
           .filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
           .slice(-40);
+        const local = loadHistory(id);
+        const seen = new Set(server.map(m => m.role + '\0' + m.content));
+        const extra = local.filter(m => m && typeof m.content === 'string' && !seen.has(m.role + '\0' + m.content));
+        history = server.concat(extra).slice(-40);
         saveHistory();
         return true;
       }
@@ -2773,7 +2779,7 @@
     document.getElementById('teamOverlay').classList.remove('open');
   });
   history = loadHistory(currentAgent);
-  // CROSS-DEVICE MEMORY (build 2026.11.08-6): restore from the server
+  // CROSS-DEVICE MEMORY (build 2026.11.08-7): restore from the server
   // BEFORE the first render, so a new device never flashes an empty chat.
   // Server history wins when it exists; the local cache is kept (never
   // wiped) when the server has nothing yet.
