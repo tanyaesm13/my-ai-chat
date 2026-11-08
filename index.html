@@ -64,6 +64,13 @@
     #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #72edfa; color: #fff; padding: 0; }
     /* Agent team picker */
     #teamOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+    #threadsOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
+    #threadsOverlay.open { display: flex; }
+    #threadsOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #threadList { display: flex; flex-direction: column; gap: 8px; width: min(420px, 90vw); max-height: 40vh; overflow-y: auto; }
+    .threadItem { border-radius: 12px; border: 1px solid rgba(180,160,255,.4); background: rgba(40,32,80,.6); color: #fff; padding: 10px 14px; cursor: pointer; font-size: 15px; text-align: left; }
+    .threadItem.active { border-color: #9c89f4; background: rgba(106,79,208,.5); }
+    #threadsOverlay input { width: min(420px, 90vw); border-radius: 12px; border: 1px solid rgba(180,160,255,.4); background: rgba(255,255,255,.08); color: #fff; padding: 10px 12px; font-size: 15px; }
     #teamOverlay.open { display: flex; }
     #teamOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
     #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
@@ -564,6 +571,7 @@
         <button id="homeVideoBtn" type="button">📹 Video</button>
         <button id="homeTeamBtn" type="button">👥 Meet the team</button>
         <button id="homeMeetBtn" type="button">🎬 Team meeting</button>
+        <button id="homeFoodBtn" type="button">🍔 Food &amp; Groceries</button>
     </div>
     <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
 </div>
@@ -583,6 +591,7 @@
         <button id="voicePickBtn" title="Pick voice">🎭</button>
         <button id="callBtn" title="Video call">📹</button>
         <button id="teamBtn" title="Lumi's team">👥</button>
+        <button id="threadsBtn" title="Side chats">🗂</button>
         <button id="spanishBtn" class="wide" title="Toggle Spanish mode">ES</button>
         <button id="bigTextBtn" class="wide" title="Bigger text">A+</button>
         <button id="exportBtn" title="Export chat">⬇</button>
@@ -597,6 +606,8 @@
     <button type="button" class="chip">Weather near me</button>
     <button type="button" class="chip">Motivate me</button>
     <button type="button" class="chip">Help me plan my day</button>
+    <button type="button" class="chip">I want food</button>
+    <button type="button" class="chip">Groceries</button>
 </div>
 <div id="docBar" hidden></div>
 <div id="routeBar" hidden></div>
@@ -616,6 +627,15 @@
     <div id="teamCards"></div>
     <button id="meetStartBtn" type="button">🎬 Start team meeting</button>
     <button id="teamClose" type="button">Close</button>
+</div>
+<div id="threadsOverlay">
+    <h2>🗂 Side chats</h2>
+    <p id="threadChip" style="margin:0">🗂 Main chat</p>
+    <div id="threadList"></div>
+    <input id="newThreadTitle" type="text" placeholder="New side chat name — e.g. Obsidian trilogy" maxlength="60">
+    <input id="newThreadTopic" type="text" placeholder="Topic (optional) — e.g. the novel" maxlength="80">
+    <button id="threadCreateBtn" type="button">＋ Make this side chat</button>
+    <button id="threadsClose" type="button">Close</button>
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
@@ -720,7 +740,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-7</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-9</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -736,7 +756,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-7';
+  var LUMI_BUILD_STAMP = '2026.11.08-9';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2555,10 +2575,18 @@
   setTimeout(() => { try { maybeShowWelcome(currentAgent); } catch (e) {} }, 1200);
   // Each agent keeps their OWN conversation history, so Quinn never sees
   // Lumi's replies and stays in character.
-  function historyKey(id) { return 'lumi_history_' + (id || currentAgent); }
-  function loadHistory(id) {
+  // SIDE CHATS (build 2026.11.08-8): per-topic threads. The 'main'
+  // thread keeps the ORIGINAL key ('lumi_history_<agent>') — no
+  // migration, old chats keep working exactly as today. Any other
+  // thread stores under 'lumi_history_<agent>_<threadId>'.
+  let currentThread = 'main';
+  function historyKey(id, thread) {
+    const t = thread || currentThread;
+    return 'lumi_history_' + (id || currentAgent) + (t && t !== 'main' ? '_' + t : '');
+  }
+  function loadHistory(id, thread) {
     let h = [];
-    try { h = JSON.parse(localStorage.getItem(historyKey(id)) || '[]'); } catch (e) { h = []; }
+    try { h = JSON.parse(localStorage.getItem(historyKey(id, thread)) || '[]'); } catch (e) { h = []; }
     return h.filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant')).slice(-40);
   }
   function saveHistory() {
@@ -2646,20 +2674,21 @@
     } catch (e) {}
     return null;
   }
-  async function restoreServerMemory(id) {
+  async function restoreServerMemory(id, thread) {
     // MERGE (build 2026.11.08-7): server turns first, then any turns
     // that live ONLY in this device's local cache (e.g. a conversation
     // from before server memory went live). Never replace the local
     // copy outright — replacing it would wipe device-only chats.
     // Returns true when the server copy was used.
     try {
-      const r = await fetchWithTimeout(WORKER_URL + '?history=' + encodeURIComponent(id), { method: 'GET' });
+      const th = (typeof thread !== 'undefined' && thread) ? thread : currentThread;
+      const r = await fetchWithTimeout(WORKER_URL + '?history=' + encodeURIComponent(id) + (th && th !== 'main' ? '&thread=' + encodeURIComponent(th) : ''), { method: 'GET' });
       const d = await r.json();
       if (d && Array.isArray(d.messages) && d.messages.length) {
         const server = d.messages
           .filter(m => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
           .slice(-40);
-        const local = loadHistory(id);
+        const local = loadHistory(id, th);
         const seen = new Set(server.map(m => m.role + '\0' + m.content));
         const extra = local.filter(m => m && typeof m.content === 'string' && !seen.has(m.role + '\0' + m.content));
         history = server.concat(extra).slice(-40);
@@ -2683,7 +2712,9 @@
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = 'Continue the book';
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
+      const th = n.threadId;
+      if (th && th !== currentThread) { try { await applyThread(th, n.title); } catch (e) {} }
       input.value = 'Continue the book';
       form.requestSubmit();
     });
@@ -2693,9 +2724,78 @@
   async function pullSharedHistory(id) {
     return restoreServerMemory(id);
   }
+  // ---- SIDE CHATS (build 2026.11.08-8) ----
+  let threadsCache = null;
+  async function fetchThreads() {
+    try {
+      const r = await fetchWithTimeout(WORKER_URL + 'threads?agent=' + encodeURIComponent(currentAgent), { method: 'GET' });
+      const d = await r.json();
+      if (d && d.ok && Array.isArray(d.threads)) { threadsCache = d.threads; return d.threads; }
+    } catch (e) {}
+    return threadsCache || [];
+  }
+  async function applyThread(threadId, title) {
+    if (!threadId) threadId = 'main';
+    if (threadId !== currentThread) { try { saveHistory(); } catch (e) {} }
+    currentThread = threadId;
+    try { localStorage.setItem('lumi_thread_' + currentAgent, threadId); } catch (e) {}
+    history = loadHistory(currentAgent, threadId);
+    renderHistory();
+    try { await restoreServerMemory(currentAgent, threadId); } catch (e) {}
+    renderHistory();
+    updateThreadChip();
+  }
+  function updateThreadChip() {
+    const chip = document.getElementById('threadChip');
+    if (!chip) return;
+    const t = (threadsCache || []).find(x => x.id === currentThread);
+    chip.textContent = '\uD83D\uDDC2 ' + (currentThread === 'main' ? 'Main chat' : (t ? t.title : currentThread));
+  }
+  async function openThreadsOverlay() {
+    const list = document.getElementById('threadList');
+    if (list) {
+      list.innerHTML = '<p>Loading\u2026</p>';
+      const threads = await fetchThreads();
+      list.innerHTML = '';
+      const main = document.createElement('button');
+      main.type = 'button'; main.className = 'threadItem' + (currentThread === 'main' ? ' active' : '');
+      main.textContent = '\uD83D\uDDC2 Main chat';
+      main.addEventListener('click', async () => { document.getElementById('threadsOverlay').classList.remove('open'); await applyThread('main'); });
+      list.appendChild(main);
+      threads.forEach((th) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'threadItem' + (th.id === currentThread ? ' active' : '');
+        b.textContent = '\uD83D\uDDC2 ' + th.title + (th.topic ? ' \u2014 ' + th.topic : '');
+        b.addEventListener('click', async () => { document.getElementById('threadsOverlay').classList.remove('open'); await applyThread(th.id, th.title); });
+        list.appendChild(b);
+      });
+      if (!threads.length) { const p = document.createElement('p'); p.textContent = 'No side chats yet \u2014 make one below.'; list.appendChild(p); }
+    }
+    updateThreadChip();
+    document.getElementById('threadsOverlay').classList.add('open');
+  }
+  async function createThreadFromForm() {
+    const titleEl = document.getElementById('newThreadTitle');
+    const topicEl = document.getElementById('newThreadTopic');
+    const title = (titleEl.value || '').trim();
+    const topic = (topicEl.value || '').trim();
+    if (!title) { alert('Give the side chat a name first.'); return; }
+    try {
+      const r = await fetchWithTimeout(WORKER_URL + 'threads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agent: currentAgent, title: title, topic: topic }) });
+      const d = await r.json();
+      if (d && d.ok && d.thread) {
+        threadsCache = null;
+        document.getElementById('threadsOverlay').classList.remove('open');
+        titleEl.value = ''; topicEl.value = '';
+        await applyThread(d.thread.id, d.thread.title);
+      } else { alert('Could not make that side chat \u2014 try again.'); }
+    } catch (e) { alert('Could not reach the Worker \u2014 try again.'); }
+  }
   async function applyAgent(id, announce) {
     if (id !== currentAgent) { try { saveHistory(); } catch (e) {} }
     currentAgent = id;
+    try { const savedThread = localStorage.getItem('lumi_thread_' + id); currentThread = savedThread || 'main'; } catch (e) { currentThread = 'main'; }
+    try { updateThreadChip(); } catch (e) {}
     const a = AGENTS[id];
     if (agentVoice[id] === undefined) agentVoice[id] = pickVoiceFor(id);
     lumiVoice = agentVoice[id] || null;
@@ -2775,6 +2875,11 @@
     refreshVoiceLabels();
     document.getElementById('teamOverlay').classList.add('open');
   });
+  document.getElementById('threadsBtn').addEventListener('click', () => { openThreadsOverlay(); });
+  document.getElementById('threadsClose').addEventListener('click', () => {
+    document.getElementById('threadsOverlay').classList.remove('open');
+  });
+  document.getElementById('threadCreateBtn').addEventListener('click', () => { createThreadFromForm(); });
   document.getElementById('teamClose').addEventListener('click', () => {
     document.getElementById('teamOverlay').classList.remove('open');
   });
@@ -3334,7 +3439,7 @@
       const res = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ message: outText, messages: outMsgs, agent: currentAgent, voice: voiceOn, tz: deviceTz(), clientTime: deviceNowIso() }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
+        body: JSON.stringify(Object.assign({ message: outText, messages: outMsgs, agent: currentAgent, thread: currentThread, voice: voiceOn, tz: deviceTz(), clientTime: deviceNowIso() }, (window.LumiTeam && LumiTeam.line) ? { team: LumiTeam.line() } : {}, myCoords ? { lat: myCoords.lat, lon: myCoords.lon } : {}, (window.LumiPhoto && LumiPhoto.frameFor('chat')) ? { frame: LumiPhoto.frameFor('chat') } : ((window.LumiCam && LumiCam.isOn() && LumiCam.frame()) ? { frame: LumiCam.frame() } : {})))
       });
       return res.json();
     }
@@ -3376,6 +3481,12 @@
           try { addMsg(switchNoteFor(xTarget), 'ai'); } catch (e) {}
           try { await greetAfterSwitch(xTarget); } catch (e) {}
         }
+      }
+      // WORKER-DRIVEN THREAD SWITCH (build 2026.11.08-8): Lumi moved
+      // this conversation to a side chat (create_thread / switch_thread)
+      // — her switch line was already shown, so the panel moves now.
+      if (data.thread && data.thread.id && data.thread.id !== currentThread) {
+        try { await applyThread(data.thread.id, data.thread.title || ''); } catch (e) {}
       }
     } catch (err) {
       thinking.textContent = "Sorry, I couldn't reach the Worker. Check your Worker URL and that the Worker is deployed.";
@@ -6194,6 +6305,23 @@
       meeting buttons return to Home. It never opens the meeting. */
    var videoGo = document.getElementById('homeVideoBtn');
    if (videoGo) videoGo.addEventListener('click', function () { document.getElementById('callBtn').click(); });
+   /* Home Food & Groceries (build 2026.11.08-9, owner order Nov 8, 2026):
+      from Home, one tap starts the guided food flow — the same
+      starter as the "I want food" chip: "I want food" sent into
+      the current thread through the chat form. It leaves Home for
+      the chat first, then submits, so the flow is identical to
+      tapping the chip in chat. */
+   var foodGo = document.getElementById('homeFoodBtn');
+   if (foodGo) foodGo.addEventListener('click', function () {
+     showChat();
+     var foodInput = document.getElementById('input');
+     var foodForm = document.getElementById('form');
+     if (foodInput) foodInput.value = 'I want food';
+     if (foodForm) {
+       if (foodForm.requestSubmit) foodForm.requestSubmit();
+       else foodForm.dispatchEvent(new Event('submit', { cancelable: true }));
+     }
+   });
    document.addEventListener('click', function (e) {
      paintChatBtn();
      if (!body.classList.contains('onHome')) return;
