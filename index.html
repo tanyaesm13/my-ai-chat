@@ -1062,7 +1062,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-20</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-21</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1078,7 +1078,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-20';
+  var LUMI_BUILD_STAMP = '2026.11.08-21';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -3199,10 +3199,12 @@
   });
   document.getElementById('threadsBtn').addEventListener('click', () => { openThreadsOverlay(); });
   document.getElementById('threadsClose').addEventListener('click', () => {
+    try { stopAllSpeech(); } catch (e) {}
     document.getElementById('threadsOverlay').classList.remove('open');
   });
   document.getElementById('threadCreateBtn').addEventListener('click', () => { createThreadFromForm(); });
   document.getElementById('teamClose').addEventListener('click', () => {
+    try { stopAllSpeech(); } catch (e) {}
     document.getElementById('teamOverlay').classList.remove('open');
   });
   history = loadHistory(currentAgent);
@@ -3405,6 +3407,48 @@
     setTalkingUI(false);
     animClearAnalyser();
   }
+  // __STOP_ALL_SPEECH_START__
+  // SILENCE ON HOME (build 2026.11.08-21, owner order Nov 8, 2026:
+  // "when I bring Lumi back to the home screen sometimes she still
+  // talking about whatever she was. I need once I bring back to the
+  // home screen I need her to shut up."): ONE stop that silences
+  // EVERY voice path at once — cloud /tts audio (cloudAudio /
+  // directAudio) via stopCloudSpeech, which also bumps cloudPlaySeq
+  // so any in-flight /tts fetch that lands afterwards is discarded
+  // instead of playing; the device voice (speechSynthesis) via
+  // cancel(); the 4-second resume loop (_lumiResumeTimer) that
+  // would otherwise keep the device voice alive; and every
+  // <audio>/<video> element on the page (call video, meeting tile
+  // videos, chat media). Audio elements are paused and unloaded
+  // (voice channels hold nothing worth keeping); video elements
+  // are paused and rewound but keep their src, so a chat video
+  // still replays when tapped. Wired into showHome() (the choke
+  // point for the home button + every overlay Close that returns
+  // home) and into every other overlay/view close, so returning
+  // home ALWAYS shuts her up — no "finish the sentence first".
+  function stopAllSpeech() {
+    try { stopCloudSpeech(); } catch (e) {}
+    try { if ('speechSynthesis' in window) speechSynthesis.cancel(); } catch (e) {}
+    try { if (window._lumiResumeTimer) { clearInterval(window._lumiResumeTimer); window._lumiResumeTimer = null; } } catch (e) {}
+    try {
+      Array.prototype.forEach.call(document.querySelectorAll('audio'), function (m) {
+        try { m.pause(); } catch (e) {}
+        try { m.removeAttribute('src'); } catch (e) {}
+        try { m.load(); } catch (e) {}
+      });
+    } catch (e) {}
+    try {
+      Array.prototype.forEach.call(document.querySelectorAll('video'), function (m) {
+        try { m.pause(); } catch (e) {}
+        try { m.currentTime = 0; } catch (e) {}
+      });
+    } catch (e) {}
+    try { speechEnded(); } catch (e) {}
+    try { setTalkingUI(false); } catch (e) {}
+    try { animClearAnalyser(); } catch (e) {}
+  }
+  window.__lumiStopAllSpeech = stopAllSpeech;
+  // __STOP_ALL_SPEECH_END__
   async function speakCloud(text, agentId) {
     if (typeof PENDING_AGENTS !== 'undefined' && PENDING_AGENTS[agentId || currentAgent]) return false;
     cloudForAgent = agentId || currentAgent;
@@ -4950,8 +4994,7 @@
     window.callMode = false;
     const cv = document.getElementById('callVideo');
     if (cv) { cv.pause(); }
-    stopCloudSpeech();
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    try { stopAllSpeech(); } catch (e) {}
     lumiAvatar.classList.remove('talking');
     const ca = document.getElementById('callAvatar');
     if (ca) ca.classList.remove('talking');
@@ -5839,8 +5882,7 @@
         if (v) v.pause();
         t.classList.remove('speaking');
       });
-      stopCloudSpeech();
-      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      try { stopAllSpeech(); } catch (e) {}
     }
     document.getElementById('meetStartBtn').addEventListener('click', openMeet);
     document.getElementById('meetCloseBtn').addEventListener('click', closeMeet);
@@ -6779,7 +6821,7 @@
    var chatBtn = document.getElementById('homeChatBtn');
    function agentName() { var h = document.querySelector('header h1'); return h ? h.textContent : 'Lumi'; }
    function paintChatBtn() { if (chatBtn) chatBtn.textContent = '💬 Chat with ' + agentName(); }
-   function showHome() { body.classList.add('onHome'); paintChatBtn(); }
+   function showHome() { try { stopAllSpeech(); } catch (e) {} body.classList.add('onHome'); paintChatBtn(); }
    function showChat() { body.classList.remove('onHome'); }
    window.LumiHome = { showHome: showHome, showChat: showChat };
    var homeBtn = document.getElementById('homeBtn');
@@ -6949,6 +6991,7 @@
      renderFoodMenu(FOOD_STORE_IDS[store] || '', store);
    }
    function closeCompanyView() {
+     try { stopAllSpeech(); } catch (e) {}
      var view = document.getElementById('foodCompanyView');
      if (view) view.hidden = true;
      var grid = document.getElementById('foodGrid');
@@ -7227,6 +7270,7 @@
    var openMenuDetailPanel = null;
    var openMenuDetailRow = null;
    function closeMenuItemDetailPanel() {
+     try { stopAllSpeech(); } catch (e) {}
      if (openMenuDetailPanel && openMenuDetailPanel.parentNode) openMenuDetailPanel.parentNode.removeChild(openMenuDetailPanel);
      openMenuDetailPanel = null;
      openMenuDetailRow = null;
@@ -7570,6 +7614,7 @@
      if (ov) ov.classList.add('open');
    }
    function closeCartView() {
+     try { stopAllSpeech(); } catch (e) {}
      var ov = document.getElementById('cartOverlay');
      if (ov) ov.classList.remove('open');
    }
@@ -7649,6 +7694,7 @@
    });
    var shopClose = document.getElementById('shopClose');
    if (shopClose) shopClose.addEventListener('click', function () {
+     try { stopAllSpeech(); } catch (e) {}
      if (shopOverlay) shopOverlay.classList.remove('open');
    });
    Array.prototype.forEach.call(document.querySelectorAll('.shopStore'), function (btn) {
@@ -7870,6 +7916,7 @@
      if (view) view.hidden = false;
    }
    function closeEntServiceView() {
+     try { stopAllSpeech(); } catch (e) {}
      var view = document.getElementById('entServiceView');
      if (view) view.hidden = true;
      var grid = document.getElementById('entGrid');
