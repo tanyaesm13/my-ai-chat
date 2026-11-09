@@ -907,6 +907,7 @@
         <button type="button" class="foodStore" data-store="Chili's" data-state="linked">🌶️ Chili's <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="H-E-B" data-state="linked">🛒 H-E-B <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Walmart" data-state="linked">🛒 Walmart <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Sam's Club" data-state="linked">🛒 Sam's Club <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Chipotle" data-state="linked">🌯 Chipotle <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Texas Roadhouse" data-state="linked">🥩 Texas Roadhouse <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Olive Garden" data-state="linked">🍝 Olive Garden <span class="foodState">linked</span></button>
@@ -939,6 +940,7 @@
         <button type="button" class="foodStore" data-store="Buffalo Wings &amp; Rings" data-state="linked">🍗 Buffalo Wings &amp; Rings <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Laredo Taco Company" data-state="linked">🌮 Laredo Taco Company <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Palenque Grill" data-state="linked">🌮 Palenque Grill <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Nothing Bundt Cakes" data-state="linked">🎂 Nothing Bundt Cakes <span class="foodState">linked</span></button>
     </div>
     <div id="foodCompanyView" hidden>
         <button id="foodCompanyBackTop" type="button">← Back to Food &amp; Groceries</button>
@@ -1136,7 +1138,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-29</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-30</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1152,7 +1154,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-29';
+  var LUMI_BUILD_STAMP = '2026.11.08-30';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -7093,7 +7095,7 @@
       — "Send cart to Lumi" sends ONE chat message with the whole
       cart, grouped by store, and Lumi drafts one order per store
       from it. */
-   var FOOD_STORE_IDS = { "Whataburger": "whataburger", "Chick-fil-A": "chick_fil_a", "Raising Cane's": "raising_canes", "Domino's": "dominos", "Taco Palenque": "taco_palenque", "Chili's": "chilis", "H-E-B": "heb", "Walmart": "walmart", "Target": "target", "Pizza Hut": "pizza_hut", "Papa John's": "papa_johns", "Popeyes": "popeyes", "Wingstop": "wingstop", "KFC": "kfc", "Burger King": "burger_king", "Wendy's": "wendys", "Taco Bell": "taco_bell", "Buffalo Wild Wings": "buffalo_wild_wings", "La Unica (Shiloh)": "la_unica_shiloh", "Church's Texas Chicken": "churchs", "Chopsticks": "chopsticks", "Jalapeños Pizza": "jalapenos_pizza", "Sushi Madre": "sushi_madre", "Applebee's": "applebees", "Pizza Patrón": "pizza_patron", "Buffalo Wings & Rings": "buffalo_wings_rings", "Laredo Taco Company": "laredo_taco_company", "Palenque Grill": "palenque_grill", "Chipotle": "chipotle", "Texas Roadhouse": "texas_roadhouse", "Olive Garden": "olive_garden", "Golden Corral": "golden_corral", "McDonald's": "mcdonalds", "Danny's": "dannys", "Logan's Roadhouse": "logans", "Lin's Grand Buffet": "lins", "La Roca": "la_roca", "Suarez": "suarez", "Tremendo Taco": "tremendo_taco", "Cosmos Bar & Grill": "cosmos" };
+   var FOOD_STORE_IDS = { "Whataburger": "whataburger", "Chick-fil-A": "chick_fil_a", "Raising Cane's": "raising_canes", "Domino's": "dominos", "Taco Palenque": "taco_palenque", "Chili's": "chilis", "H-E-B": "heb", "Walmart": "walmart", "Sam's Club": "sams_club", "Target": "target", "Pizza Hut": "pizza_hut", "Papa John's": "papa_johns", "Popeyes": "popeyes", "Wingstop": "wingstop", "KFC": "kfc", "Burger King": "burger_king", "Wendy's": "wendys", "Taco Bell": "taco_bell", "Buffalo Wild Wings": "buffalo_wild_wings", "La Unica (Shiloh)": "la_unica_shiloh", "Church's Texas Chicken": "churchs", "Chopsticks": "chopsticks", "Jalapeños Pizza": "jalapenos_pizza", "Sushi Madre": "sushi_madre", "Applebee's": "applebees", "Pizza Patrón": "pizza_patron", "Buffalo Wings & Rings": "buffalo_wings_rings", "Laredo Taco Company": "laredo_taco_company", "Palenque Grill": "palenque_grill", "Chipotle": "chipotle", "Texas Roadhouse": "texas_roadhouse", "Olive Garden": "olive_garden", "Golden Corral": "golden_corral", "McDonald's": "mcdonalds", "Danny's": "dannys", "Logan's Roadhouse": "logans", "Lin's Grand Buffet": "lins", "La Roca": "la_roca", "Suarez": "suarez", "Tremendo Taco": "tremendo_taco", "Cosmos Bar & Grill": "cosmos", "Nothing Bundt Cakes": "nothing_bundt_cakes" };
    var FOOD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
    var currentFoodCompany = '';
    function foodSend(text) {
