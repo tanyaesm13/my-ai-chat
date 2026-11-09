@@ -62,6 +62,8 @@
     #callCaption { max-width: 92%; width: 560px; text-align: center; font-size: 18px; line-height: 1.5; color: #fff; padding: 14px 20px; border: 1px solid #72edfa; border-radius: 16px; background: #1a1a1a; max-height: 28vh; overflow-y: auto; }
     #callBtns { display: flex; gap: 20px; }
     #callBtns button { width: 64px; height: 64px; border-radius: 50%; font-size: 26px; background: #1a1a1a; border: 2px solid #72edfa; color: #fff; padding: 0; }
+    /* CALL BACK BUTTON (build 2026.11.08-24): top-left, big enough to tap. */
+    #callBackBtn { position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 16px; z-index: 101; font-size: 18px; font-weight: 700; color: #fff; background: #1a1a1a; border: 2px solid #72edfa; border-radius: 999px; padding: 12px 18px; cursor: pointer; }
     /* Agent team picker */
     #teamOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
     #threadsOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
@@ -1020,6 +1022,7 @@
     </div>
 </div>
 <div id="callOverlay">
+    <button id="callBackBtn" type="button" title="Back" aria-label="Back">&larr; Back</button>
     <h2 id="callName">Lumi</h2>
     <div id="callAvatarWrap">
         <img id="callAvatar" src="lumi-avatar.webp" alt="Lumi">
@@ -1069,7 +1072,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-23</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-24</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1085,7 +1088,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-23';
+  var LUMI_BUILD_STAMP = '2026.11.08-24';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4976,6 +4979,22 @@
     // her portrait's continuous sway and re-asserts her greeting.
     try { if (window.LumiAnim && LumiAnim.callParity) LumiAnim.callParity(currentAgent, !!(a && a.video)); } catch (e) {}
     if (!window.lumiToggleVoiceInput) callMicBtn.style.display = 'none';
+    // CALL BACK BUTTON (build 2026.11.08-24): remember the screen
+    // that was open before this call, so the ← Back button can
+    // return to it. The call overlay only COVERS the screen
+    // underneath — openCall never closes it (the team-meeting
+    // card closes the meeting first, so by the time openCall
+    // runs the meeting is already gone) — so the prior screen
+    // is whatever is visible right now: an open overlay, the
+    // home screen, or the chat.
+    window._callPriorView = (function () {
+      try {
+        var ov = document.querySelector('#meetOverlay.open, #teamOverlay.open, #foodOverlay.open, #shopOverlay.open, #entOverlay.open, #newsOverlay.open, #stemOverlay.open, #financeOverlay.open, #threadsOverlay.open, #cartOverlay.open');
+        if (ov) return ov.id;
+        if (document.body.classList.contains('onHome')) return 'home';
+      } catch (e) {}
+      return 'chat';
+    })();
     callOverlay.classList.add('open');
     // Her introduction is SPOKEN on a one-on-one (build 2026.10.22-12):
     // opening a call greets her out loud, in this agent's own voice
@@ -5006,8 +5025,39 @@
     const ca = document.getElementById('callAvatar');
     if (ca) ca.classList.remove('talking');
   }
+  // BACK FROM CALL (build 2026.11.08-24, owner order Nov 8 ~9:46 PM
+  // CST): the ← Back button on the call screen closes the
+  // video-call view and returns to the screen that was open
+  // before the call started. Same teardown as closeCall() —
+  // conversation mode off, overlay hidden, animation stopped,
+  // camera off, call video paused, talking classes cleared —
+  // EXCEPT it never calls stopAllSpeech(): going back to the
+  // chat is not going home, so her in-progress spoken reply is
+  // allowed to finish in the chat instead of being cut off
+  // mid-sentence. The call itself ends: listening stops and the
+  // camera stops, exactly like the ❌ End call button. The
+  // prior screen is re-asserted directly (body class only) —
+  // never through showHome(), which silences her.
+  function backFromCall() {
+    try { if (window.LumiConvo && LumiConvo.stop) LumiConvo.stop(); } catch (e) {}
+    callOverlay.classList.remove('open');
+    try { if (window.LumiAnim && LumiAnim.stopLiving) LumiAnim.stopLiving(document.getElementById('callAvatar')); } catch (e) {}
+    try { var wrap = document.getElementById('callAvatarWrap'); if (wrap) wrap.style.transform = ''; } catch (e) {}
+    if (window.LumiCam) LumiCam.stopIfOwner('call');
+    window.callMode = false;
+    const cv = document.getElementById('callVideo');
+    if (cv) { cv.pause(); }
+    lumiAvatar.classList.remove('talking');
+    const ca = document.getElementById('callAvatar');
+    if (ca) ca.classList.remove('talking');
+    var prior = window._callPriorView || 'chat';
+    if (prior === 'home') { document.body.classList.add('onHome'); }
+    else { document.body.classList.remove('onHome'); }
+    try { if (typeof paintChatBtn === 'function') paintChatBtn(); } catch (e) {}
+  }
   document.getElementById('callBtn').addEventListener('click', openCall);
   document.getElementById('callCloseBtn').addEventListener('click', closeCall);
+  document.getElementById('callBackBtn').addEventListener('click', backFromCall);
   callMicBtn.addEventListener('click', () => { if (window.lumiToggleVoiceInput) window.lumiToggleVoiceInput(); });
   callSpeakerBtn.addEventListener('click', () => { voiceToggle.click(); syncCallSpeaker(); });
   // ================================================================
