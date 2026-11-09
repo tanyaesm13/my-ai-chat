@@ -116,7 +116,7 @@
     #foodCompanyView { width: min(420px, 90vw); text-align: left; }
     #foodCompanyView[hidden] { display: none; }
     #foodCompanyTitle { margin: 0 0 4px; font-size: 22px; color: #9c89f4; text-align: center; }
-    #foodSpecials h4, #foodMenu h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
+    #foodSpecials h4, #foodMenu h4, #foodWalmartSpecials h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
     #foodPointsLine { margin: 0 0 6px; font-size: 14px; color: #fff; font-weight: 700; }
     .specialItem { background: #242746; border: 1px solid #72edfa; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
     .specialTitle { font-size: 14px; color: #fff; }
@@ -260,6 +260,25 @@
     .menuDetailStatus { min-height: 18px; font-size: 13px; color: #7dff9e; text-align: center; margin: 6px 0; }
     .menuDetailClose { display: block; margin: 6px auto 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 6px 16px; font-size: 13px; cursor: pointer; }
     .menuDetailBackTop { display: block; margin: 0 auto 10px; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* Per-item customization (build 2026.11.08-27, owner order Nov 8,
+       2026 ~22:55 CST — "mimic the individual app"): the detail
+       dropdown parses the item's description ("What's On It" list)
+       into per-ingredient Regular / Extra / None controls, plus an
+       Add-extra row for common extras not in the base list. Extras
+       are included at no extra charge unless the menu says
+       otherwise — never an invented price. */
+    .menuCustomTitle { margin: 10px 0 2px; font-size: 14px; color: #72edfa; font-weight: 700; }
+    .menuCustomHint { margin: 0 0 6px; font-size: 12px; color: #bbb; }
+    .menuCustomRow { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    .menuCustomLabel { flex: 1; font-size: 13px; min-width: 0; }
+    .menuCustomBtn { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 999px; padding: 3px 9px; font-size: 12px; cursor: pointer; }
+    .menuCustomBtn.on { background: #6a4fd0; border-color: #6a4fd0; }
+    .menuExtraRow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+    .menuExtraBtn { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+    .menuExtraBtn.on { background: #6a4fd0; border-color: #6a4fd0; }
+    .cartLineCustom { margin: 2px 0 0; font-size: 13px; color: #7dff9e; }
+    .cartPayBtn { display: block; margin: 8px 0 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+    .cartPayBtn.on { background: #6a4fd0; border-color: #6a4fd0; }
     .specialItem { cursor: pointer; }
     .specialTapHint { font-size: 12px; color: #72edfa; margin-top: 6px; }
 
@@ -889,6 +908,10 @@
     <div id="foodCompanyView" hidden>
         <button id="foodCompanyBackTop" type="button">← Back to Food &amp; Groceries</button>
         <h3 id="foodCompanyTitle"></h3>
+        <div id="foodWalmartSpecials" hidden>
+            <h4>🛒 This week's specials and coupons — Walmart</h4>
+            <div id="foodWalmartSpecialsList"><p class="foodCompanyLoading">Loading specials…</p></div>
+        </div>
         <div id="foodSpecials">
             <h4>🎉 This week's specials &amp; coupons</h4>
             <p id="foodPointsLine"></p>
@@ -1078,7 +1101,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-26</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-27</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1094,7 +1117,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-26';
+  var LUMI_BUILD_STAMP = '2026.11.08-27';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4044,13 +4067,36 @@
       else form.dispatchEvent(new Event('submit', { cancelable: true }));
     });
   });
-  // Clear chat button: confirm, then wipe chat, history and saved history.
-  document.getElementById('clearBtn').addEventListener('click', () => {
+  // CLEAR CHAT = FRESH START (build 2026.11.08-25, owner order Nov 8
+  // ~10:00 PM CST, rebased onto -26 in build 2026.11.08-27): the 🗑
+  // button is a REDO, not a memory wipe.
+  // Confirm, stop her mid-sentence, clear THIS thread's turns
+  // locally (in-memory history + this thread's localStorage entry
+  // only), show the fresh greeting, and tell the Worker to drop
+  // the server-side turns for this agent + thread (POST
+  // /threads/fresh-start) so the model gets no prior turns from
+  // now on. The thread itself is NOT deleted and no new thread
+  // id is created — the same thread starts over. The local clear
+  // happens FIRST and stands even if the POST fails or times out,
+  // so she is never left staring at the old chat because the
+  // network hiccuped. Nothing else is touched: no other thread,
+  // no other localStorage key (memories, favorites, accounts,
+  // contacts, settings). Applies to whichever agent is active
+  // (Lumi or any team agent) — agent + thread are read at tap time.
+  document.getElementById('clearBtn').addEventListener('click', async () => {
     if (!confirm('Clear the chat history?')) return;
+    try { stopAllSpeech(); } catch (e) {}
+    const agent = currentAgent, thread = currentThread;
     history = [];
     try { localStorage.removeItem(historyKey()); } catch (e) {}
-    history = [];
     renderHistory();
+    try {
+      await fetchWithTimeout(WORKER_URL + 'threads/fresh-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent: agent, threadId: thread }),
+      });
+    } catch (e) {}
   });
   // Voice picker: cycle through the available English voices, saved in localStorage.
   document.getElementById('voicePickBtn').addEventListener('click', () => {
@@ -7049,6 +7095,7 @@
      if (view) view.hidden = false;
      var added = document.getElementById('foodMenuAdded');
      if (added) added.textContent = '';
+     renderWalmartSpecials(store);
      renderFoodSpecials(FOOD_STORE_IDS[store] || '');
      renderFoodMenu(FOOD_STORE_IDS[store] || '', store);
    }
@@ -7079,7 +7126,49 @@
      showChat();
      foodSend('I want to order from ' + store);
    });
-   function renderFoodSpecials(storeId) {
+   /* WALMART WEEKLY SPECIALS + COUPONS (build 2026.11.08-27, owner
+     order Nov 8, 2026 ~22:57 CST): at the top of the Walmart store
+     page, a "This week's specials and coupons" view reading the
+     walmart_specials menu cache (sections per department — grocery
+     first, then the other departments). Items add to the cart
+     exactly like menu items (same dropdown, same customization),
+     under the real Walmart store id so the cart groups them with
+     Walmart. If the cache is empty or missing (still being
+     seeded), the section shows a plain "check back soon" note —
+     never an error, never an empty list. Hidden on every other
+     store's page. */
+  function renderWalmartSpecials(store) {
+    var box = document.getElementById('foodWalmartSpecials');
+    if (!box) return;
+    if (store !== 'Walmart') { box.hidden = true; return; }
+    box.hidden = false;
+    var list = document.getElementById('foodWalmartSpecialsList');
+    if (!list) return;
+    list.textContent = '';
+    var loading = document.createElement('p');
+    loading.className = 'foodCompanyLoading';
+    loading.textContent = 'Loading specials…';
+    list.appendChild(loading);
+    fetch(WORKER_URL + 'menu?store=walmart_specials', { method: 'GET' }).then(function (r) { return r.json(); }).then(function (data) {
+      var sections = (data && data.ok && data.sections) || [];
+      list.textContent = '';
+      if (!sections.length) {
+        var empty = document.createElement('p');
+        empty.className = 'foodCompanyEmpty';
+        empty.textContent = 'No specials listed right now — check back soon.';
+        list.appendChild(empty);
+        return;
+      }
+      renderMenuSectionsInto(list, sections, 'walmart', 'Walmart');
+    }).catch(function () {
+      list.textContent = '';
+      var empty2 = document.createElement('p');
+      empty2.className = 'foodCompanyEmpty';
+      empty2.textContent = 'No specials listed right now — check back soon.';
+      list.appendChild(empty2);
+    });
+  }
+  function renderFoodSpecials(storeId) {
      var list = document.getElementById('foodSpecialsList');
      var pointsLine = document.getElementById('foodPointsLine');
      if (pointsLine) pointsLine.textContent = '';
@@ -7337,7 +7426,65 @@
      openMenuDetailPanel = null;
      openMenuDetailRow = null;
    }
-   /* Toggle the detail dropdown under the tapped row. Tapping the
+   /* PER-ITEM CUSTOMIZATION (build 2026.11.08-27, owner order Nov 8,
+     2026 ~22:55 CST — "mimic the individual app", expanded
+     ~22:57 CST to EVERY store): the dropdown parses the item's
+     description into its ingredient list and offers Regular /
+     Extra / None per ingredient, plus an Add-extra row for common
+     extras not already in the base list. Generic — driven by
+     each item's description, no store-specific hardcoding, so
+     Whataburger, Chick-fil-A, Cane's, Domino's, H-E-B, Walmart
+     and every other store get the same treatment. Extras are $0
+     (included) unless the menu data says otherwise — a price is
+     never invented, so totals never change on a customization.
+     The result is one plain-text customization string ("Extra
+     Cheese, No Pickles") that rides on the cart line's note —
+     it shows on the cart line and in the "Send cart to Lumi"
+     message, and lines with different customizations stay
+     separate in the cart. */
+  function cleanIngredientName(part) {
+    var s = String(part || '').trim();
+    /* Strip trailing parentheticals the sites use for counts/sizes
+       ("(1)", "(2 Slices)", "(Regular)", "(4\")") — the label is
+       the ingredient itself. */
+    s = s.replace(/(\s*\([^()]*\))+\s*$/, '').trim();
+    return s;
+  }
+  function parseMenuIngredients(desc) {
+    if (!desc || typeof desc !== 'string') return [];
+    var d = desc.trim();
+    if (!d) return [];
+    /* Only a "What's On It"-style comma list parses: no sentence
+       punctuation, 2-16 comma parts, each short. Prose
+       descriptions ("A crispy chicken sandwich with...") return
+       [] and get no ingredient controls — the cart note + quick
+       chips still let her customize those in the cart. */
+    if (d.indexOf('.') !== -1) return [];
+    var parts = d.split(',');
+    if (parts.length < 2 || parts.length > 16) return [];
+    var out = [];
+    for (var i = 0; i < parts.length; i++) {
+      var name = cleanIngredientName(parts[i]);
+      if (!name || name.length > 45) return [];
+      if (out.indexOf(name) === -1) out.push(name);
+    }
+    return out.length >= 2 ? out : [];
+  }
+  var MENU_COMMON_EXTRAS = [
+    { key: 'cheese', label: 'Extra cheese', note: 'Extra cheese' },
+    { key: 'patty', label: 'Extra patty', note: 'Extra patty' },
+    { key: 'bacon', label: 'Extra bacon', note: 'Extra bacon' }
+  ];
+  function buildCustomNote(ingStates, extras) {
+    var bits = [];
+    (ingStates || []).forEach(function (st) {
+      if (st.state === 'none') bits.push('No ' + st.name);
+      else if (st.state === 'extra') bits.push('Extra ' + st.name);
+    });
+    (extras || []).forEach(function (ex) { if (ex.on) bits.push(ex.note); });
+    return bits.join(', ');
+  }
+  /* Toggle the detail dropdown under the tapped row. Tapping the
       same row again closes it; tapping another row moves the panel
       there. Only one panel is open at a time. */
    function toggleMenuItemDetail(anchorEl, storeId, storeName, item) {
@@ -7387,6 +7534,64 @@
        ds.textContent = item.description;
        panel.appendChild(ds);
      }
+     /* Per-ingredient customization (build 2026.11.08-27): parsed
+        from this item's description — same UI for every store. */
+     var customIngredients = parseMenuIngredients(item && item.description);
+     var customStates = customIngredients.map(function (nm) { return { name: nm, state: 'regular' }; });
+     var customExtras = [];
+     if (customIngredients.length) {
+       var cTitle = document.createElement('p');
+       cTitle.className = 'menuCustomTitle';
+       cTitle.textContent = 'Customize it — just like the restaurant\'s own app';
+       panel.appendChild(cTitle);
+       var cHint = document.createElement('p');
+       cHint.className = 'menuCustomHint';
+       cHint.textContent = 'Extras are included at no extra charge unless the menu says otherwise.';
+       panel.appendChild(cHint);
+       customStates.forEach(function (st) {
+         var row = document.createElement('div');
+         row.className = 'menuCustomRow';
+         var lab = document.createElement('span');
+         lab.className = 'menuCustomLabel';
+         lab.textContent = st.name;
+         row.appendChild(lab);
+         ['regular', 'extra', 'none'].forEach(function (mode) {
+           var b = document.createElement('button');
+           b.type = 'button';
+           b.className = 'menuCustomBtn' + (mode === 'regular' ? ' on' : '');
+           b.textContent = mode === 'regular' ? 'Regular' : (mode === 'extra' ? 'Extra' : 'None');
+           b.addEventListener('click', function () {
+             st.state = mode;
+             Array.prototype.forEach.call(row.querySelectorAll('.menuCustomBtn'), function (x) { x.classList.remove('on'); });
+             b.classList.add('on');
+           });
+           row.appendChild(b);
+         });
+         panel.appendChild(row);
+       });
+       /* Add-extra row: common extras NOT already in the base list
+          (their own Extra control covers the ones that are). */
+       var extraRow = document.createElement('div');
+       extraRow.className = 'menuExtraRow';
+       var extraShown = 0;
+       MENU_COMMON_EXTRAS.forEach(function (ex) {
+         var covered = customIngredients.some(function (nm) { return nm.toLowerCase().indexOf(ex.key) !== -1; });
+         if (covered) return;
+         var eb = document.createElement('button');
+         eb.type = 'button';
+         eb.className = 'menuExtraBtn';
+         eb.textContent = '+ ' + ex.label;
+         var rec = { note: ex.note, on: false };
+         customExtras.push(rec);
+         eb.addEventListener('click', function () {
+           rec.on = !rec.on;
+           if (rec.on) eb.classList.add('on'); else eb.classList.remove('on');
+         });
+         extraRow.appendChild(eb);
+         extraShown++;
+       });
+       if (extraShown) panel.appendChild(extraRow);
+     }
      var qty = 1;
      var qtyRow = document.createElement('div');
      qtyRow.className = 'menuDetailQtyRow';
@@ -7420,8 +7625,10 @@
      add.textContent = 'Add to cart';
      add.addEventListener('click', function () {
        var addedName = (item && item.name) || '';
+       var customNote = buildCustomNote(customStates, customExtras);
        var qtyText = qty > 1 ? (qty + ' × ' + addedName) : addedName;
-       if (addMenuItemToOrder(storeId, storeName, item, qty)) {
+       if (customNote) qtyText += ' (' + customNote + ')';
+       if (addMenuItemToOrder(storeId, storeName, item, qty, customNote)) {
          status.textContent = 'Added ' + qtyText + ' to your cart ✓';
        } else {
          status.textContent = 'Added ' + qtyText + ' — tell Lumi any changes.';
@@ -7445,18 +7652,19 @@
       into chat). Returns true when the cart took it, false when it
       fell back to chat. The cart contract: window.LumiCart.addItem
       (storeId, storeName, item, qty). */
-   function addMenuItemToOrder(storeId, storeName, item, qty) {
+   function addMenuItemToOrder(storeId, storeName, item, qty, customNote) {
      var name = (item && item.name) || '';
      var n = (typeof qty === 'number' && qty > 0) ? Math.floor(qty) : 1;
+     var note = (typeof customNote === 'string') ? customNote : '';
      if (window.LumiCart && typeof window.LumiCart.addItem === 'function') {
        try {
-         window.LumiCart.addItem(storeId, storeName, { name: name, price: (item && item.price) || null, description: (item && item.description) || '', image: menuPhotoUrl(item) || null }, n);
+         window.LumiCart.addItem(storeId, storeName, { name: name, price: (item && item.price) || null, description: (item && item.description) || '', image: menuPhotoUrl(item) || null, note: note }, n);
          var folderAdded = document.getElementById('foodMenuAdded');
          if (folderAdded) folderAdded.textContent = 'Added ' + name + ' to your cart.';
          return true;
        } catch (e) { /* cart failed — fall through to the chat fallback */ }
      }
-     foodSend(n > 1 ? ('Add ' + n + ' × ' + name + ' to my order') : ('Add ' + name + ' to my order'));
+     foodSend('Add ' + (n > 1 ? n + ' × ' : '') + name + (note ? ' (' + note + ')' : '') + ' to my order');
      var folderAdded2 = document.getElementById('foodMenuAdded');
      if (folderAdded2) folderAdded2.textContent = 'Added ' + name + ' — tell Lumi any changes.';
      return false;
@@ -7481,9 +7689,38 @@
      has one (optional `image` per item); otherwise a plain
      placeholder — never a broken image, never an invented photo.
      Remove is obvious: every line has a Remove button, quantity 0
-     removes it, and Clear cart empties the whole thing. */
+     removes it, and Clear cart empties the whole thing. Build
+     2026.11.08-27: the line's note carries the dropdown's
+     per-ingredient customizations ("Extra Cheese, No Pickles")
+     and shows under the name; a "Pay with EBT / food stamps"
+     toggle appears on a store group only when that store's
+     registry ebt flag is true (all false for now — see
+     EBT_FLAGS). */
    var CART_KEY = 'lumi_cart_v1';
    var CART_CHIPS = ['No pickles', 'No onions', 'Extra sauce', 'No ice'];
+  /* PAY WITH EBT (build 2026.11.08-27, owner order Nov 8, 2026
+     ~22:57 CST): at checkout for H-E-B / Walmart / Target
+     grocery orders, "Pay with EBT / food stamps" is a payment
+     choice ONLY when that store's registry ebt flag is true —
+     hidden otherwise, so she never sees a dead option. The
+     flags mirror the Worker's registry (GROCERY_ADAPTERS ebt)
+     and are ALL false until each store's EBT add is verified
+     — flip one to true here when its verification lands. A
+     Worker /stores endpoint replaces this built-in table in a
+     later build (same pattern as FOOD_STORE_IDS). The choice
+     is per store, kept in localStorage (lumi_cart_pay_v1),
+     and rides into the "Send cart to Lumi" message for that
+     store only. SNAP-eligible groceries go on the Lone Star
+     card; the rest (fees, tax, tip, anything not SNAP-eligible)
+     goes on her debit card — the split is Lumi's job at
+     checkout, never a number invented here. */
+  var EBT_FLAGS = { heb: false, walmart: false, target: false, amazon: false };
+  var CART_PAY_KEY = 'lumi_cart_pay_v1';
+  function loadCartPay() { try { var raw = localStorage.getItem(CART_PAY_KEY); var o = raw ? JSON.parse(raw) : {}; return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+  function saveCartPay(pay) { try { localStorage.setItem(CART_PAY_KEY, JSON.stringify(pay || {})); } catch (e) {} }
+  function ebtPayAvailable(storeId) { return EBT_FLAGS[storeId] === true; }
+  function cartPayFor(storeId) { var p = loadCartPay(); return p[storeId] === 'ebt' ? 'ebt' : ''; }
+  function setCartPay(storeId, pay) { var p = loadCartPay(); if (pay) p[storeId] = pay; else delete p[storeId]; saveCartPay(p); }
    function loadCart() { try { var raw = localStorage.getItem(CART_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch (e) { return []; } }
    function saveCart(items) { try { localStorage.setItem(CART_KEY, JSON.stringify(items)); } catch (e) {} updateCartBadge(); }
    function cartCount() { var n = 0; loadCart().forEach(function (l) { n += (l.qty || 0); }); return n; }
@@ -7491,7 +7728,7 @@
    function addToCart(storeId, storeName, it, qty) {
      var items = loadCart();
      var n = (typeof qty === 'number' && qty > 0) ? Math.floor(qty) : 1;
-     var line = { storeId: storeId, storeName: storeName, name: it.name || '', price: it.price || null, image: it.image || null, qty: n, note: '' };
+     var line = { storeId: storeId, storeName: storeName, name: it.name || '', price: it.price || null, image: it.image || null, qty: n, note: (it && it.note) || '' };
      var id = cartLineId(line);
      var found = null;
      items.forEach(function (l) { if (cartLineId(l) === id) found = l; });
@@ -7558,6 +7795,12 @@
        pr.textContent = line.price;
        info.appendChild(pr);
      }
+     if (line.note) {
+       var cu = document.createElement('div');
+       cu.className = 'cartLineCustom';
+       cu.textContent = '✎ ' + line.note;
+       info.appendChild(cu);
+     }
      top.appendChild(info);
      row.appendChild(top);
      var qr = document.createElement('div');
@@ -7604,13 +7847,19 @@
      var totals = document.getElementById('cartTotals');
      if (!list) return;
      var items = loadCart();
+     var payChoices = loadCartPay();
+     var payPruned = false;
+     var seenPayStores = {};
+     items.forEach(function (l) { seenPayStores[l.storeId || ''] = true; });
+     Object.keys(payChoices).forEach(function (k) { if (!seenPayStores[k]) { delete payChoices[k]; payPruned = true; } });
+     if (payPruned) saveCartPay(payChoices);
      list.textContent = '';
      if (empty) empty.style.display = items.length ? 'none' : '';
      var groups = [];
      var byStore = {};
      items.forEach(function (line, idx) {
        var key = line.storeId || line.storeName || 'order';
-       if (!byStore[key]) { byStore[key] = { storeName: line.storeName || line.storeId || 'Order', indices: [] }; groups.push(byStore[key]); }
+       if (!byStore[key]) { byStore[key] = { storeName: line.storeName || line.storeId || 'Order', storeId: key, indices: [] }; groups.push(byStore[key]); }
        byStore[key].indices.push(idx);
      });
      groups.forEach(function (g) {
@@ -7631,6 +7880,17 @@
        sub.className = 'cartStoreSubtotal';
        sub.textContent = (!gUnpriced && gPriced) ? ('Subtotal: $' + gSum.toFixed(2)) : 'Subtotal: Lumi to confirm';
        wrap.appendChild(sub);
+       if (ebtPayAvailable(g.storeId)) {
+         var payBtn = document.createElement('button');
+         payBtn.type = 'button';
+         payBtn.className = 'cartPayBtn' + (cartPayFor(g.storeId) === 'ebt' ? ' on' : '');
+         payBtn.textContent = cartPayFor(g.storeId) === 'ebt' ? '✓ Pay with EBT / food stamps' : '💳 Pay with EBT / food stamps';
+         payBtn.addEventListener('click', function () {
+           setCartPay(g.storeId, cartPayFor(g.storeId) === 'ebt' ? '' : 'ebt');
+           renderCart();
+         });
+         wrap.appendChild(payBtn);
+       }
        list.appendChild(wrap);
      });
      if (totals) {
@@ -7685,20 +7945,21 @@
      var order = [];
      items.forEach(function (l) {
        var key = l.storeName || l.storeId || 'Order';
-       if (!byStore[key]) { byStore[key] = []; order.push(key); }
-       byStore[key].push(l);
+       if (!byStore[key]) { byStore[key] = { storeId: l.storeId || '', lines: [] }; order.push(key); }
+       byStore[key].lines.push(l);
      });
      var lines = ['Here\'s my order — one order per store, please:'];
      order.forEach(function (storeName) {
        lines.push(storeName + ':');
        var sub = 0, allPriced = true;
-       byStore[storeName].forEach(function (l) {
+       byStore[storeName].lines.forEach(function (l) {
          var v = cartPriceValue(l.price);
          if (v === null) { allPriced = false; }
          else { sub += v * (l.qty || 1); }
          lines.push('- ' + l.name + (v === null ? '' : ' — $' + v.toFixed(2)) + ' x' + (l.qty || 1) + (l.note ? ' — ' + l.note : ''));
        });
        lines.push(allPriced ? ('Subtotal: $' + sub.toFixed(2)) : 'Subtotal: Lumi to confirm');
+       if (cartPayFor(byStore[storeName].storeId) === 'ebt') lines.push('Payment: EBT / food stamps — SNAP-eligible groceries on my Lone Star card, the rest on my debit card.');
      });
      lines.push('Please place one order per store.');
      return lines.join('\n');
@@ -7708,6 +7969,7 @@
      if (!items.length) return;
      var text = cartMessageText(items);
      saveCart([]);
+     saveCartPay({});
      renderCart();
      closeCartView();
      if (foodOverlay) foodOverlay.classList.remove('open');
