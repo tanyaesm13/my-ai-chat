@@ -127,15 +127,18 @@
     .menuItemPrice { float: right; font-weight: 700; color: #ffd166; }
     .menuItemDesc { display: block; font-size: 12px; color: #bbb; margin-top: 3px; }
     .foodCompanyEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
-    /* Entertainment tab (build 2026.11.08-16, owner order Nov 8,
+    /* Entertainment tab (build 2026.11.08-19, owner order Nov 8,
        2026): same overlay pattern as Food — a grid of service
        buttons, each opening its own sub-folder. Hulu + YouTube are
        LINKED (verified live sign-ins Nov 8, 2026; their folders
        show the real lists from that check, static snapshots — see
-       ENT_LINKED in the JS). The other 10 services still show the
-       "Currently watching" shell (placeholder until linked, never
-       invented shows) plus the not-linked note. No sign-in, no
-       playback, no subscription from here. */
+       ENT_LINKED in the JS). Every item in the two linked folders
+       is a tappable link to the service (plain <a>, target _blank,
+       rel noopener — opens the service's site/app on her phone).
+       The other 10 services still show the "Currently watching"
+       shell (placeholder until linked, never invented shows) plus
+       the not-linked note. No sign-in, no playback, no
+       subscription from here. */
     #entOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
     #entOverlay.open { display: flex; }
     #entOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
@@ -148,6 +151,7 @@
     .entService[data-state="linked"] .entState { color: #7dff9e; }
     .entWatchingList h5 { margin: 12px 0 4px; font-size: 14px; color: #9c89f4; }
     .entWatchingList ol, .entWatchingList ul { margin: 4px 0; padding-left: 22px; font-size: 14px; line-height: 1.5; }
+    .entWatchingList a { color: #b7a6ff; text-decoration: underline; }
     #entClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     #entServiceView { width: min(420px, 90vw); text-align: left; }
     #entServiceView[hidden] { display: none; }
@@ -925,7 +929,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-16</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-19</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -941,7 +945,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-16';
+  var LUMI_BUILD_STAMP = '2026.11.08-19';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -6883,7 +6887,7 @@
        }
      });
    });
-   /* Entertainment tab (build 2026.11.08-16, owner order Nov 8,
+   /* Entertainment tab (build 2026.11.08-19, owner order Nov 8,
       2026): a home-screen tab for the streaming + music services
       Lumi follows once linked — Spotify, YouTube, Hulu, Netflix,
       Paramount+, HBO Max, Pluto TV, Disney+, Apple TV+, Peacock,
@@ -6891,13 +6895,17 @@
       sign-ins Nov 8, 2026 — their folders show the real lists
       from that check, static snapshots in ENT_LINKED below; the
       "Checked Nov 8, 2026" line says so honestly, and a live
-      refresh endpoint is a later step, NOT this build). The other
-      10 services are still not linked: tapping one opens its own
-      sub-folder (same pattern as the Food company folders) with
-      a "Currently watching" shell — placeholder only until that
-      service is linked, never invented shows — plus the
-      not-linked note. No sign-in, no chat send, no external
-      navigation, no subscription of any kind from these buttons;
+      refresh endpoint is a later step, NOT this build). Every item
+      in the two linked folders is a tappable link to the service
+      (plain <a>, target _blank, rel noopener — see the LINK RULES
+      in DEPLOY-NOTES.md: deep link when verifiable, the service's
+      own search page when not, never a guessed deep link, never a
+      third-party aggregator). The other 10 services are still not
+      linked: tapping one opens its own sub-folder (same pattern as
+      the Food company folders) with a "Currently watching" shell
+      — placeholder only until that service is linked, never
+      invented shows — plus the not-linked note. No sign-in, no
+      chat send, no subscription of any kind from these buttons;
       she links a service one by one, by her word, later.
       Playback comes after linking (next step, not this build). */
    var entOverlay = document.getElementById('entOverlay');
@@ -6912,29 +6920,36 @@
      showHome();
    });
    /* Verified lists (Nov 8, 2026, live browser sign-ins — real,
-      use exactly as written; never invent or guess a title). The
-      snapshot date is shown in the folder so it stays honest. */
+      use exactly as written; never invent or guess a title). Each
+      item carries its link: { title, url }. Hulu URLs are Hulu's
+      own search pages for the exact series title (Hulu deep links
+      are not verifiable from here — see DEPLOY-NOTES). YouTube
+      subscription URLs are the verified channel pages;
+      recommendation URLs are the verified video pages, except the
+      Nov 7 Webb Watch newscast, whose video ID could not be
+      verified — its link is a YouTube search page that lists it.
+      The snapshot date is shown in the folder so it stays honest. */
    var ENT_CHECKED_NOTE = 'Checked Nov 8, 2026 — Lumi refreshes this when she re-checks your account.';
    var ENT_LINKED = {
      'Hulu': {
        intro: '',
        groups: [
          { heading: '', ordered: true, items: [
-           '9-1-1 (S10 E1 "That Sinking Feeling")',
-           'Scrubs (S2 E3 "My Ex\'s Ex")',
-           'R.J. Decker (S2 E4 "The Angler")',
-           'American Horror Story (S13 E7 "The Baddest Witch of Them All")',
-           '9-1-1: Nashville (S1 E1 "Pilot")',
-           'The Swan: The Pinnacle',
-           'The Bear (S5 E4 "Ribs")',
-           'Fringe (S1 E1 "Pilot")',
-           'Aqua Teen Hunger Force (S1 E1 "Rabbot")',
-           'The Veil (S1 E1 "The Camp")',
-           'Gary (S1 E1 "Gary")',
-           'The Faithful: Women of the Bible (S1 E3 "The Woman Who Risked Everything, Part One")',
-           'Malcolm in the Middle: Life\'s Still Unfair (S1 E1 "Episode One")',
-           'The Tech Bro Murders (S1 E3 "Silicon Valley Vanishing")',
-           'Mr. & Mrs. Murder (S1 E4 "Cold-Blooded Justice?")'
+           { title: '9-1-1 (S10 E1 "That Sinking Feeling")', url: 'https://www.hulu.com/search?q=9-1-1' },
+           { title: 'Scrubs (S2 E3 "My Ex\'s Ex")', url: 'https://www.hulu.com/search?q=Scrubs' },
+           { title: 'R.J. Decker (S2 E4 "The Angler")', url: 'https://www.hulu.com/search?q=R.J.%20Decker' },
+           { title: 'American Horror Story (S13 E7 "The Baddest Witch of Them All")', url: 'https://www.hulu.com/search?q=American%20Horror%20Story' },
+           { title: '9-1-1: Nashville (S1 E1 "Pilot")', url: 'https://www.hulu.com/search?q=9-1-1%3A%20Nashville' },
+           { title: 'The Swan: The Pinnacle', url: 'https://www.hulu.com/search?q=The%20Swan%3A%20The%20Pinnacle' },
+           { title: 'The Bear (S5 E4 "Ribs")', url: 'https://www.hulu.com/search?q=The%20Bear' },
+           { title: 'Fringe (S1 E1 "Pilot")', url: 'https://www.hulu.com/search?q=Fringe' },
+           { title: 'Aqua Teen Hunger Force (S1 E1 "Rabbot")', url: 'https://www.hulu.com/search?q=Aqua%20Teen%20Hunger%20Force' },
+           { title: 'The Veil (S1 E1 "The Camp")', url: 'https://www.hulu.com/search?q=The%20Veil' },
+           { title: 'Gary (S1 E1 "Gary")', url: 'https://www.hulu.com/search?q=Gary' },
+           { title: 'The Faithful: Women of the Bible (S1 E3 "The Woman Who Risked Everything, Part One")', url: 'https://www.hulu.com/search?q=The%20Faithful%3A%20Women%20of%20the%20Bible' },
+           { title: 'Malcolm in the Middle: Life\'s Still Unfair (S1 E1 "Episode One")', url: 'https://www.hulu.com/search?q=Malcolm%20in%20the%20Middle%3A%20Life%27s%20Still%20Unfair' },
+           { title: 'The Tech Bro Murders (S1 E3 "Silicon Valley Vanishing")', url: 'https://www.hulu.com/search?q=The%20Tech%20Bro%20Murders' },
+           { title: 'Mr. & Mrs. Murder (S1 E4 "Cold-Blooded Justice?")', url: 'https://www.hulu.com/search?q=Mr.%20%26%20Mrs.%20Murder' }
          ] }
        ],
        extra: '105 TV shows and about 96 movies saved in My Stuff.'
@@ -6943,19 +6958,19 @@
        intro: 'Signed in as Tanya San Miguel (@tanyasanmiguel9434).',
        groups: [
          { heading: 'Subscriptions', ordered: false, items: [
-           'WebbWatch956',
-           'Mac Miller',
-           'Bad Bunny',
-           'Leon Bridges',
-           'DisneyMusicVEVO',
-           'Fkj',
-           'NOTION'
+           { title: 'WebbWatch956', url: 'https://www.youtube.com/@WebbWatch956' },
+           { title: 'Mac Miller', url: 'https://www.youtube.com/@MacMiller' },
+           { title: 'Bad Bunny', url: 'https://www.youtube.com/@BadBunnyPR' },
+           { title: 'Leon Bridges', url: 'https://www.youtube.com/@LeonBridges' },
+           { title: 'DisneyMusicVEVO', url: 'https://www.youtube.com/@DisneyMusicVEVO' },
+           { title: 'Fkj', url: 'https://www.youtube.com/@fkj' },
+           { title: 'NOTION', url: 'https://www.youtube.com/@NOTION' }
          ] },
          { heading: 'Recommended for you', ordered: false, items: [
-           'Mix - Leon Bridges - Laredo (Official Visualizer)',
-           'Webb Watch 956 — Evening Newscast | November 7, 2026',
-           'Mix - Lauren Daigle - Rescue (Official Music Video)',
-           'Atmospheric Dark Deep House | pure dark energy mix'
+           { title: 'Mix - Leon Bridges - Laredo (Official Visualizer)', url: 'https://www.youtube.com/watch?v=8YklX6sHIeQ&list=RD8YklX6sHIeQ' },
+           { title: 'Webb Watch 956 — Evening Newscast | November 7, 2026', url: 'https://www.youtube.com/results?search_query=Webb+Watch+956+Evening+Newscast+November+7+2026' },
+           { title: 'Mix - Lauren Daigle - Rescue (Official Music Video)', url: 'https://www.youtube.com/watch?v=gYR0xP1j4PY' },
+           { title: 'Atmospheric Dark Deep House | pure dark energy mix', url: 'https://www.youtube.com/watch?v=vyW9lVY34g4' }
          ] }
        ],
        extra: ''
@@ -6967,11 +6982,21 @@
      var list = document.createElement(ordered ? 'ol' : 'ul');
      items.forEach(function (item) {
        var li = document.createElement('li');
-       li.textContent = item;
+       if (item && typeof item === 'object' && item.url) {
+         var a = document.createElement('a');
+         a.setAttribute('href', item.url);
+         a.setAttribute('target', '_blank');
+         a.setAttribute('rel', 'noopener');
+         a.textContent = item.title;
+         li.appendChild(a);
+       } else {
+         li.textContent = (item && typeof item === 'object') ? item.title : item;
+       }
        list.appendChild(li);
      });
      listEl.appendChild(list);
    }
+   var currentEntService = '';
    var currentEntService = '';
    function openEntServiceView(service) {
      currentEntService = service;
