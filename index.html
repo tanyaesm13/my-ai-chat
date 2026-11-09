@@ -1129,7 +1129,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-31</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-32</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1145,7 +1145,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-31';
+  var LUMI_BUILD_STAMP = '2026.11.08-32';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -2117,9 +2117,15 @@
   // Flags live in the Worker (KV "flags", raised with the raise_flag
   // tool or by the Cielo NWS watch) and this app polls GET /flags
   // once a minute. An unacknowledged flag pops in the alert pop-out
-  // — gated by the same alertShouldPop() master switch + hour grid
-  // as the Phase A video notes — and waits in the alert panel inbox
-  // until she acknowledges it (never lost). The test video alert
+  // — info/urgent flags are gated by the same alertShouldPop()
+  // master switch + hour grid as the Phase A video notes — and
+  // waits in the alert panel inbox until she acknowledges it
+  // (never lost). EMERGENCY flags BYPASS the master switch +
+  // hour grid entirely (build 2026.11.08-32, owner order Nov 9,
+  // 2026 ~01:46 CST): a Flood Watch at 1:46 AM never reached
+  // her because the gate swallowed it, so an emergency pops as
+  // a FULL-SCREEN interrupting modal the moment it is polled,
+  // on any screen, including checkout. The test video alert
   // (alertPerformTest) is untouched and still always pops.
   // ================================================================
   const FLAGS_POLL_MS = 60000;
@@ -2174,6 +2180,52 @@
   function flagsEscape(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  // FULL-SCREEN EMERGENCY FLAG MODAL (build 2026.11.08-32, owner
+  // order Nov 9, 2026 ~01:46 CST): weather/emergency alerts are a
+  // phone-style interrupting alert, like a weather/AMBER alert.
+  // The overlay covers the ENTIRE screen (inset:0, z-index 20000
+  // — above the cart, the meeting overlay, the alert panel and
+  // every other layer) and blocks ALL interaction with the app
+  // behind it, including food ordering/checkout. It STAYS on
+  // screen until she taps OK or Dismiss — no timer, no auto-
+  // dismiss, no swipe-away. OK acknowledges the flag in the
+  // Worker (POST /flags/:id/ack) and closes; Dismiss closes
+  // without acknowledging, so the flag stays open in the alert
+  // panel inbox (never lost) and can pop again next session.
+  // Reached only for severity === 'emergency'; flagsPoll
+  // bypasses the master switch + hour grid for emergencies.
+  function alertShowEmergencyFlag(flag, meta, color, icon) {
+    var prev = document.getElementById('lumiFlagEmergency');
+    if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+    var old = document.getElementById('lumiFlagPop');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+    var until = '';
+    if (flag.expiresAt) {
+      try { until = '<div style="font-size:14px;opacity:.75;margin-top:8px;">Until ' + flagsEscape(new Date(flag.expiresAt).toLocaleString()) + '</div>'; } catch (e) {}
+    }
+    var card = document.createElement('div');
+    card.id = 'lumiFlagEmergency';
+    card.setAttribute('role', 'alertdialog');
+    card.style.cssText = 'position:fixed;inset:0;z-index:20000;background:rgba(20,0,0,.94);color:#fff;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;';
+    card.innerHTML =
+      '<div style="width:min(480px,94vw);background:#2b0d0d;border:3px solid ' + color + ';border-radius:20px;box-shadow:0 0 60px rgba(255,90,90,.5);padding:22px;">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<img src="' + flagsEscape(meta.avatar) + '" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ' + color + ';background:#0f1126;">' +
+      '<div><div style="font-size:19px;font-weight:700;">' + flagsEscape(meta.emoji + ' ' + meta.name) + '</div>' +
+      '<div style="font-size:15px;color:' + color + ';font-weight:700;">' + flagsEscape(icon + ' ' + FLAGS_SEV_LABEL.emergency) + '</div></div></div>' +
+      '<div style="margin:16px 0 4px;font-size:22px;font-weight:700;line-height:1.3;">' + flagsEscape(flag.subject) + '</div>' +
+      '<div style="font-size:17px;line-height:1.5;opacity:.95;">' + flagsEscape(flag.message) + '</div>' + until +
+      '<div style="display:flex;gap:10px;margin-top:20px;">' +
+      '<button type="button" id="lumiFlagOkBtn" style="flex:1;border:0;border-radius:12px;padding:14px 8px;font-size:17px;font-weight:700;cursor:pointer;background:#ff5a5a;color:#fff;">OK</button>' +
+      '<button type="button" id="lumiFlagDismissBtn" style="flex:1;border:0;border-radius:12px;padding:14px 8px;font-size:17px;font-weight:700;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;">Dismiss</button>' +
+      '</div></div>';
+    document.body.appendChild(card);
+    var done = function () { if (card.parentNode) card.parentNode.removeChild(card); };
+    document.getElementById('lumiFlagOkBtn').addEventListener('click', function () { flagsAck(flag.id); done(); });
+    document.getElementById('lumiFlagDismissBtn').addEventListener('click', done);
+    try { if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); } catch (e) {}
+    try { speak(flag.subject + '. ' + flag.message, flag.agent || 'lumi'); } catch (e) {}
+  }
   function alertShowFlagPopout(flag) {
     var prev = document.getElementById('lumiFlagPop');
     if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
@@ -2181,6 +2233,9 @@
     var sev = flag.severity || 'info';
     var color = FLAGS_SEV_COLOR[sev] || FLAGS_SEV_COLOR.info;
     var icon = FLAGS_SEV_ICON[sev] || FLAGS_SEV_ICON.info;
+    // EMERGENCY (build -32): full-screen interrupting modal,
+    // never the bottom sheet.
+    if (sev === 'emergency') { alertShowEmergencyFlag(flag, meta, color, icon); return; }
     var card = document.createElement('div');
     card.id = 'lumiFlagPop';
     card.setAttribute('role', 'alert');
@@ -2212,7 +2267,8 @@
       } catch (e) {}
     });
     try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
-    if (sev === 'emergency') { try { speak(flag.subject + '. ' + flag.message, flag.agent || 'lumi'); } catch (e) {} }
+    // (Emergency speech moved to alertShowEmergencyFlag —
+    // emergencies return early above and never reach here.)
   }
   function flagsRenderInbox() {
     var box = document.getElementById('lumiFlagsInbox');
@@ -2251,7 +2307,12 @@
     if (!open.length) return;
     var next = flagsPickNext(open);
     if (!next || flagsShownThisSession[next.id]) return;
-    if (!alertShouldPop(new Date(), alertLoadMaster(), alertLoadHours())) return;
+    // EMERGENCY BYPASS (build -32, owner order Nov 9 ~01:46 CST):
+    // an emergency flag pops even when the master switch is OFF
+    // or the current hour is OFF — weather/emergency alerts are
+    // never swallowed by the quiet-hours grid. Info/urgent
+    // flags still need the gate below.
+    if (next.severity !== 'emergency' && !alertShouldPop(new Date(), alertLoadMaster(), alertLoadHours())) return;
     flagsShownThisSession[next.id] = true;
     alertShowFlagPopout(next);
   }
