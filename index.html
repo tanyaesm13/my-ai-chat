@@ -176,11 +176,11 @@
        News stories load live from the public WordPress API (no
        Worker); STEM links are static verified free sources. No
        sign-up or subscription from either tab. */
-    #newsOverlay, #stemOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
-    #newsOverlay.open, #stemOverlay.open { display: flex; }
-    #newsOverlay h2, #stemOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
-    #newsHint, #newsNote, #stemHint, #stemNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
-    #newsLinks, #newsStories, #stemList { width: min(420px, 90vw); text-align: left; }
+    #newsOverlay, #stemOverlay, #financeOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
+    #newsOverlay.open, #stemOverlay.open, #financeOverlay.open { display: flex; }
+    #newsOverlay h2, #stemOverlay h2, #financeOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #newsHint, #newsNote, #stemHint, #stemNote, #finHint, #finNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
+    #newsLinks, #newsStories, #stemList, #finList { width: min(420px, 90vw); text-align: left; }
     #newsStories h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
     .newsStatus { font-size: 13px; color: #bbb; margin: 4px 0; }
     .newsList h5, .stemList h5 { margin: 12px 0 4px; font-size: 14px; color: #9c89f4; }
@@ -188,7 +188,7 @@
     .newsList a, .stemList a { color: #b7a6ff; text-decoration: underline; }
     .newsStoryMeta { font-size: 12px; color: #888; }
     .newsStoryExcerpt { display: block; font-size: 13px; color: #bbb; margin-top: 2px; }
-    #newsClose, #stemClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    #newsClose, #stemClose, #finClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     .foodCompanyLoading { font-size: 13px; color: #bbb; margin: 4px 0; }
     #foodMenuAdded { min-height: 18px; font-size: 13px; color: #7dff9e; text-align: center; margin: 8px 0; }
     .foodMenuBtn { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin: 6px 0; }
@@ -763,16 +763,15 @@
     <h2 id="homeHi">Hi, I'm Lumi 🌙</h2>
     <p id="homeWelcome">I order your food and groceries, shop for you, and keep you up to date with entertainment and the news. Just tell me what you need, and I'll take care of it.</p>
     <div id="homeBtns">
-        <button id="homeChatBtn" type="button">💬 Chat with Lumi</button>
-        <button id="homeVideoBtn" type="button">📹 Video</button>
-        <button id="homeTeamBtn" type="button">👥 Meet the team</button>
-        <button id="homeMeetBtn" type="button">🎬 Team meeting</button>
+        <button id="homeChatBtn" type="button">💬📹 Chat &amp; Video with Lumi</button>
+        <button id="homeTeamBtn" type="button">👥 Team</button>
         <button id="homeFoodBtn" type="button">🍔 Food &amp; Groceries</button>
         <button id="homeShopBtn" type="button">🛍️ Shopping</button>
         <button id="homeEntertainmentBtn" type="button">🎬 Entertainment</button>
         <button id="homeCartBtn" type="button">🛒 My cart</button>
         <button id="homeNewsBtn" type="button">📰 News</button>
         <button id="homeStemBtn" type="button">🔬 STEM</button>
+        <button id="homeFinanceBtn" type="button">💰 Finance</button>
     </div>
     <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
 </div>
@@ -926,6 +925,7 @@
         <button type="button" class="entService" data-service="Peacock" data-state="not linked">🦚 Peacock <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="Prime Video" data-state="not linked">📦 Prime Video <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="Tubi" data-state="not linked">🎞️ Tubi <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="Texas Hold'em Poker" data-state="linked">♠️ Texas Hold'em Poker <span class="entState">free play</span></button>
     </div>
     <div id="entServiceView" hidden>
         <h3 id="entServiceTitle"></h3>
@@ -958,6 +958,13 @@
     <div id="stemList" class="stemList"></div>
     <p id="stemNote">Every source here is free to read — no paywall, no subscription from Lumi.</p>
     <button id="stemClose" type="button">← Back to home</button>
+</div>
+<div id="financeOverlay">
+    <h2>💰 Finance</h2>
+    <p id="finHint">Your money, your markets — ask Lumi about any stock and she researches it for you, view-only. She never trades, never moves money, and never connects a bank account without your explicit yes.</p>
+    <div id="finList" class="stemList"></div>
+    <p id="finNote">Robinhood and OG are your accounts — Lumi only follows what you already have. Every research source here is free to read.</p>
+    <button id="finClose" type="button">← Back to home</button>
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
@@ -1062,7 +1069,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-21</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-23</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1078,7 +1085,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-21';
+  var LUMI_BUILD_STAMP = '2026.11.08-23';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -6820,7 +6827,7 @@
    var body = document.body;
    var chatBtn = document.getElementById('homeChatBtn');
    function agentName() { var h = document.querySelector('header h1'); return h ? h.textContent : 'Lumi'; }
-   function paintChatBtn() { if (chatBtn) chatBtn.textContent = '💬 Chat with ' + agentName(); }
+   function paintChatBtn() { if (chatBtn) chatBtn.textContent = '💬📹 Chat & Video with ' + agentName(); }
    function showHome() { try { stopAllSpeech(); } catch (e) {} body.classList.add('onHome'); paintChatBtn(); }
    function showChat() { body.classList.remove('onHome'); }
    window.LumiHome = { showHome: showHome, showChat: showChat };
@@ -6829,18 +6836,17 @@
    if (chatBtn) chatBtn.addEventListener('click', showChat);
    var teamGo = document.getElementById('homeTeamBtn');
    if (teamGo) teamGo.addEventListener('click', function () { document.getElementById('teamBtn').click(); });
-   var meetGo = document.getElementById('homeMeetBtn');
-   if (meetGo) meetGo.addEventListener('click', function () { document.getElementById('meetStartBtn').click(); });
-   /* Home video (build 2026.10.24-38, owner order Oct 24, 2026):
-      from Home, one tap goes STRAIGHT to the one-on-one video
-      with Lumi — no detour through the team meeting. It reuses
-      the header's EXISTING video-call flow by clicking callBtn,
-      so the video view, voice, camera and close behavior are
-      identical to starting a video call from the chat header;
-      closing the call returns to Home, exactly as the team and
-      meeting buttons return to Home. It never opens the meeting. */
-   var videoGo = document.getElementById('homeVideoBtn');
-   if (videoGo) videoGo.addEventListener('click', function () { document.getElementById('callBtn').click(); });
+   /* COMBINED TEAM TAB (build 2026.11.08-22, owner order Nov 8, 2026):
+      "Meet the team" and "Team meeting" are ONE home button now.
+      The meeting starts from the Team overlay's own "Start team
+      meeting" button — no separate home button, no capability lost. */
+   /* COMBINED CHAT & VIDEO TAB (build 2026.11.08-22, owner order Nov 8,
+      2026): "Chat with Lumi" and "Video" are ONE home button now.
+      It opens the chat — the video call lives INSIDE that tab as the
+      header's 📹 Video call button (callBtn -> openCall), the same
+      one-on-one call as before, so nothing is lost; closing the call
+      returns to Home. Video is never auto-started: opening the tab
+      to type must not switch the camera and mic on uninvited. */
    /* Home Food & Groceries — sub-folder view (build 2026.11.08-12,
       owner order Nov 8, 2026: "when I click from the home screen
       the food and groceries I want there to be another sub folder
@@ -7848,6 +7854,22 @@
         ] }
       ],
       extra: ''
+    },
+    'Texas Hold\'em Poker': {
+      intro: 'No state-regulated real-money online poker in Texas — these are free or sweepstakes play.',
+      groups: [
+        { heading: 'Free to play', ordered: false, items: [
+          { title: 'PlayWSOP — the official free WSOP game (virtual chips)', url: 'https://www.playwsop.com/' },
+          { title: 'PokerStars Play — free play-money Texas Hold\'em', url: 'https://www.pokerstars.net/' },
+          { title: 'Zynga Poker — free social Texas Hold\'em', url: 'https://zyngapoker.com/' }
+        ] },
+        { heading: 'Sweepstakes & subscription', ordered: false, items: [
+          { title: 'Global Poker — sweepstakes poker, accepts Texas players', url: 'https://globalpoker.com/' },
+          { title: 'ClubWPT — subscription poker, try VIP free 14 days', url: 'https://clubwpt.com/' }
+        ] }
+      ],
+      extra: '',
+      note: 'Lumi never signs you up for anything new without your yes — and never links offshore real-money sites.'
     }
    };
    /* Renders one list into the watching container, textContent
@@ -7899,7 +7921,7 @@
            list.appendChild(extra);
          }
        }
-       if (note) note.textContent = ENT_CHECKED_NOTE;
+       if (note) note.textContent = linked.note || ENT_CHECKED_NOTE;
      } else {
        if (watching) watching.textContent = 'Link ' + service + " to see what you're watching here.";
        if (note) note.textContent = service + " isn't linked yet — tell Lumi you have it when you're ready and she'll set it up. She'll only follow what you already subscribe to.";
@@ -8095,6 +8117,50 @@
    var stemClose = document.getElementById('stemClose');
    if (stemClose) stemClose.addEventListener('click', function () {
      if (stemOverlay) stemOverlay.classList.remove('open');
+     showHome();
+   });
+   /* Finance tab (build 2026.11.08-23, owner order Nov 8,
+      2026 ~21:18 CST; merged onto the -22 combine build):
+      same overlay pattern as News/STEM. Your accounts
+      first (Robinhood, OG Trade), then free research
+      sources. OG is Crypto.com's prediction-market app
+      (event contracts: sports, crypto, economics), site
+      og.com, verified live Nov 8, 2026 — it is NOT a stock
+      brokerage, so the tab says so plainly. Lumi's stock
+      role is view/research/watchlists only: no bank
+      connection, no trade without her explicit yes. No bank
+      links, no balances, no account numbers anywhere. */
+   var FIN_LINKS = {
+     'Your accounts': [
+       { title: 'Robinhood — your stocks, ETFs, crypto & options', url: 'https://www.robinhood.com/' },
+       { title: 'OG Trade — Crypto.com prediction markets (sports, crypto, economics)', url: 'https://og.com/' }
+     ],
+     'Markets & research — free to read': [
+       { title: 'Yahoo Finance — quotes, charts & market news', url: 'https://finance.yahoo.com/' },
+       { title: 'MarketWatch — market news & quotes (some articles premium)', url: 'https://www.marketwatch.com/' }
+     ]
+   };
+   function renderFinLinks() {
+     var box = document.getElementById('finList');
+     if (!box) return;
+     box.textContent = '';
+     Object.keys(FIN_LINKS).forEach(function (heading) {
+       var h = document.createElement('h5');
+       h.textContent = heading;
+       box.appendChild(h);
+       box.appendChild(linkListEl(FIN_LINKS[heading]));
+     });
+   }
+   var financeOverlay = document.getElementById('financeOverlay');
+   var financeGo = document.getElementById('homeFinanceBtn');
+   if (financeGo) financeGo.addEventListener('click', function () {
+     showChat();
+     if (financeOverlay) financeOverlay.classList.add('open');
+     renderFinLinks();
+   });
+   var finClose = document.getElementById('finClose');
+   if (finClose) finClose.addEventListener('click', function () {
+     if (financeOverlay) financeOverlay.classList.remove('open');
      showHome();
    });
    paintChatBtn();
