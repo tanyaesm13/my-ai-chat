@@ -127,12 +127,15 @@
     .menuItemPrice { float: right; font-weight: 700; color: #ffd166; }
     .menuItemDesc { display: block; font-size: 12px; color: #bbb; margin-top: 3px; }
     .foodCompanyEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
-    /* Entertainment tab (build 2026.11.08-15, owner order Nov 8,
+    /* Entertainment tab (build 2026.11.08-16, owner order Nov 8,
        2026): same overlay pattern as Food — a grid of service
-       buttons, each opening its own sub-folder with a
+       buttons, each opening its own sub-folder. Hulu + YouTube are
+       LINKED (verified live sign-ins Nov 8, 2026; their folders
+       show the real lists from that check, static snapshots — see
+       ENT_LINKED in the JS). The other 10 services still show the
        "Currently watching" shell (placeholder until linked, never
-       invented shows) plus the not-linked note. NOTHING is linked
-       yet; no sign-in, no playback, no subscription from here. */
+       invented shows) plus the not-linked note. No sign-in, no
+       playback, no subscription from here. */
     #entOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
     #entOverlay.open { display: flex; }
     #entOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
@@ -142,6 +145,9 @@
     .entService:active { background: #72edfa; color: #171a3b; }
     .entService .entState { display: block; font-size: 11px; opacity: 0.8; margin-top: 4px; }
     .entService[data-state="not linked"] { opacity: 0.65; border-style: dashed; }
+    .entService[data-state="linked"] .entState { color: #7dff9e; }
+    .entWatchingList h5 { margin: 12px 0 4px; font-size: 14px; color: #9c89f4; }
+    .entWatchingList ol, .entWatchingList ul { margin: 4px 0; padding-left: 22px; font-size: 14px; line-height: 1.5; }
     #entClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     #entServiceView { width: min(420px, 90vw); text-align: left; }
     #entServiceView[hidden] { display: none; }
@@ -791,8 +797,8 @@
     <p id="entHint">Lumi keeps you posted on new episodes, new music, and new artists from the services you already have — she never signs you up for anything new without your yes.</p>
     <div id="entGrid">
         <button type="button" class="entService" data-service="Spotify" data-state="not linked">🎵 Spotify <span class="entState">not linked</span></button>
-        <button type="button" class="entService" data-service="YouTube" data-state="not linked">▶️ YouTube <span class="entState">not linked</span></button>
-        <button type="button" class="entService" data-service="Hulu" data-state="not linked">📺 Hulu <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="YouTube" data-state="linked">▶️ YouTube <span class="entState">linked</span></button>
+        <button type="button" class="entService" data-service="Hulu" data-state="linked">📺 Hulu <span class="entState">linked</span></button>
         <button type="button" class="entService" data-service="Netflix" data-state="not linked">🎬 Netflix <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="Paramount+" data-state="not linked">⭐ Paramount+ <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="HBO Max" data-state="not linked">🎭 HBO Max <span class="entState">not linked</span></button>
@@ -919,7 +925,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-15</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-16</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -935,7 +941,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-15';
+  var LUMI_BUILD_STAMP = '2026.11.08-16';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -6877,14 +6883,18 @@
        }
      });
    });
-   /* Entertainment tab (build 2026.11.08-15, owner order Nov 8,
+   /* Entertainment tab (build 2026.11.08-16, owner order Nov 8,
       2026): a home-screen tab for the streaming + music services
-      Lumi will follow once linked — Spotify, YouTube, Hulu,
-      Netflix, Paramount+, HBO Max, Pluto TV, Disney+, Apple TV+,
-      Peacock, Prime Video, Tubi. NONE is linked yet and none is
-      marked linked: tapping a service opens its own sub-folder
-      (same pattern as the Food company folders) with a
-      "Currently watching" shell — placeholder only until that
+      Lumi follows once linked — Spotify, YouTube, Hulu, Netflix,
+      Paramount+, HBO Max, Pluto TV, Disney+, Apple TV+, Peacock,
+      Prime Video, Tubi. Hulu + YouTube ARE linked (verified live
+      sign-ins Nov 8, 2026 — their folders show the real lists
+      from that check, static snapshots in ENT_LINKED below; the
+      "Checked Nov 8, 2026" line says so honestly, and a live
+      refresh endpoint is a later step, NOT this build). The other
+      10 services are still not linked: tapping one opens its own
+      sub-folder (same pattern as the Food company folders) with
+      a "Currently watching" shell — placeholder only until that
       service is linked, never invented shows — plus the
       not-linked note. No sign-in, no chat send, no external
       navigation, no subscription of any kind from these buttons;
@@ -6901,15 +6911,100 @@
      if (entOverlay) entOverlay.classList.remove('open');
      showHome();
    });
+   /* Verified lists (Nov 8, 2026, live browser sign-ins — real,
+      use exactly as written; never invent or guess a title). The
+      snapshot date is shown in the folder so it stays honest. */
+   var ENT_CHECKED_NOTE = 'Checked Nov 8, 2026 — Lumi refreshes this when she re-checks your account.';
+   var ENT_LINKED = {
+     'Hulu': {
+       intro: '',
+       groups: [
+         { heading: '', ordered: true, items: [
+           '9-1-1 (S10 E1 "That Sinking Feeling")',
+           'Scrubs (S2 E3 "My Ex\'s Ex")',
+           'R.J. Decker (S2 E4 "The Angler")',
+           'American Horror Story (S13 E7 "The Baddest Witch of Them All")',
+           '9-1-1: Nashville (S1 E1 "Pilot")',
+           'The Swan: The Pinnacle',
+           'The Bear (S5 E4 "Ribs")',
+           'Fringe (S1 E1 "Pilot")',
+           'Aqua Teen Hunger Force (S1 E1 "Rabbot")',
+           'The Veil (S1 E1 "The Camp")',
+           'Gary (S1 E1 "Gary")',
+           'The Faithful: Women of the Bible (S1 E3 "The Woman Who Risked Everything, Part One")',
+           'Malcolm in the Middle: Life\'s Still Unfair (S1 E1 "Episode One")',
+           'The Tech Bro Murders (S1 E3 "Silicon Valley Vanishing")',
+           'Mr. & Mrs. Murder (S1 E4 "Cold-Blooded Justice?")'
+         ] }
+       ],
+       extra: '105 TV shows and about 96 movies saved in My Stuff.'
+     },
+     'YouTube': {
+       intro: 'Signed in as Tanya San Miguel (@tanyasanmiguel9434).',
+       groups: [
+         { heading: 'Subscriptions', ordered: false, items: [
+           'WebbWatch956',
+           'Mac Miller',
+           'Bad Bunny',
+           'Leon Bridges',
+           'DisneyMusicVEVO',
+           'Fkj',
+           'NOTION'
+         ] },
+         { heading: 'Recommended for you', ordered: false, items: [
+           'Mix - Leon Bridges - Laredo (Official Visualizer)',
+           'Webb Watch 956 — Evening Newscast | November 7, 2026',
+           'Mix - Lauren Daigle - Rescue (Official Music Video)',
+           'Atmospheric Dark Deep House | pure dark energy mix'
+         ] }
+       ],
+       extra: ''
+     }
+   };
+   /* Renders one list into the watching container, textContent
+      only — no HTML is ever built from a title. */
+   function entRenderList(listEl, items, ordered) {
+     var list = document.createElement(ordered ? 'ol' : 'ul');
+     items.forEach(function (item) {
+       var li = document.createElement('li');
+       li.textContent = item;
+       list.appendChild(li);
+     });
+     listEl.appendChild(list);
+   }
    var currentEntService = '';
    function openEntServiceView(service) {
      currentEntService = service;
      var title = document.getElementById('entServiceTitle');
      if (title) title.textContent = service;
      var watching = document.getElementById('entWatchingEmpty');
-     if (watching) watching.textContent = 'Link ' + service + " to see what you're watching here.";
+     var list = document.getElementById('entWatchingList');
      var note = document.getElementById('entServiceNote');
-     if (note) note.textContent = service + " isn't linked yet — tell Lumi you have it when you're ready and she'll set it up. She'll only follow what you already subscribe to.";
+     if (list) list.textContent = '';
+     var linked = ENT_LINKED[service];
+     if (linked) {
+       if (watching) watching.textContent = linked.intro || '';
+       if (list) {
+         linked.groups.forEach(function (group) {
+           if (group.heading) {
+             var h = document.createElement('h5');
+             h.textContent = group.heading;
+             list.appendChild(h);
+           }
+           entRenderList(list, group.items, group.ordered);
+         });
+         if (linked.extra) {
+           var extra = document.createElement('p');
+           extra.className = 'entServiceEmpty';
+           extra.textContent = linked.extra;
+           list.appendChild(extra);
+         }
+       }
+       if (note) note.textContent = ENT_CHECKED_NOTE;
+     } else {
+       if (watching) watching.textContent = 'Link ' + service + " to see what you're watching here.";
+       if (note) note.textContent = service + " isn't linked yet — tell Lumi you have it when you're ready and she'll set it up. She'll only follow what you already subscribe to.";
+     }
      var grid = document.getElementById('entGrid');
      var hint = document.getElementById('entHint');
      var foot = document.getElementById('entNote');
