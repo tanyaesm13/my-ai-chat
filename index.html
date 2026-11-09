@@ -121,21 +121,31 @@
     .specialExpiry { font-size: 12px; color: #ffd166; margin-top: 3px; }
     .specialDetail { font-size: 12px; color: #bbb; margin-top: 3px; }
     .menuSectionTitle { margin: 12px 0 6px; font-size: 15px; color: #9c89f4; }
-    .menuItem { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 14px; padding: 11px 12px; font-size: 15px; text-align: left; cursor: pointer; margin-bottom: 8px; }
+    .menuItem { display: flex; align-items: flex-start; gap: 10px; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 14px; padding: 11px 12px; font-size: 15px; text-align: left; cursor: pointer; margin-bottom: 8px; }
     .menuItem:active { background: #72edfa; color: #171a3b; }
     .menuItemNum { font-weight: 700; }
     .menuItemPrice { float: right; font-weight: 700; color: #ffd166; }
     .menuItemDesc { display: block; font-size: 12px; color: #bbb; margin-top: 3px; }
     .foodCompanyEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
+    /* Menu photos (build 2026.11.08-20, owner order Nov 8, 2026):
+       every menu item shows the photo from the store's own site —
+       a thumbnail in the list, big in the detail dropdown. No stock
+       or invented photos ever: when the site shows no photo, a plain
+       "No photo" block stands in its place, and a broken URL hides
+       itself the same way. */
+    .menuItemText { flex: 1; min-width: 0; display: block; }
+    .menuItemPhoto { width: 64px; height: 64px; flex: 0 0 64px; object-fit: cover; border-radius: 10px; background: #171a3b; }
+    .menuItemPhotoNone { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; flex: 0 0 64px; border-radius: 10px; background: #171a3b; color: #888; font-size: 11px; text-align: center; }
     /* Entertainment tab (build 2026.11.08-19, owner order Nov 8,
        2026): same overlay pattern as Food — a grid of service
-       buttons, each opening its own sub-folder. Hulu + YouTube are
-       LINKED (verified live sign-ins Nov 8, 2026; their folders
-       show the real lists from that check, static snapshots — see
-       ENT_LINKED in the JS). Every item in the two linked folders
-       is a tappable link to the service (plain <a>, target _blank,
-       rel noopener — opens the service's site/app on her phone).
-       The other 10 services still show the "Currently watching"
+       buttons, each opening its own sub-folder. Hulu + YouTube +
+       HBO Max are LINKED (verified live sign-ins Nov 8, 2026;
+       their folders show the real lists from that check, static
+       snapshots — see ENT_LINKED in the JS). Every item in the
+       three linked folders is a tappable link to the service
+       (plain <a>, target _blank, rel noopener — opens the
+       service's site/app on her phone). The other 9 services
+       still show the "Currently watching"
        shell (placeholder until linked, never invented shows) plus
        the not-linked note. No sign-in, no playback, no
        subscription from here. */
@@ -160,12 +170,94 @@
     .entServiceEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
     .entServiceNote { font-size: 13px; color: #bbb; margin: 12px 0; }
     #entServiceBack { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* News tab + STEM tab (build 2026.11.08-20, owner order Nov 8,
+       2026): same overlay pattern as Entertainment — a fixed
+       full-screen overlay, tappable links, Close goes back home.
+       News stories load live from the public WordPress API (no
+       Worker); STEM links are static verified free sources. No
+       sign-up or subscription from either tab. */
+    #newsOverlay, #stemOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
+    #newsOverlay.open, #stemOverlay.open { display: flex; }
+    #newsOverlay h2, #stemOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #newsHint, #newsNote, #stemHint, #stemNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
+    #newsLinks, #newsStories, #stemList { width: min(420px, 90vw); text-align: left; }
+    #newsStories h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
+    .newsStatus { font-size: 13px; color: #bbb; margin: 4px 0; }
+    .newsList h5, .stemList h5 { margin: 12px 0 4px; font-size: 14px; color: #9c89f4; }
+    .newsList ul, .stemList ul { margin: 4px 0; padding-left: 22px; font-size: 14px; line-height: 1.5; }
+    .newsList a, .stemList a { color: #b7a6ff; text-decoration: underline; }
+    .newsStoryMeta { font-size: 12px; color: #888; }
+    .newsStoryExcerpt { display: block; font-size: 13px; color: #bbb; margin-top: 2px; }
+    #newsClose, #stemClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     .foodCompanyLoading { font-size: 13px; color: #bbb; margin: 4px 0; }
     #foodMenuAdded { min-height: 18px; font-size: 13px; color: #7dff9e; text-align: center; margin: 8px 0; }
     .foodMenuBtn { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin: 6px 0; }
     .foodMenuBtn:active { background: #72edfa; color: #171a3b; }
+    /* Cart (build 2026.11.08-18): a little checkout cart — see JS. */
+    #cartOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 210; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px; padding: 24px; overflow-y: auto; }
+    #cartOverlay.open { display: flex; }
+    #cartOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #cartHint { font-size: 13px; color: #bbb; margin: 0; text-align: center; max-width: 420px; }
+    #cartList { width: min(420px, 90vw); }
+    .cartStoreGroup { margin-bottom: 14px; }
+    .cartStoreName { font-size: 16px; font-weight: 700; color: #9c89f4; margin: 0 0 6px; }
+    .cartStoreSubtotal { font-size: 13px; font-weight: 700; color: #ffd166; text-align: right; margin: 2px 0 0; }
+    .cartLine { background: #242746; border: 2px solid #72edfa; border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; text-align: left; }
+    .cartLineTop { display: flex; gap: 10px; align-items: flex-start; }
+    .cartLinePhoto { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex: none; }
+    .cartLinePhotoPh { width: 56px; height: 56px; border-radius: 10px; background: #171a3b; border: 1px solid rgba(255,255,255,.25); display: flex; align-items: center; justify-content: center; font-size: 26px; flex: none; }
+    .cartLineInfo { flex: 1; min-width: 0; }
+    .cartLineName { font-size: 15px; font-weight: 700; }
+    .cartLinePrice { font-weight: 700; color: #ffd166; }
+    .cartQtyRow { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+    .cartQtyBtn { background: #6a4fd0; border: none; color: #fff; border-radius: 999px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; }
+    .cartQty { font-weight: 700; min-width: 20px; text-align: center; }
+    .cartRemoveBtn { background: none; border: 1px solid #ff7b7b; color: #ff7b7b; border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; margin-left: auto; }
+    .cartNoteInput { width: 100%; box-sizing: border-box; margin-top: 8px; background: #171a3b; border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 10px; padding: 8px; font-size: 14px; }
+    .cartChips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .cartChip { border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.10); color: #fff; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+    .cartChip.on { background: #6a4fd0; border-color: #6a4fd0; }
+    #cartTotals { width: min(420px, 90vw); font-size: 15px; font-weight: 700; color: #ffd166; text-align: right; }
+    .cartEmpty { font-size: 13px; color: #bbb; margin: 4px 0; text-align: center; }
+    #cartSendBtn, #cartClearBtn, #cartClose, #cartBackTop { display: block; margin: 4px auto 0; background: #6a4fd0; border: none; color: #fff; border-radius: 18px; padding: 10px 22px; font-size: 15px; font-weight: 700; cursor: pointer; }
+    #cartClearBtn { background: none; border: 1px solid #ff7b7b; color: #ff7b7b; }
+    #cartClose, #cartBackTop { background: none; border: 1px solid #72edfa; }
+    .menuSubsectionTitle { display: block; width: 100%; background: none; border: none; border-bottom: 1px solid rgba(156,137,244,.4); color: #72edfa; font-size: 14px; font-weight: 700; text-align: left; padding: 8px 2px 4px; cursor: pointer; margin-top: 8px; }
+    .menuSubsectionItems { margin-left: 8px; }
+    .chatMenuCard { background: #242746; border: 2px solid #72edfa; border-radius: 14px; padding: 10px 12px; margin-top: 8px; text-align: left; }
+    .chatMenuCard h5 { margin: 10px 0 4px; font-size: 14px; color: #9c89f4; }
+    .chatMenuCard .menuItem { margin-bottom: 6px; }
+    .chatMenuNote { font-size: 12px; color: #7dff9e; margin: 6px 0 0; }
+    #foodCartBtn { display: block; margin: 10px auto 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* Item detail dropdown (build 2026.11.08-20, owner refinement
+       Nov 8 ~19:18 CST): the panel expands right under the tapped
+       menu row or special — big photo + name + price + description
+       + a quantity selector, so she sets how many BEFORE adding.
+       No separate detail screen: she never leaves the list. */
+    .menuItemDetail { background: #171a3b; border: 1px solid #72edfa; border-radius: 14px; padding: 12px; margin: 0 0 8px; text-align: left; }
+    .menuDetailPhoto { width: 100%; border-radius: 12px; background: #171a3b; display: block; }
+    .menuDetailNoPhoto { background: #171a3b; border: 1px dashed #72edfa; border-radius: 12px; padding: 20px 12px; text-align: center; color: #bbb; font-size: 13px; margin: 0 0 8px; }
+    .menuDetailName { margin: 8px 0 2px; font-size: 17px; color: #9c89f4; }
+    .menuDetailPrice { margin: 0 0 6px; font-size: 16px; color: #ffd166; font-weight: 700; }
+    .menuDetailDesc { margin: 0 0 8px; font-size: 13px; color: #bbb; }
+    .menuDetailQtyRow { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+    .menuDetailQtyLabel { font-size: 13px; color: #bbb; }
+    .menuDetailQtyBtn { background: #6a4fd0; border: none; color: #fff; border-radius: 999px; width: 30px; height: 30px; font-size: 16px; cursor: pointer; }
+    .menuDetailQty { font-weight: 700; min-width: 20px; text-align: center; font-size: 15px; }
+    .menuDetailAdd { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin: 6px 0; }
+    .menuDetailAdd:active { background: #72edfa; color: #171a3b; }
+    .menuDetailStatus { min-height: 18px; font-size: 13px; color: #7dff9e; text-align: center; margin: 6px 0; }
+    .menuDetailClose { display: block; margin: 6px auto 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 6px 16px; font-size: 13px; cursor: pointer; }
+    .menuDetailBackTop { display: block; margin: 0 auto 10px; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    .specialItem { cursor: pointer; }
+    .specialTapHint { font-size: 12px; color: #72edfa; margin-top: 6px; }
+
     #foodOrderChatBtn { display: block; width: 100%; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 10px 12px; font-size: 14px; cursor: pointer; margin: 10px 0 4px; }
-    #foodCompanyBack { display: block; margin: 10px auto 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    #foodCompanyBack, #foodCompanyBackTop, #foodCloseTop { display: block; margin: 10px auto 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* Owner Nov 8 ~20:11 CST — the store menu's top back button stays
+       pinned at the top of the phone screen while a long menu scrolls,
+       so she never has to scroll back up to find it. */
+    #foodCompanyBackTop { position: sticky; top: 0; z-index: 5; background: #171a3b; }
     #teamCards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 520px; }
     .agentCard { background: #1a1a1a; border: 2px solid #72edfa; border-radius: 16px; padding: 14px; cursor: pointer; text-align: center; color: #fff; }
     .agentCard.active { background: #72edfa; }
@@ -622,6 +714,10 @@
     .fileCardLink { display: inline-block; padding: 6px 14px; border-radius: 999px; background: #6a4fd0; color: #fff; text-decoration: none; font-size: 14px; }
     .fileMedia { width: 100%; border-radius: 10px; margin-top: 8px; background: #0f1126; display: block; }
     .fileImg { width: 100%; border-radius: 10px; margin-top: 8px; display: block; }
+    /* Owner Nov 8 ~20:16 CST — in-chat photo card: the photo Lumi sends
+       in her reply shows inline in the bubble; tap opens it full-size. */
+    .photoCard { margin-top: 8px; }
+    .photoCard img { cursor: zoom-in; }
     .orderCard { margin-top: 8px; padding: 10px 12px; background: rgba(40,120,80,.22); border: 1px solid rgba(120,220,170,.45); border-radius: 12px; }
     .orderCardName { font-size: 14px; margin-bottom: 4px; word-break: break-word; }
     .orderCardTotal { font-size: 15px; font-weight: 700; margin: 4px 0 8px; }
@@ -665,7 +761,7 @@
 <div id="homeView">
     <img id="homeHero" src="lumi-avatar.webp" alt="Lumi">
     <h2 id="homeHi">Hi, I'm Lumi 🌙</h2>
-    <p id="homeWelcome">Welcome home — your whole team is here. Talk with one of us, or bring everybody together.</p>
+    <p id="homeWelcome">I order your food and groceries, shop for you, and keep you up to date with entertainment and the news. Just tell me what you need, and I'll take care of it.</p>
     <div id="homeBtns">
         <button id="homeChatBtn" type="button">💬 Chat with Lumi</button>
         <button id="homeVideoBtn" type="button">📹 Video</button>
@@ -674,6 +770,9 @@
         <button id="homeFoodBtn" type="button">🍔 Food &amp; Groceries</button>
         <button id="homeShopBtn" type="button">🛍️ Shopping</button>
         <button id="homeEntertainmentBtn" type="button">🎬 Entertainment</button>
+        <button id="homeCartBtn" type="button">🛒 My cart</button>
+        <button id="homeNewsBtn" type="button">📰 News</button>
+        <button id="homeStemBtn" type="button">🔬 STEM</button>
     </div>
     <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
 </div>
@@ -756,6 +855,7 @@
 <div id="foodOverlay">
     <h2>🍔 Food &amp; Groceries</h2>
     <p id="foodHint">Tap a place to order from it with Lumi.</p>
+    <button id="foodCloseTop" type="button">← Back to home</button>
     <div id="foodGrid">
         <button type="button" class="foodStore" data-store="Whataburger" data-state="linked">🍔 Whataburger <span class="foodState">linked</span></button>
         <button type="button" class="foodStore" data-store="Chick-fil-A" data-state="linked">🐔 Chick-fil-A <span class="foodState">linked</span></button>
@@ -779,6 +879,7 @@
         <button type="button" class="foodStore" data-store="Cosmos Bar &amp; Grill" data-state="setting up">🍹 Cosmos Bar &amp; Grill <span class="foodState">setting up</span></button>
     </div>
     <div id="foodCompanyView" hidden>
+        <button id="foodCompanyBackTop" type="button">← Back to Food &amp; Groceries</button>
         <h3 id="foodCompanyTitle"></h3>
         <div id="foodSpecials">
             <h4>🎉 This week's specials &amp; coupons</h4>
@@ -791,10 +892,23 @@
         </div>
         <p id="foodMenuAdded" aria-live="polite"></p>
         <button id="foodOrderChatBtn" type="button">💬 Order with Lumi in chat</button>
+        <button id="foodCartBtn" type="button">🛒 View cart</button>
         <button id="foodCompanyBack" type="button">← Back to Food &amp; Groceries</button>
     </div>
     <p id="foodNote">More places are added as they're linked.</p>
     <button id="foodClose" type="button">← Back to home</button>
+</div>
+<div id="cartOverlay">
+    <button id="cartBackTop" type="button">← Back</button>
+    <h2>🛒 My cart</h2>
+    <p id="cartHint">Your picks, ready to send to Lumi. Nothing is ordered until you send it and say yes to the exact total.</p>
+    <div id="cartList"></div>
+    <p id="cartEmpty" class="cartEmpty">Your cart is empty — tap any menu item to add it.</p>
+    <div id="cartTotals"></div>
+    <p id="cartNote" class="cartEmpty">Prices come from the saved menu — the exact total comes from Lumi, never guessed.</p>
+    <button id="cartSendBtn" type="button">📤 Send cart to Lumi</button>
+    <button id="cartClearBtn" type="button">🗑 Clear cart</button>
+    <button id="cartClose" type="button">← Back</button>
 </div>
 <div id="entOverlay">
     <h2>🎬 Entertainment</h2>
@@ -805,7 +919,7 @@
         <button type="button" class="entService" data-service="Hulu" data-state="linked">📺 Hulu <span class="entState">linked</span></button>
         <button type="button" class="entService" data-service="Netflix" data-state="not linked">🎬 Netflix <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="Paramount+" data-state="not linked">⭐ Paramount+ <span class="entState">not linked</span></button>
-        <button type="button" class="entService" data-service="HBO Max" data-state="not linked">🎭 HBO Max <span class="entState">not linked</span></button>
+        <button type="button" class="entService" data-service="HBO Max" data-state="linked">🎭 HBO Max <span class="entState">linked</span></button>
         <button type="button" class="entService" data-service="Pluto TV" data-state="not linked">📡 Pluto TV <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="Disney+" data-state="not linked">✨ Disney+ <span class="entState">not linked</span></button>
         <button type="button" class="entService" data-service="Apple TV+" data-state="not linked">🍎 Apple TV+ <span class="entState">not linked</span></button>
@@ -825,6 +939,25 @@
     </div>
     <p id="entNote">More services are added as they're linked.</p>
     <button id="entClose" type="button">← Back to home</button>
+</div>
+<div id="newsOverlay">
+    <h2>📰 News</h2>
+    <p id="newsHint">Webb Watch nine five six — Laredo &amp; Webb County news, plus La Onda Libre. Lumi follows what you already have; she never signs you up for anything new.</p>
+    <div id="newsLinks" class="newsList"></div>
+    <div id="newsStories">
+        <h4>📰 Latest stories</h4>
+        <p id="newsStoriesStatus" class="newsStatus">Loading the latest stories…</p>
+        <div id="newsStoriesList" class="newsList"></div>
+    </div>
+    <p id="newsNote">Stories come straight from the Webb Watch wire, newest first.</p>
+    <button id="newsClose" type="button">← Back to home</button>
+</div>
+<div id="stemOverlay">
+    <h2>🔬 STEM</h2>
+    <p id="stemHint">Science, tech, and space — free to read, no sign-up. Tap a source to open it.</p>
+    <div id="stemList" class="stemList"></div>
+    <p id="stemNote">Every source here is free to read — no paywall, no subscription from Lumi.</p>
+    <button id="stemClose" type="button">← Back to home</button>
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
@@ -929,7 +1062,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-19</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-20</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -945,7 +1078,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-19';
+  var LUMI_BUILD_STAMP = '2026.11.08-20';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -3558,6 +3691,49 @@
     card.appendChild(fr);
     container.appendChild(card);
   }
+  // PHOTO + VIDEO CARDS (build 2026.11.08-20, owner order Nov 8,
+  // 2026): a [PHOTO: <url>] line in Lumi's reply arrives as
+  // data.photos, a [VIDEO: <url>] line as data.videos — render
+  // them inline in her bubble (photo tap opens it full-size;
+  // video plays inline). Best-effort like renderMediaPreview: a
+  // Drive link becomes its direct download URL; a failed load
+  // hides itself and the plain link in the reply words still
+  // works. Only https URLs render. Cards do not survive a
+  // history re-render — the link in the words is the durable copy.
+  function directMediaUrl(url) {
+    var m = /\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(String(url || ''));
+    return m ? 'https://drive.google.com/uc?export=download&id=' + m[1] : url;
+  }
+  function renderPhotoCards(container, photos) {
+    if (!container || !photos || !photos.length) return;
+    photos.forEach(function (p) {
+      var u = p && p.url;
+      if (!u || u.indexOf('https://') !== 0) return;
+      var card = document.createElement('div');
+      card.className = 'photoCard';
+      var a = document.createElement('a');
+      a.href = u; a.target = '_blank'; a.rel = 'noopener';
+      var img = document.createElement('img');
+      img.className = 'fileImg'; img.alt = 'Photo'; img.loading = 'lazy';
+      img.src = directMediaUrl(u);
+      img.onerror = function () { try { card.remove(); } catch (e) {} };
+      a.appendChild(img);
+      card.appendChild(a);
+      container.appendChild(card);
+    });
+  }
+  function renderVideoCards(container, videos) {
+    if (!container || !videos || !videos.length) return;
+    videos.forEach(function (v) {
+      var u = v && v.url;
+      if (!u || u.indexOf('https://') !== 0) return;
+      var vid = document.createElement('video');
+      vid.className = 'fileMedia'; vid.controls = true; vid.preload = 'metadata'; vid.playsInline = true;
+      vid.src = directMediaUrl(u);
+      vid.onerror = function () { try { vid.remove(); } catch (e) {} };
+      container.appendChild(vid);
+    });
+  }
   // FULFILLMENT TAP BUTTONS (build 2026.11.08-13, owner order Nov 8,
   // 2026): when Lumi asks pickup / delivery / curbside, show three
   // tappable buttons under her reply so T taps instead of typing.
@@ -3588,6 +3764,76 @@
       row.appendChild(b);
     });
     container.appendChild(row);
+  }
+  // CHAT MENU CARD (build 2026.11.08-18 + -20 merge, owner order
+  // Nov 8, 2026): when Lumi's reply carries the [MENU: <storeId>
+  // <section>] marker (her show_menu flow), render the saved menu
+  // as a tappable card under her reply — sections + subsections,
+  // photos, tap an item to open its detail dropdown right under
+  // the row (quantity + Add to cart) — so T can SEE the menu in
+  // chat, not just in the folder. Only Lumi's LIVE replies (hooked
+  // in the chat submit handler, like the fulfillment buttons —
+  // history re-renders never grow cards). Never an empty or
+  // invented menu: if nothing is cached for the store, the card
+  // shows the "Show me the menu" fallback button instead.
+  function parseMenuMarker(text) {
+    var m = /\[MENU:\s*([a-z_]+)\s+([^\]]+)\]/i.exec(String(text || ''));
+    if (!m) return null;
+    return { storeId: m[1].toLowerCase(), section: m[2].trim() };
+  }
+  function renderChatMenuCard(container, reply) {
+    if (!container || currentAgent !== 'lumi') return;
+    var marker = parseMenuMarker(reply);
+    if (!marker) return;
+    var storeName = marker.storeId;
+    if (typeof FOOD_STORE_IDS !== 'undefined') {
+      Object.keys(FOOD_STORE_IDS).forEach(function (k) { if (FOOD_STORE_IDS[k] === marker.storeId) storeName = k; });
+    }
+    var card = document.createElement('div');
+    card.className = 'chatMenuCard';
+    var head = document.createElement('h5');
+    head.textContent = storeName + ' menu';
+    card.appendChild(head);
+    container.appendChild(card);
+    var list = document.createElement('div');
+    card.appendChild(list);
+    var loading = document.createElement('p');
+    loading.className = 'foodCompanyEmpty';
+    loading.textContent = 'Loading menu…';
+    list.appendChild(loading);
+    fetch(WORKER_URL + 'menu?store=' + encodeURIComponent(marker.storeId) + '&section=' + encodeURIComponent(marker.section), { method: 'GET' }).then(function (r) { return r.json(); }).then(function (data) {
+      var sections = (data && data.ok && data.sections) || [];
+      if (!sections.length) {
+        return fetch(WORKER_URL + 'menu?store=' + encodeURIComponent(marker.storeId), { method: 'GET' }).then(function (r2) { return r2.json(); }).then(function (data2) {
+          return (data2 && data2.ok && data2.sections) || [];
+        });
+      }
+      return sections;
+    }).then(function (sections) {
+      list.textContent = '';
+      if (!sections.length) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'foodMenuBtn';
+        b.textContent = 'Show me the menu';
+        b.addEventListener('click', function () {
+          try { input.value = 'Show me the ' + storeName + ' menu'; if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true })); } catch (e) {}
+        });
+        list.appendChild(b);
+        var hint = document.createElement('p');
+        hint.className = 'foodCompanyEmpty';
+        hint.textContent = 'No menu saved yet — Lumi is reading it live from the restaurant.';
+        list.appendChild(hint);
+        return;
+      }
+      renderMenuSectionsInto(list, sections, marker.storeId, storeName);
+    }).catch(function () {
+      list.textContent = '';
+      var err = document.createElement('p');
+      err.className = 'foodCompanyEmpty';
+      err.textContent = 'Could not load the menu right now — ask Lumi in chat.';
+      list.appendChild(err);
+    });
   }
   function setBubbleText(el, text) {
     el.innerHTML = '';
@@ -3678,7 +3924,10 @@
       if (data.file) renderFileCard(thinking, data.file);
       if (data.order) renderOrderCard(thinking, data.order);
       if (data.video) renderYouTubeCard(thinking, data.video);
+      if (data.photos) renderPhotoCards(thinking, data.photos);
+      if (data.videos) renderVideoCards(thinking, data.videos);
       renderFulfillmentButtons(thinking, reply);
+      renderChatMenuCard(thinking, reply);
       history.push({ role: 'assistant', content: reply });
       saveHistory();
       // Spoken reply skips bare URLs (they are tappable links in the
@@ -6583,6 +6832,11 @@
      if (foodOverlay) foodOverlay.classList.remove('open');
      showHome();
    });
+   var foodCloseTop = document.getElementById('foodCloseTop');
+   if (foodCloseTop) foodCloseTop.addEventListener('click', function () {
+     if (foodOverlay) foodOverlay.classList.remove('open');
+     showHome();
+   });
    Array.prototype.forEach.call(document.querySelectorAll('.foodStore'), function (btn) {
      btn.addEventListener('click', function () {
        var store = btn.getAttribute('data-store') || '';
@@ -6624,17 +6878,36 @@
       "couldn't load" line while the menu keeps working.
       The menu comes from GET /menu?store=<id> per the Worker
       contract {ok, store, sections:[{name, items:[{name, price,
-      description}]}]}. That endpoint is NOT live yet (Nov 8:
-      GET /menu returns 405 "Use POST", POST returns a 502 chat
-      error), so until it answers ok with sections the folder
-      shows the "Show me the menu" fallback button, which sends
-      "Show me the <Company> menu" into chat — Lumi's existing
-      show_menu flow — and never an empty or invented menu.
-      Tapping a menu item sends "Add <item> to my order" through
-      the same form-submit path the food grid uses, shows a brief
-      "Added" line, and KEEPS the folder open so she can keep
-      adding and customizing. The draft itself lives in chat with
-      Lumi; this view keeps no cart of its own. */
+      description}]}]}. That endpoint IS live (menu-cache deploy
+      Nov 8, 2026 ~17:52 CST; menus seeded as their accounts
+      verify). A section may also group its items under subsections
+      ({name, subsections:[{name, items:[...]}]}) since the Nov 8
+      menu-subsections Worker patch, and an item may carry an
+      optional `image` (photo URL exactly as the site shows it).
+      When a store has no cached menu yet the folder shows the
+      "Show me the menu" fallback button, which sends "Show me
+      the <Company> menu" into chat — Lumi's existing show_menu
+      flow — and never an empty or invented menu.
+      Tapping a menu item opens its detail dropdown right under the
+      item (build 2026.11.08-20, owner refinement Nov 8 ~19:18 CST)
+      — big photo + name + price + description + a quantity
+      selector — and the Add button in the dropdown puts it in the
+      cart (build 2026.11.08-18 — see the CART block below), so she
+      can set how many BEFORE adding. The folder stays open so she
+      can keep adding. Specials get the same treatment: tapping a
+      special opens its dropdown (quantity + Add to cart; no price —
+      never invented), and it removes exactly like any other cart
+      line. Coupons (rewards) are different — they are NOT menu
+      items: tapping one redeems it (build 2026.11.08-20 fix, owner
+      bug report Nov 8 ~20:54 CST — the live -19 app showed the
+      free pirata/taco reward with no tap wired at all). The tap
+      sends "Apply <title> from <store> to my order" into chat and
+      Lumi adds the free item at $0 to her open draft for that
+      store (or says plainly if no order is open yet). A tap IS her
+      yes for that reward only. The cart itself never orders or pays anything
+      — "Send cart to Lumi" sends ONE chat message with the whole
+      cart, grouped by store, and Lumi drafts one order per store
+      from it. */
    var FOOD_STORE_IDS = { "Whataburger": "whataburger", "Chick-fil-A": "chick_fil_a", "Raising Cane's": "raising_canes", "Domino's": "dominos", "Taco Palenque": "taco_palenque", "Chili's": "chilis", "H-E-B": "heb", "Walmart": "walmart" };
    var FOOD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
    var currentFoodCompany = '';
@@ -6666,6 +6939,8 @@
      if (hint) hint.style.display = 'none';
      if (note) note.style.display = 'none';
      if (closeBtn) closeBtn.style.display = 'none';
+     var closeTopBtn = document.getElementById('foodCloseTop');
+     if (closeTopBtn) closeTopBtn.style.display = 'none';
      var view = document.getElementById('foodCompanyView');
      if (view) view.hidden = false;
      var added = document.getElementById('foodMenuAdded');
@@ -6684,9 +6959,13 @@
      if (hint) hint.style.display = '';
      if (note) note.style.display = '';
      if (closeBtn) closeBtn.style.display = '';
+     var closeTopBtn = document.getElementById('foodCloseTop');
+     if (closeTopBtn) closeTopBtn.style.display = '';
    }
    var foodCompanyBack = document.getElementById('foodCompanyBack');
    if (foodCompanyBack) foodCompanyBack.addEventListener('click', function () { closeCompanyView(); });
+   var foodCompanyBackTop = document.getElementById('foodCompanyBackTop');
+   if (foodCompanyBackTop) foodCompanyBackTop.addEventListener('click', function () { closeCompanyView(); });
    var foodOrderChatBtn = document.getElementById('foodOrderChatBtn');
    if (foodOrderChatBtn) foodOrderChatBtn.addEventListener('click', function () {
      var store = currentFoodCompany;
@@ -6709,7 +6988,11 @@
        var store = (data && data.stores && data.stores[storeId]) || null;
        var coupons = (store && store.coupons) || [];
        var specials = (store && store.specials) || [];
-       var items = coupons.concat(specials);
+       /* REDEEM FIX (build 2026.11.08-20, owner bug report Nov 8
+          ~20:54 CST): coupons are REWARDS, not menu items — a tap
+          redeems one through Lumi (chat), it never opens the item
+          dropdown. Specials keep the dropdown treatment. */
+       var items = coupons.map(function (c) { c._kind = 'reward'; return c; }).concat(specials.map(function (s) { s._kind = 'special'; return s; }));
        if (pointsLine) {
          if (store && store.kind === 'points' && typeof store.points === 'number') {
            pointsLine.textContent = '⭐ ' + store.points + ' points' + (typeof store.cashOutThreshold === 'number' ? ' · cash out at ' + store.cashOutThreshold + ' points' : '');
@@ -6744,6 +7027,37 @@
            d.textContent = it.detail;
            row.appendChild(d);
          }
+         var tapHint = document.createElement('div');
+         tapHint.className = 'specialTapHint';
+         if (it._kind === 'reward') {
+           tapHint.textContent = 'Tap to redeem — Lumi adds it free to your order ▸';
+         } else {
+           tapHint.textContent = 'Tap to see it & add it to your cart ▾';
+         }
+         row.appendChild(tapHint);
+         if (it._kind === 'reward') {
+           /* REDEEM (build 2026.11.08-20 fix): tapping a reward
+              sends "Apply <title> from <store> to my order" into
+              chat — the same foodSend channel a menu tap uses —
+              and Lumi redeems it on her open draft for that store
+              (free item at $0, flagged for checkout). The tap IS
+              her yes for THAT reward only. */
+           row.addEventListener('click', function () {
+             closeCompanyView();
+             if (foodOverlay) foodOverlay.classList.remove('open');
+             showChat();
+             foodSend('Apply ' + (it.title || '') + ' from ' + (currentFoodCompany || storeId) + ' to my order');
+           });
+         } else {
+           /* TAP-TO-EXPAND (build 2026.11.08-20, owner refinement
+              Nov 8 ~19:18 CST): tapping a special opens its detail
+              dropdown right under the row — quantity selector + Add
+              to cart — the same treatment as menu items. No price is
+              ever invented for a special. */
+           row.addEventListener('click', function () {
+             toggleMenuItemDetail(row, storeId, currentFoodCompany || storeId, { name: it.title || '', price: null, description: it.detail || '', image: null });
+           });
+         }
          list.appendChild(row);
        });
      }).catch(function () {
@@ -6754,6 +7068,108 @@
        err.textContent = "Couldn't load specials right now — ask Lumi in chat.";
        list.appendChild(err);
      });
+   }
+   /* Shared menu rendering (build 2026.11.08-18 + -20 merge):
+     sections may carry flat `items` and/or nested `subsections`
+     (Worker menu-subsections patch). Subsection headers collapse;
+     items are numbered within each subsection. Every item shows
+     the photo from the store's own site as a thumbnail (build -20:
+     lazy-loaded; no photo on the site -> a plain "No photo" block,
+     never a broken-image icon, never a stock or invented photo).
+     Tapping an item opens its detail dropdown right under the row
+     (build -20, owner refinement Nov 8 ~19:18 CST) — the add
+     happens from the dropdown's Add button, with a quantity
+     selector. Used by the company folder AND the chat menu card —
+     same rendering, same dropdown, same add path. */
+   function menuItemButton(storeId, storeName, it, numText) {
+     var b = document.createElement('button');
+     b.type = 'button';
+     b.className = 'menuItem';
+     var photoUrl = menuPhotoUrl(it);
+     if (photoUrl) {
+       var ph = document.createElement('img');
+       ph.className = 'menuItemPhoto';
+       ph.setAttribute('loading', 'lazy');
+       ph.setAttribute('alt', (it.name || '') + ' photo');
+       ph.setAttribute('src', photoUrl);
+       ph.addEventListener('error', function () {
+         var none = document.createElement('span');
+         none.className = 'menuItemPhotoNone';
+         none.textContent = 'No photo';
+         if (ph.parentNode) ph.parentNode.replaceChild(none, ph);
+       });
+       b.appendChild(ph);
+     } else {
+       var none = document.createElement('span');
+       none.className = 'menuItemPhotoNone';
+       none.textContent = 'No photo';
+       b.appendChild(none);
+     }
+     var tx = document.createElement('span');
+     tx.className = 'menuItemText';
+     var num = document.createElement('span');
+     num.className = 'menuItemNum';
+     num.textContent = numText;
+     tx.appendChild(num);
+     var nm = document.createElement('span');
+     nm.className = 'menuItemName';
+     nm.textContent = it.name || '';
+     tx.appendChild(nm);
+     if (it.price) {
+       var pr = document.createElement('span');
+       pr.className = 'menuItemPrice';
+       pr.textContent = ' ' + it.price;
+       tx.appendChild(pr);
+     }
+     if (it.description) {
+       var d = document.createElement('span');
+       d.className = 'menuItemDesc';
+       d.textContent = it.description;
+       tx.appendChild(d);
+     }
+     b.appendChild(tx);
+     b.addEventListener('click', function () {
+       toggleMenuItemDetail(b, storeId, storeName, it);
+     });
+     return b;
+   }
+   function renderMenuSectionsInto(listEl, sections, storeId, storeName) {
+     var anyItems = false;
+     sections.forEach(function (sec) {
+       var items = (sec && sec.items) || [];
+       var subs = (sec && sec.subsections) || [];
+       if (!items.length && !subs.length) return;
+       var h = document.createElement('h5');
+       h.className = 'menuSectionTitle';
+       h.textContent = sec.name || 'Menu';
+       listEl.appendChild(h);
+       items.forEach(function (it, i) {
+         listEl.appendChild(menuItemButton(storeId, storeName, it, (i + 1) + '. '));
+         anyItems = true;
+       });
+       subs.forEach(function (sub) {
+         var subItems = (sub && sub.items) || [];
+         if (!subItems.length) return;
+         var wrap = document.createElement('div');
+         wrap.className = 'menuSubsectionItems';
+         var head = document.createElement('button');
+         head.type = 'button';
+         head.className = 'menuSubsectionTitle';
+         head.textContent = '▾ ' + (sub.name || 'More');
+         head.addEventListener('click', function () {
+           var hidden = wrap.style.display === 'none';
+           wrap.style.display = hidden ? '' : 'none';
+           head.textContent = (hidden ? '▾ ' : '▸ ') + (sub.name || 'More');
+         });
+         listEl.appendChild(head);
+         subItems.forEach(function (it, i) {
+           wrap.appendChild(menuItemButton(storeId, storeName, it, (i + 1) + '. '));
+           anyItems = true;
+         });
+         listEl.appendChild(wrap);
+       });
+     });
+     return anyItems;
    }
    function renderFoodMenu(storeId, storeName) {
      var list = document.getElementById('foodMenuList');
@@ -6767,46 +7183,8 @@
        var sections = (data && data.ok && data.sections) || [];
        list.textContent = '';
        if (!sections.length) { renderMenuFallback(list, storeName); return; }
-       sections.forEach(function (sec) {
-         var items = (sec && sec.items) || [];
-         if (!items.length) return;
-         var h = document.createElement('h5');
-         h.className = 'menuSectionTitle';
-         h.textContent = sec.name || 'Menu';
-         list.appendChild(h);
-         items.forEach(function (it, i) {
-           var b = document.createElement('button');
-           b.type = 'button';
-           b.className = 'menuItem';
-           var num = document.createElement('span');
-           num.className = 'menuItemNum';
-           num.textContent = (i + 1) + '. ';
-           b.appendChild(num);
-           var nm = document.createElement('span');
-           nm.className = 'menuItemName';
-           nm.textContent = it.name || '';
-           b.appendChild(nm);
-           if (it.price) {
-             var pr = document.createElement('span');
-             pr.className = 'menuItemPrice';
-             pr.textContent = ' ' + it.price;
-             b.appendChild(pr);
-           }
-           if (it.description) {
-             var d = document.createElement('span');
-             d.className = 'menuItemDesc';
-             d.textContent = it.description;
-             b.appendChild(d);
-           }
-           b.addEventListener('click', function () {
-             foodSend('Add ' + (it.name || '') + ' to my order');
-             var added = document.getElementById('foodMenuAdded');
-             if (added) added.textContent = 'Added ' + (it.name || '') + ' — tell Lumi any changes.';
-           });
-           list.appendChild(b);
-         });
-       });
-       if (!list.hasChildNodes()) renderMenuFallback(list, storeName);
+       var anyItems = renderMenuSectionsInto(list, sections, storeId, storeName);
+       if (!anyItems) renderMenuFallback(list, storeName);
      }).catch(function () {
        list.textContent = '';
        renderMenuFallback(list, storeName);
@@ -6829,6 +7207,420 @@
      hint.textContent = 'Lumi will show the live menu in chat.';
      list.appendChild(hint);
    }
+   /* Menu photos + item detail dropdown + cart-aware add (build
+      2026.11.08-20 merge, owner order Nov 8, 2026 + refinement
+      ~19:18 CST): every menu item shows the photo from the store's
+      own site. Tapping an item expands a detail dropdown right
+      under the tapped row — big photo + name + price + description
+      + a quantity selector — so she never leaves the list and sets
+      how many BEFORE adding. The add goes to the -18 cart when
+      present (window.LumiCart.addItem) and falls back to the chat
+      send otherwise. Photos are never stock or invented — only the
+      URL the store's own menu shows for that item, or a plain
+      "No photo" note. */
+   function menuPhotoUrl(it) {
+     if (!it || typeof it.image !== 'string') return '';
+     var u = it.image.trim();
+     if (u.slice(0, 8) !== 'https://') return '';
+     return u;
+   }
+   var openMenuDetailPanel = null;
+   var openMenuDetailRow = null;
+   function closeMenuItemDetailPanel() {
+     if (openMenuDetailPanel && openMenuDetailPanel.parentNode) openMenuDetailPanel.parentNode.removeChild(openMenuDetailPanel);
+     openMenuDetailPanel = null;
+     openMenuDetailRow = null;
+   }
+   /* Toggle the detail dropdown under the tapped row. Tapping the
+      same row again closes it; tapping another row moves the panel
+      there. Only one panel is open at a time. */
+   function toggleMenuItemDetail(anchorEl, storeId, storeName, item) {
+     if (openMenuDetailRow === anchorEl) { closeMenuItemDetailPanel(); return; }
+     closeMenuItemDetailPanel();
+     var panel = document.createElement('div');
+     panel.className = 'menuItemDetail';
+     /* Owner Nov 8 ~20:11 CST — top of the item detail, straight back to
+        the Food & Groceries home screen (closes the panel AND the store
+        folder), not just one level up. Bottom Hide details stays. */
+     var backTop = document.createElement('button');
+     backTop.type = 'button';
+     backTop.className = 'menuDetailBackTop';
+     backTop.textContent = '← Back to Food & Groceries';
+     backTop.addEventListener('click', function () { closeMenuItemDetailPanel(); closeCompanyView(); });
+     panel.appendChild(backTop);
+     var photoUrl = menuPhotoUrl(item);
+     var noPhoto = document.createElement('p');
+     noPhoto.className = 'menuDetailNoPhoto';
+     noPhoto.textContent = 'No photo for this item — the restaurant\'s menu doesn\'t show one.';
+     if (photoUrl) {
+       var ph = document.createElement('img');
+       ph.className = 'menuDetailPhoto';
+       ph.setAttribute('alt', ((item && item.name) || '') + ' photo');
+       ph.setAttribute('src', photoUrl);
+       ph.addEventListener('error', function () {
+         ph.style.display = 'none';
+         noPhoto.style.display = '';
+       });
+       panel.appendChild(ph);
+       noPhoto.style.display = 'none';
+       panel.appendChild(noPhoto);
+     } else {
+       panel.appendChild(noPhoto);
+     }
+     var nm = document.createElement('h4');
+     nm.className = 'menuDetailName';
+     nm.textContent = (item && item.name) || '';
+     panel.appendChild(nm);
+     var pr = document.createElement('p');
+     pr.className = 'menuDetailPrice';
+     pr.textContent = (item && item.price) ? item.price : 'Price not listed';
+     panel.appendChild(pr);
+     if (item && item.description) {
+       var ds = document.createElement('p');
+       ds.className = 'menuDetailDesc';
+       ds.textContent = item.description;
+       panel.appendChild(ds);
+     }
+     var qty = 1;
+     var qtyRow = document.createElement('div');
+     qtyRow.className = 'menuDetailQtyRow';
+     var qtyLabel = document.createElement('span');
+     qtyLabel.className = 'menuDetailQtyLabel';
+     qtyLabel.textContent = 'How many?';
+     qtyRow.appendChild(qtyLabel);
+     var minus = document.createElement('button');
+     minus.type = 'button';
+     minus.className = 'menuDetailQtyBtn';
+     minus.textContent = '-';
+     qtyRow.appendChild(minus);
+     var qEl = document.createElement('span');
+     qEl.className = 'menuDetailQty';
+     qEl.textContent = '1';
+     qtyRow.appendChild(qEl);
+     var plus = document.createElement('button');
+     plus.type = 'button';
+     plus.className = 'menuDetailQtyBtn';
+     plus.textContent = '+';
+     qtyRow.appendChild(plus);
+     minus.addEventListener('click', function () { if (qty > 1) { qty--; qEl.textContent = String(qty); } });
+     plus.addEventListener('click', function () { if (qty < 99) { qty++; qEl.textContent = String(qty); } });
+     panel.appendChild(qtyRow);
+     var status = document.createElement('p');
+     status.className = 'menuDetailStatus';
+     panel.appendChild(status);
+     var add = document.createElement('button');
+     add.type = 'button';
+     add.className = 'menuDetailAdd';
+     add.textContent = 'Add to cart';
+     add.addEventListener('click', function () {
+       var addedName = (item && item.name) || '';
+       var qtyText = qty > 1 ? (qty + ' × ' + addedName) : addedName;
+       if (addMenuItemToOrder(storeId, storeName, item, qty)) {
+         status.textContent = 'Added ' + qtyText + ' to your cart ✓';
+       } else {
+         status.textContent = 'Added ' + qtyText + ' — tell Lumi any changes.';
+       }
+     });
+     panel.appendChild(add);
+     var hide = document.createElement('button');
+     hide.type = 'button';
+     hide.className = 'menuDetailClose';
+     hide.textContent = '▲ Hide details';
+     hide.addEventListener('click', function () { closeMenuItemDetailPanel(); });
+     panel.appendChild(hide);
+     if (anchorEl && anchorEl.parentNode) anchorEl.parentNode.insertBefore(panel, anchorEl.nextSibling);
+     openMenuDetailPanel = panel;
+     openMenuDetailRow = anchorEl;
+   }
+   /* ADD (cart-aware, merge-safe): if the in-app cart from build
+      -18 is present (window.LumiCart.addItem), the item goes into
+      the multi-store cart with the selected quantity; otherwise it
+      falls back to the -16 behavior (send "Add <item> to my order"
+      into chat). Returns true when the cart took it, false when it
+      fell back to chat. The cart contract: window.LumiCart.addItem
+      (storeId, storeName, item, qty). */
+   function addMenuItemToOrder(storeId, storeName, item, qty) {
+     var name = (item && item.name) || '';
+     var n = (typeof qty === 'number' && qty > 0) ? Math.floor(qty) : 1;
+     if (window.LumiCart && typeof window.LumiCart.addItem === 'function') {
+       try {
+         window.LumiCart.addItem(storeId, storeName, { name: name, price: (item && item.price) || null, description: (item && item.description) || '', image: menuPhotoUrl(item) || null }, n);
+         var folderAdded = document.getElementById('foodMenuAdded');
+         if (folderAdded) folderAdded.textContent = 'Added ' + name + ' to your cart.';
+         return true;
+       } catch (e) { /* cart failed — fall through to the chat fallback */ }
+     }
+     foodSend(n > 1 ? ('Add ' + n + ' × ' + name + ' to my order') : ('Add ' + name + ' to my order'));
+     var folderAdded2 = document.getElementById('foodMenuAdded');
+     if (folderAdded2) folderAdded2.textContent = 'Added ' + name + ' — tell Lumi any changes.';
+     return false;
+   }
+   /* CART (build 2026.11.08-18 + -20 merge, owner order Nov 8, 2026):
+     a little checkout cart — T taps menu items (or specials) to
+     open their detail dropdown, sets how many, and adds them;
+     edits quantities and customizations (condiments / no
+     condiments) per line, and sends the whole cart to Lumi in ONE
+     chat message. The cart never orders or pays anything by
+     itself; Lumi drafts from it in chat and nothing is placed
+     until she approves the exact total. Multi-store: lines from
+     different places live in one cart, grouped by store with a
+     subtotal per store — a subtotal reads "Subtotal: Lumi to
+     confirm" when ANY line in the group has no price — and the
+     message lists each store separately so Lumi places one order
+     per store. Stored per device in localStorage (lumi_cart_v1)
+     so it survives reloads. Prices come only from the saved menu
+     — a subtotal counts priced lines only, and the cart always
+     says the exact total comes from Lumi (never invented).
+     Photos: a line shows the item's photo when the cached menu
+     has one (optional `image` per item); otherwise a plain
+     placeholder — never a broken image, never an invented photo.
+     Remove is obvious: every line has a Remove button, quantity 0
+     removes it, and Clear cart empties the whole thing. */
+   var CART_KEY = 'lumi_cart_v1';
+   var CART_CHIPS = ['No pickles', 'No onions', 'Extra sauce', 'No ice'];
+   function loadCart() { try { var raw = localStorage.getItem(CART_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch (e) { return []; } }
+   function saveCart(items) { try { localStorage.setItem(CART_KEY, JSON.stringify(items)); } catch (e) {} updateCartBadge(); }
+   function cartCount() { var n = 0; loadCart().forEach(function (l) { n += (l.qty || 0); }); return n; }
+   function cartLineId(line) { return (line.storeId || '') + '|' + (line.name || '') + '|' + (line.note || ''); }
+   function addToCart(storeId, storeName, it, qty) {
+     var items = loadCart();
+     var n = (typeof qty === 'number' && qty > 0) ? Math.floor(qty) : 1;
+     var line = { storeId: storeId, storeName: storeName, name: it.name || '', price: it.price || null, image: it.image || null, qty: n, note: '' };
+     var id = cartLineId(line);
+     var found = null;
+     items.forEach(function (l) { if (cartLineId(l) === id) found = l; });
+     if (found) found.qty = (found.qty || 1) + n;
+     else items.push(line);
+     saveCart(items);
+     renderCart();
+   }
+   /* The -20 detail dropdown adds through here: window.LumiCart is
+      the cart contract the menu code calls (see addMenuItemToOrder). */
+   window.LumiCart = { addItem: addToCart };
+   function updateCartBadge() {
+     var btn = document.getElementById('homeCartBtn');
+     if (btn) btn.textContent = '🛒 My cart' + (cartCount() ? ' (' + cartCount() + ')' : '');
+     var fb = document.getElementById('foodCartBtn');
+     if (fb) fb.textContent = '🛒 View cart' + (cartCount() ? ' (' + cartCount() + ')' : '');
+   }
+   function cartPriceValue(priceStr) {
+     var m = /\$?\s*(\d+(?:\.\d{1,2})?)/.exec(String(priceStr || ''));
+     return m ? parseFloat(m[1]) : null;
+   }
+   function cartSubtotal(items) {
+     var sum = 0, priced = false, unpriced = false;
+     items.forEach(function (l) {
+       var v = cartPriceValue(l.price);
+       if (v === null) { unpriced = true; return; }
+       priced = true;
+       sum += v * (l.qty || 1);
+     });
+     return { sum: sum, priced: priced, unpriced: unpriced };
+   }
+   function cartLineRow(line, idx) {
+     var row = document.createElement('div');
+     row.className = 'cartLine';
+     var top = document.createElement('div');
+     top.className = 'cartLineTop';
+     if (line.image) {
+       var img = document.createElement('img');
+       img.className = 'cartLinePhoto';
+       img.src = line.image;
+       img.alt = '';
+       img.addEventListener('error', function () {
+         var ph = document.createElement('div');
+         ph.className = 'cartLinePhotoPh';
+         ph.textContent = '🍽️';
+         if (img.parentNode) img.parentNode.replaceChild(ph, img);
+       });
+       top.appendChild(img);
+     } else {
+       var ph0 = document.createElement('div');
+       ph0.className = 'cartLinePhotoPh';
+       ph0.textContent = '🍽️';
+       top.appendChild(ph0);
+     }
+     var info = document.createElement('div');
+     info.className = 'cartLineInfo';
+     var nm = document.createElement('div');
+     nm.className = 'cartLineName';
+     nm.textContent = line.name;
+     info.appendChild(nm);
+     if (line.price) {
+       var pr = document.createElement('div');
+       pr.className = 'cartLinePrice';
+       pr.textContent = line.price;
+       info.appendChild(pr);
+     }
+     top.appendChild(info);
+     row.appendChild(top);
+     var qr = document.createElement('div');
+     qr.className = 'cartQtyRow';
+     var minus = document.createElement('button');
+     minus.type = 'button'; minus.className = 'cartQtyBtn'; minus.textContent = '-';
+     minus.addEventListener('click', function () { changeCartQty(idx, -1); });
+     qr.appendChild(minus);
+     var q = document.createElement('span');
+     q.className = 'cartQty';
+     q.textContent = String(line.qty || 1);
+     qr.appendChild(q);
+     var plus = document.createElement('button');
+     plus.type = 'button'; plus.className = 'cartQtyBtn'; plus.textContent = '+';
+     plus.addEventListener('click', function () { changeCartQty(idx, 1); });
+     qr.appendChild(plus);
+     var rm = document.createElement('button');
+     rm.type = 'button'; rm.className = 'cartRemoveBtn'; rm.textContent = 'Remove';
+     rm.addEventListener('click', function () { removeCartLine(idx); });
+     qr.appendChild(rm);
+     row.appendChild(qr);
+     var note = document.createElement('input');
+     note.type = 'text'; note.className = 'cartNoteInput';
+     note.placeholder = 'Customizations — e.g. no pickles, extra sauce';
+     note.value = line.note || '';
+     note.addEventListener('change', function () { setCartNote(idx, note.value); });
+     row.appendChild(note);
+     var chips = document.createElement('div');
+     chips.className = 'cartChips';
+     CART_CHIPS.forEach(function (chip) {
+       var c = document.createElement('button');
+       c.type = 'button'; c.className = 'cartChip';
+       c.textContent = chip;
+       if ((line.note || '').split(',').map(function (s) { return s.trim().toLowerCase(); }).indexOf(chip.toLowerCase()) !== -1) c.classList.add('on');
+       c.addEventListener('click', function () { toggleCartChip(idx, chip); });
+       chips.appendChild(c);
+     });
+     row.appendChild(chips);
+     return row;
+   }
+   function renderCart() {
+     var list = document.getElementById('cartList');
+     var empty = document.getElementById('cartEmpty');
+     var totals = document.getElementById('cartTotals');
+     if (!list) return;
+     var items = loadCart();
+     list.textContent = '';
+     if (empty) empty.style.display = items.length ? 'none' : '';
+     var groups = [];
+     var byStore = {};
+     items.forEach(function (line, idx) {
+       var key = line.storeId || line.storeName || 'order';
+       if (!byStore[key]) { byStore[key] = { storeName: line.storeName || line.storeId || 'Order', indices: [] }; groups.push(byStore[key]); }
+       byStore[key].indices.push(idx);
+     });
+     groups.forEach(function (g) {
+       var wrap = document.createElement('div');
+       wrap.className = 'cartStoreGroup';
+       var h = document.createElement('p');
+       h.className = 'cartStoreName';
+       h.textContent = g.storeName;
+       wrap.appendChild(h);
+       var gSum = 0, gPriced = false, gUnpriced = false;
+       g.indices.forEach(function (idx) {
+         var line = items[idx];
+         wrap.appendChild(cartLineRow(line, idx));
+         var v = cartPriceValue(line.price);
+         if (v === null) { gUnpriced = true; } else { gPriced = true; gSum += v * (line.qty || 1); }
+       });
+       var sub = document.createElement('p');
+       sub.className = 'cartStoreSubtotal';
+       sub.textContent = (!gUnpriced && gPriced) ? ('Subtotal: $' + gSum.toFixed(2)) : 'Subtotal: Lumi to confirm';
+       wrap.appendChild(sub);
+       list.appendChild(wrap);
+     });
+     if (totals) {
+       if (!items.length) { totals.textContent = ''; }
+       else {
+         var t = cartSubtotal(items);
+         totals.textContent = t.unpriced ? 'Total so far: Lumi to confirm — some items have no price listed.' : (t.priced ? ('Total so far: $' + t.sum.toFixed(2)) : 'No prices listed for these items yet — Lumi will give the exact total.');
+       }
+     }
+     updateCartBadge();
+   }
+   function changeCartQty(idx, delta) {
+     var items = loadCart();
+     if (!items[idx]) return;
+     items[idx].qty = (items[idx].qty || 1) + delta;
+     if (items[idx].qty <= 0) items.splice(idx, 1);
+     saveCart(items); renderCart();
+   }
+   function removeCartLine(idx) {
+     var items = loadCart();
+     if (!items[idx]) return;
+     items.splice(idx, 1);
+     saveCart(items); renderCart();
+   }
+   function setCartNote(idx, note) {
+     var items = loadCart();
+     if (!items[idx]) return;
+     items[idx].note = String(note || '').trim().slice(0, 200);
+     saveCart(items); renderCart();
+   }
+   function toggleCartChip(idx, chip) {
+     var items = loadCart();
+     if (!items[idx]) return;
+     var parts = (items[idx].note || '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+     var at = parts.map(function (s) { return s.toLowerCase(); }).indexOf(chip.toLowerCase());
+     if (at === -1) parts.push(chip); else parts.splice(at, 1);
+     items[idx].note = parts.join(', ');
+     saveCart(items); renderCart();
+   }
+   function openCartView() {
+     renderCart();
+     var ov = document.getElementById('cartOverlay');
+     if (ov) ov.classList.add('open');
+   }
+   function closeCartView() {
+     var ov = document.getElementById('cartOverlay');
+     if (ov) ov.classList.remove('open');
+   }
+   function cartMessageText(items) {
+     var byStore = {};
+     var order = [];
+     items.forEach(function (l) {
+       var key = l.storeName || l.storeId || 'Order';
+       if (!byStore[key]) { byStore[key] = []; order.push(key); }
+       byStore[key].push(l);
+     });
+     var lines = ['Here\'s my order — one order per store, please:'];
+     order.forEach(function (storeName) {
+       lines.push(storeName + ':');
+       var sub = 0, allPriced = true;
+       byStore[storeName].forEach(function (l) {
+         var v = cartPriceValue(l.price);
+         if (v === null) { allPriced = false; }
+         else { sub += v * (l.qty || 1); }
+         lines.push('- ' + l.name + (v === null ? '' : ' — $' + v.toFixed(2)) + ' x' + (l.qty || 1) + (l.note ? ' — ' + l.note : ''));
+       });
+       lines.push(allPriced ? ('Subtotal: $' + sub.toFixed(2)) : 'Subtotal: Lumi to confirm');
+     });
+     lines.push('Please place one order per store.');
+     return lines.join('\n');
+   }
+   function sendCartToLumi() {
+     var items = loadCart();
+     if (!items.length) return;
+     var text = cartMessageText(items);
+     saveCart([]);
+     renderCart();
+     closeCartView();
+     if (foodOverlay) foodOverlay.classList.remove('open');
+     showChat();
+     foodSend(text);
+   }
+   var homeCartBtn = document.getElementById('homeCartBtn');
+   if (homeCartBtn) homeCartBtn.addEventListener('click', function () { showChat(); openCartView(); });
+   var foodCartBtn = document.getElementById('foodCartBtn');
+   if (foodCartBtn) foodCartBtn.addEventListener('click', function () { openCartView(); });
+   var cartBackTop = document.getElementById('cartBackTop');
+   if (cartBackTop) cartBackTop.addEventListener('click', function () { closeCartView(); });
+   var cartClose = document.getElementById('cartClose');
+   if (cartClose) cartClose.addEventListener('click', function () { closeCartView(); });
+   var cartSendBtn = document.getElementById('cartSendBtn');
+   if (cartSendBtn) cartSendBtn.addEventListener('click', function () { sendCartToLumi(); });
+   var cartClearBtn = document.getElementById('cartClearBtn');
+   if (cartClearBtn) cartClearBtn.addEventListener('click', function () { if (confirm('Clear the whole cart?')) { saveCart([]); renderCart(); } });
+   updateCartBadge();
+   renderCart();
    /* Home Shopping (build 2026.11.08-10, owner order Nov 8, 2026):
       from Home, one tap opens the Shopping view — a grid of store
       buttons — and sends the "I want to shop" starter into the
@@ -6891,16 +7683,17 @@
       2026): a home-screen tab for the streaming + music services
       Lumi follows once linked — Spotify, YouTube, Hulu, Netflix,
       Paramount+, HBO Max, Pluto TV, Disney+, Apple TV+, Peacock,
-      Prime Video, Tubi. Hulu + YouTube ARE linked (verified live
-      sign-ins Nov 8, 2026 — their folders show the real lists
-      from that check, static snapshots in ENT_LINKED below; the
-      "Checked Nov 8, 2026" line says so honestly, and a live
-      refresh endpoint is a later step, NOT this build). Every item
-      in the two linked folders is a tappable link to the service
-      (plain <a>, target _blank, rel noopener — see the LINK RULES
-      in DEPLOY-NOTES.md: deep link when verifiable, the service's
-      own search page when not, never a guessed deep link, never a
-      third-party aggregator). The other 10 services are still not
+      Prime Video, Tubi. Hulu + YouTube + HBO Max ARE linked
+      (verified live sign-ins Nov 8, 2026 — their folders show the
+      real lists from that check, static snapshots in ENT_LINKED
+      below; the "Checked Nov 8, 2026" line says so honestly, and
+      a live refresh endpoint is a later step, NOT this build).
+      Every item in the three linked folders is a tappable link to
+      the service (plain <a>, target _blank, rel noopener — see the
+      LINK RULES in DEPLOY-NOTES.md: deep link when verifiable,
+      the service's own search page when not, never a guessed deep
+      link, never a third-party aggregator). The other 9 services
+      are still not
       linked: tapping one opens its own sub-folder (same pattern as
       the Food company folders) with a "Currently watching" shell
       — placeholder only until that service is linked, never
@@ -6928,7 +7721,12 @@
       recommendation URLs are the verified video pages, except the
       Nov 7 Webb Watch newscast, whose video ID could not be
       verified — its link is a YouTube search page that lists it.
-      The snapshot date is shown in the folder so it stays honest. */
+      HBO Max titles link to the HBO Max home feed
+      (https://www.hbomax.com/) — the title-search URL pattern
+      could not be verified from here, so no search URL was
+      guessed; upgrade to search links if the live session
+      confirms the pattern. The snapshot date is shown in the
+      folder so it stays honest. */
    var ENT_CHECKED_NOTE = 'Checked Nov 8, 2026 — Lumi refreshes this when she re-checks your account.';
    var ENT_LINKED = {
      'Hulu': {
@@ -6974,7 +7772,37 @@
          ] }
        ],
        extra: ''
-     }
+     },
+    'HBO Max': {
+      intro: 'Signed in as Tanya.',
+      groups: [
+        { heading: 'Continue Watching', ordered: true, items: [
+          { title: 'Dune: Prophecy (S1 E3 "Sisterhood Above All")', url: 'https://www.hbomax.com/' },
+          { title: 'The Batman', url: 'https://www.hbomax.com/' },
+          { title: 'The Penguin (S1 E3 "Bliss")', url: 'https://www.hbomax.com/' },
+          { title: 'The Gilded Age (S1 E2 "Money Isn\'t Everything")', url: 'https://www.hbomax.com/' },
+          { title: 'Youth (S1 E6 "Desperate Measures")', url: 'https://www.hbomax.com/' },
+          { title: 'IT: Welcome to Derry (S1 E3 "Now You See It")', url: 'https://www.hbomax.com/' },
+          { title: 'Lanterns (S1 E6 "Bad Optics")', url: 'https://www.hbomax.com/' },
+          { title: 'House of the Dragon (S3 E8 "The Treasons at Tumbleton")', url: 'https://www.hbomax.com/' }
+        ] },
+        { heading: 'My List', ordered: false, items: [
+          { title: 'A Story of Derry', url: 'https://www.hbomax.com/' },
+          { title: 'Hacks', url: 'https://www.hbomax.com/' },
+          { title: 'Dune: Prophecy', url: 'https://www.hbomax.com/' },
+          { title: 'House of the Dragon', url: 'https://www.hbomax.com/' },
+          { title: 'DTF St. Louis', url: 'https://www.hbomax.com/' },
+          { title: 'Euphoria', url: 'https://www.hbomax.com/' },
+          { title: 'One Battle After Another', url: 'https://www.hbomax.com/' },
+          { title: 'Constantine', url: 'https://www.hbomax.com/' },
+          { title: 'The Pitt', url: 'https://www.hbomax.com/' },
+          { title: 'IT: Welcome to Derry', url: 'https://www.hbomax.com/' },
+          { title: 'Bring Her Back', url: 'https://www.hbomax.com/' },
+          { title: 'The Rocky Mountain Mortician Murder', url: 'https://www.hbomax.com/' }
+        ] }
+      ],
+      extra: ''
+    }
    };
    /* Renders one list into the watching container, textContent
       only — no HTML is ever built from a title. */
@@ -7066,6 +7894,161 @@
      if (!e.target.closest) return;
      if (e.target.closest('.vlabel')) return;
      if (e.target.closest('.agentCard') || e.target.closest('#meetCardChat')) showChat();
+   });
+   /* News tab + STEM tab (build 2026.11.08-20, owner order Nov 8,
+      2026 ~21:03 CST): two more home-screen tabs, same overlay
+      pattern as Entertainment — a home button opens the overlay,
+      Close goes back home. No sign-up, no subscription of any
+      kind from either tab: News only follows the Webb Watch /
+      La Onda Libre Tanya already has; STEM only links free
+      public sources. No Worker dependency: News stories load
+      straight from the public WordPress API (CORS-open, verified
+      live Nov 8, 2026 — HTTP 200, real stories returned), STEM
+      links are static verified URLs. Titles/excerpts from the
+      wire are HTML — stripped to plain text before display, and
+      every link is built with textContent only (same rule as
+      entRenderList: no HTML is ever built from a title). */
+   var NEWS_API_URL = 'https://public-api.wordpress.com/wp/v2/sites/webbwatch956.wordpress.com/posts?per_page=10&_fields=id,date,title,excerpt,link';
+   var NEWS_LINKS = [
+     { title: '📰 webbwatch956.com — Webb Watch nine five six', url: 'https://webbwatch956.com/' },
+     { title: '▶️ Webb Watch 956 on YouTube', url: 'https://www.youtube.com/@WebbWatch956' },
+     { title: '📻 La Onda Libre — listen live', url: 'https://stream.webbwatch956.com/' },
+     { title: '📻 La Onda Libre — direct stream', url: 'http://161.153.49.192:8000/radio.mp3' },
+     { title: '📻 La Onda Libre station page', url: 'https://161.153.49.192/public/la_onda_libre' }
+   ];
+   var STEM_LINKS = {
+     'Space & astronomy': [
+       { title: 'NASA — space, science & images', url: 'https://www.nasa.gov/' },
+       { title: 'Space.com — space & astronomy news', url: 'https://www.space.com/' },
+       { title: 'EarthSky — night sky & space', url: 'https://earthsky.org/' }
+     ],
+     'Science news': [
+       { title: 'ScienceDaily — latest research news', url: 'https://www.sciencedaily.com/' },
+       { title: 'Live Science — science news', url: 'https://www.livescience.com/' },
+       { title: 'Science News — all areas of science', url: 'https://www.sciencenews.org/' },
+       { title: 'Smithsonian Magazine — science & nature', url: 'https://www.smithsonianmag.com/science-nature/' },
+       { title: 'MIT News — MIT research', url: 'https://news.mit.edu/' }
+     ],
+     'Research & learning': [
+       { title: 'arXiv — free research papers', url: 'https://arxiv.org/' },
+       { title: 'NSF — U.S. National Science Foundation', url: 'https://www.nsf.gov/' },
+       { title: 'NOAA — oceans, weather & climate', url: 'https://www.noaa.gov/' },
+       { title: 'Khan Academy — free science lessons', url: 'https://www.khanacademy.org/science' }
+     ]
+   };
+   /* Strip wire HTML to plain text: tags off with a regex,
+      entities decoded with plain replaces — no HTML strings are
+      ever built from wire text. */
+   function stripHtml(s) {
+     var t = String(s || '').replace(/<[^>]*>/g, '');
+     t = t.replace(/&#x([0-9a-fA-F]+);/g, function (m, h) { return String.fromCharCode(parseInt(h, 16)); });
+     t = t.replace(/&#(\d+);/g, function (m, n) { return String.fromCharCode(parseInt(n, 10)); });
+     t = t.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'").replace(/&nbsp;/g, ' ');
+     return t.replace(/\s+/g, ' ').replace(/^\s+|\s+$/g, '');
+   }
+   function linkListEl(items) {
+     var list = document.createElement('ul');
+     (items || []).forEach(function (item) {
+       var li = document.createElement('li');
+       if (item && typeof item === 'object' && item.url) {
+         var a = document.createElement('a');
+         a.href = item.url;
+         a.target = '_blank';
+         a.rel = 'noopener';
+         a.textContent = item.title;
+         li.appendChild(a);
+       } else {
+         li.textContent = (item && typeof item === 'object') ? item.title : item;
+       }
+       list.appendChild(li);
+     });
+     return list;
+   }
+   function renderNewsLinks() {
+     var box = document.getElementById('newsLinks');
+     if (!box) return;
+     box.textContent = '';
+     box.appendChild(linkListEl(NEWS_LINKS));
+   }
+   function renderStemLinks() {
+     var box = document.getElementById('stemList');
+     if (!box) return;
+     box.textContent = '';
+     Object.keys(STEM_LINKS).forEach(function (heading) {
+       var h = document.createElement('h5');
+       h.textContent = heading;
+       box.appendChild(h);
+       box.appendChild(linkListEl(STEM_LINKS[heading]));
+     });
+   }
+   function renderNewsStories(listEl, statusEl, posts) {
+     if (!listEl) return;
+     listEl.textContent = '';
+     if (!posts || !posts.length) {
+       if (statusEl) statusEl.textContent = 'No stories right now — tap a link above to open webbwatch956.com.';
+       return;
+     }
+     if (statusEl) statusEl.textContent = '';
+     var list = document.createElement('ul');
+     posts.forEach(function (p) {
+       var li = document.createElement('li');
+       var a = document.createElement('a');
+       a.href = p.link;
+       a.target = '_blank';
+       a.rel = 'noopener';
+       a.textContent = stripHtml(p.title && p.title.rendered) || 'Untitled story';
+       li.appendChild(a);
+       var meta = document.createElement('span');
+       meta.className = 'newsStoryMeta';
+       meta.textContent = ' — ' + String(p.date || '').slice(0, 10);
+       li.appendChild(meta);
+       var ex = stripHtml(p.excerpt && p.excerpt.rendered).replace(/\s*Continue reading\s*$/i, '');
+       if (ex) {
+         var exEl = document.createElement('span');
+         exEl.className = 'newsStoryExcerpt';
+         exEl.textContent = ex;
+         li.appendChild(exEl);
+       }
+       list.appendChild(li);
+     });
+     listEl.appendChild(list);
+   }
+   function loadNewsStories() {
+     var list = document.getElementById('newsStoriesList');
+     var status = document.getElementById('newsStoriesStatus');
+     if (!list) return null;
+     if (status) status.textContent = 'Loading the latest stories…';
+     list.textContent = '';
+     return fetch(NEWS_API_URL).then(function (r) { return r.json(); }).then(function (posts) {
+       renderNewsStories(list, status, posts);
+     }).catch(function () {
+       if (status) status.textContent = 'Couldn\'t load the latest stories — check your connection, or tap a link above to open webbwatch956.com.';
+     });
+   }
+   var newsOverlay = document.getElementById('newsOverlay');
+   var newsGo = document.getElementById('homeNewsBtn');
+   if (newsGo) newsGo.addEventListener('click', function () {
+     showChat();
+     if (newsOverlay) newsOverlay.classList.add('open');
+     renderNewsLinks();
+     loadNewsStories();
+   });
+   var newsClose = document.getElementById('newsClose');
+   if (newsClose) newsClose.addEventListener('click', function () {
+     if (newsOverlay) newsOverlay.classList.remove('open');
+     showHome();
+   });
+   var stemOverlay = document.getElementById('stemOverlay');
+   var stemGo = document.getElementById('homeStemBtn');
+   if (stemGo) stemGo.addEventListener('click', function () {
+     showChat();
+     if (stemOverlay) stemOverlay.classList.add('open');
+     renderStemLinks();
+   });
+   var stemClose = document.getElementById('stemClose');
+   if (stemClose) stemClose.addEventListener('click', function () {
+     if (stemOverlay) stemOverlay.classList.remove('open');
+     showHome();
    });
    paintChatBtn();
  })();
