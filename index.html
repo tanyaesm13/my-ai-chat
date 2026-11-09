@@ -279,6 +279,21 @@
     .cartLineCustom { margin: 2px 0 0; font-size: 13px; color: #7dff9e; }
     .cartPayBtn { display: block; margin: 8px 0 0; background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
     .cartPayBtn.on { background: #6a4fd0; border-color: #6a4fd0; }
+    /* EBT labels + payment chooser (build 2026.11.08-28, owner order
+       Nov 8, 2026 ~23:23 CST): green EBT badge on eligible items,
+       grey "Not EBT" on the rest, dark-red "Hot · Not EBT" on hot
+       food — all visible, all orderable, never hidden. */
+    .ebtBadge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; margin-left: 6px; background: #1e7a34; color: #c9ffd9; vertical-align: middle; white-space: nowrap; }
+    .ebtBadge.no { background: rgba(255,255,255,.12); color: #bbb; }
+    .ebtBadge.hot { background: #7a2e1e; color: #ffd9c9; }
+    .cartPayBox { border: 1px solid #72edfa; border-radius: 14px; padding: 10px 12px; margin: 8px 0 0; }
+    .cartPayTitle { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 6px; }
+    .cartPayRow { font-size: 13px; color: #fff; margin: 4px 0; }
+    .cartPayRow button { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; margin: 2px 4px 2px 0; }
+    .cartPayRow button.on { background: #6a4fd0; border-color: #6a4fd0; }
+    .cartPayRow button:disabled { opacity: .45; cursor: default; }
+    .cartPaySplit { font-size: 13px; color: #ffd166; margin: 6px 0 0; }
+    .cartPayNote { font-size: 12px; color: #bbb; margin: 4px 0 0; }
     .specialItem { cursor: pointer; }
     .specialTapHint { font-size: 12px; color: #72edfa; margin-top: 6px; }
 
@@ -1101,7 +1116,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-27</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-28</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1117,7 +1132,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-27';
+  var LUMI_BUILD_STAMP = '2026.11.08-28';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -7309,6 +7324,12 @@
      nm.className = 'menuItemName';
      nm.textContent = it.name || '';
      tx.appendChild(nm);
+     if (ebtBadgeText(it)) {
+       var eb = document.createElement('span');
+       eb.className = ebtBadgeClass(it);
+       eb.textContent = ebtBadgeText(it);
+       tx.appendChild(eb);
+     }
      if (it.price) {
        var pr = document.createElement('span');
        pr.className = 'menuItemPrice';
@@ -7327,7 +7348,44 @@
      });
      return b;
    }
-   function renderMenuSectionsInto(listEl, sections, storeId, storeName) {
+   /* EBT LABELS + ELIGIBLE-FIRST SORT (build 2026.11.08-28,
+     owner order Nov 8, 2026 ~23:23 CST): every menu item carries
+     ebt: true/false from the Worker classifier. Eligible items
+     show a green EBT badge and sort first in each section;
+     hot items show "Hot · Not EBT" and stay visible + orderable;
+     the rest show "Not EBT". Items with no ebt flag yet (cached
+     before the Worker deploy) show no badge and keep their
+     original order. The hot check here is display-only — the
+     Worker classifier is authoritative for the flag itself. */
+  var EBT_HOT_WORDS = ['rotisserie', 'hot deli', 'prepared meal', 'ready-to-eat', 'meal simple', 'hot sandwich', 'deli sandwich'];
+  function ebtHotItem(it) {
+    var s = String(((it && it.name) || '') + ' ' + ((it && it.description) || '')).toLowerCase();
+    for (var i = 0; i < EBT_HOT_WORDS.length; i++) { if (s.indexOf(EBT_HOT_WORDS[i]) !== -1) return true; }
+    return false;
+  }
+  function ebtBadgeText(it) {
+    if (!it || (it.ebt !== true && it.ebt !== false)) return '';
+    if (it.ebt === true) return 'EBT';
+    return ebtHotItem(it) ? '🔥 Hot · Not EBT' : 'Not EBT';
+  }
+  function ebtBadgeClass(it) {
+    if (!it || it.ebt !== false) return 'ebtBadge';
+    return ebtHotItem(it) ? 'ebtBadge hot' : 'ebtBadge no';
+  }
+  function ebtDetailText(it) {
+    if (!it || (it.ebt !== true && it.ebt !== false)) return '';
+    if (it.ebt === true) return '✅ EBT-qualified — SNAP can pay for this';
+    return ebtHotItem(it) ? '🔥 Hot item — not EBT-qualified' : 'Not EBT-qualified — SNAP cannot pay for this';
+  }
+  function ebtSortItems(items) {
+    var arr = (items || []).slice();
+    var anyLabeled = false;
+    arr.forEach(function (it) { if (it && (it.ebt === true || it.ebt === false)) anyLabeled = true; });
+    if (!anyLabeled) return arr;
+    function rank(it) { if (!it) return 2; if (it.ebt === true) return 0; if (it.ebt === false) return 1; return 2; }
+    return arr.sort(function (a, b) { return rank(a) - rank(b); });
+  }
+  function renderMenuSectionsInto(listEl, sections, storeId, storeName) {
      var anyItems = false;
      sections.forEach(function (sec) {
        var items = (sec && sec.items) || [];
@@ -7337,7 +7395,7 @@
        h.className = 'menuSectionTitle';
        h.textContent = sec.name || 'Menu';
        listEl.appendChild(h);
-       items.forEach(function (it, i) {
+       ebtSortItems(items).forEach(function (it, i) {
          listEl.appendChild(menuItemButton(storeId, storeName, it, (i + 1) + '. '));
          anyItems = true;
        });
@@ -7356,7 +7414,7 @@
            head.textContent = (hidden ? '▾ ' : '▸ ') + (sub.name || 'More');
          });
          listEl.appendChild(head);
-         subItems.forEach(function (it, i) {
+         ebtSortItems(subItems).forEach(function (it, i) {
            wrap.appendChild(menuItemButton(storeId, storeName, it, (i + 1) + '. '));
            anyItems = true;
          });
@@ -7528,6 +7586,12 @@
      pr.className = 'menuDetailPrice';
      pr.textContent = (item && item.price) ? item.price : 'Price not listed';
      panel.appendChild(pr);
+     if (ebtDetailText(item)) {
+       var eb2 = document.createElement('p');
+       eb2.className = ebtBadgeClass(item);
+       eb2.textContent = ebtDetailText(item);
+       panel.appendChild(eb2);
+     }
      if (item && item.description) {
        var ds = document.createElement('p');
        ds.className = 'menuDetailDesc';
@@ -7690,37 +7754,89 @@
      placeholder — never a broken image, never an invented photo.
      Remove is obvious: every line has a Remove button, quantity 0
      removes it, and Clear cart empties the whole thing. Build
-     2026.11.08-27: the line's note carries the dropdown's
+     2026.11.08-28: the line's note carries the dropdown's
      per-ingredient customizations ("Extra Cheese, No Pickles")
-     and shows under the name; a "Pay with EBT / food stamps"
-     toggle appears on a store group only when that store's
-     registry ebt flag is true (all false for now — see
-     EBT_FLAGS). */
+     and shows under the name; a payment chooser (SNAP / TANF
+     cash / debit / credit) appears on a grocery store group,
+     with the split amounts shown before she sends the cart
+     (SNAP only when that store's registry ebt flag is true —
+     all false for now, see EBT_FLAGS). */
    var CART_KEY = 'lumi_cart_v1';
    var CART_CHIPS = ['No pickles', 'No onions', 'Extra sauce', 'No ice'];
-  /* PAY WITH EBT (build 2026.11.08-27, owner order Nov 8, 2026
-     ~22:57 CST): at checkout for H-E-B / Walmart / Target
-     grocery orders, "Pay with EBT / food stamps" is a payment
-     choice ONLY when that store's registry ebt flag is true —
-     hidden otherwise, so she never sees a dead option. The
-     flags mirror the Worker's registry (GROCERY_ADAPTERS ebt)
-     and are ALL false until each store's EBT add is verified
-     — flip one to true here when its verification lands. A
-     Worker /stores endpoint replaces this built-in table in a
-     later build (same pattern as FOOD_STORE_IDS). The choice
-     is per store, kept in localStorage (lumi_cart_pay_v1),
-     and rides into the "Send cart to Lumi" message for that
-     store only. SNAP-eligible groceries go on the Lone Star
-     card; the rest (fees, tax, tip, anything not SNAP-eligible)
-     goes on her debit card — the split is Lumi's job at
-     checkout, never a number invented here. */
+  /* CHECKOUT PAYMENT CHOICE — SNAP / TANF / DEBIT / CREDIT
+     (build 2026.11.08-28, owner order Nov 8, 2026 ~23:23 CST,
+     replaces the -27 single EBT toggle): at checkout for
+     H-E-B / Walmart / Target / Amazon grocery orders she picks
+     how to pay. Waterfall: SNAP (Lone Star) pays the EBT items
+     first — ONLY when that store's registry ebt flag is true
+     (all false until each store's EBT add is verified — flip
+     one to true here when its verification lands; the flags
+     mirror the Worker's GROCERY_ADAPTERS ebt, and a Worker
+     /stores endpoint replaces this built-in table in a later
+     build, same pattern as FOOD_STORE_IDS). TANF cash pays the
+     rest IF it has money this time — Lumi CANNOT see the TANF
+     balance, so the chooser ASKS "Does TANF have money this
+     time?" (Yes/No, default No — never assumed). If TANF is
+     empty, her debit card (Visa ending 2836) or the credit card
+     on file pays the rest. The Favor delivery fee is NEVER EBT
+     — always on her debit card, kept separate; it is not in
+     the cart total yet (a Favor run is priced after the order
+     is placed), so the chooser states the rule instead of a
+     number. The choice is per store, kept in localStorage
+     (lumi_cart_pay_v1), and rides into the "Send cart to Lumi"
+     message for that store only, with the split amounts shown
+     BEFORE she sends — the exact total is shown before any
+     approval, and nothing is paid without her yes. */
   var EBT_FLAGS = { heb: false, walmart: false, target: false, amazon: false };
+  var EBT_PAY_STORES = { heb: true, walmart: true, target: true, amazon: true };
   var CART_PAY_KEY = 'lumi_cart_pay_v1';
   function loadCartPay() { try { var raw = localStorage.getItem(CART_PAY_KEY); var o = raw ? JSON.parse(raw) : {}; return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
   function saveCartPay(pay) { try { localStorage.setItem(CART_PAY_KEY, JSON.stringify(pay || {})); } catch (e) {} }
   function ebtPayAvailable(storeId) { return EBT_FLAGS[storeId] === true; }
-  function cartPayFor(storeId) { var p = loadCartPay(); return p[storeId] === 'ebt' ? 'ebt' : ''; }
+  function cartPayDefault(storeId) { return { snap: ebtPayAvailable(storeId), remainder: 'debit', tanfHasFunds: false }; }
+  function cartPayFor(storeId) {
+    var p = loadCartPay();
+    var v = p[storeId];
+    if (v && typeof v === 'object') {
+      return { snap: v.snap === true && ebtPayAvailable(storeId), remainder: (v.remainder === 'tanf' || v.remainder === 'credit') ? v.remainder : 'debit', tanfHasFunds: v.tanfHasFunds === true };
+    }
+    if (v === 'ebt') return { snap: ebtPayAvailable(storeId), remainder: 'debit', tanfHasFunds: false };
+    return cartPayDefault(storeId);
+  }
   function setCartPay(storeId, pay) { var p = loadCartPay(); if (pay) p[storeId] = pay; else delete p[storeId]; saveCartPay(p); }
+  /* Split math for one store group (mirrors the Worker waterfall):
+     SNAP pays eligible lines first (only when the store's EBT is
+     set up and she chose SNAP); TANF pays the rest when it has
+     money this time — and only when the store's EBT is set up
+     (the Lone Star card cannot run where EBT isn't set up);
+     otherwise debit (Visa ending 2836) or the credit card on
+     file pays the rest. Lines with no price are excluded from
+     the math and flagged unpriced — never $0. */
+  function cartPaySplit(lines, pay, storeEbt) {
+    var snap = 0, rest = 0, priced = false, unpriced = false;
+    (lines || []).forEach(function (l) {
+      var v = cartPriceValue(l.price);
+      if (v === null) { unpriced = true; return; }
+      priced = true;
+      var amt = v * (l.qty || 1);
+      if (pay.snap && storeEbt === true && l.ebt === true) snap += amt; else rest += amt;
+    });
+    snap = Math.round(snap * 100) / 100;
+    rest = Math.round(rest * 100) / 100;
+    var tanf = (storeEbt === true && pay.remainder === 'tanf' && pay.tanfHasFunds) ? rest : 0;
+    var card = Math.round((rest - tanf) * 100) / 100;
+    return { snapTotal: snap, remainderTotal: rest, tanfTotal: tanf, cardTotal: card, cardTender: pay.remainder === 'credit' ? 'credit' : 'debit', favorFee: 0, total: Math.round((snap + rest) * 100) / 100, priced: priced, unpriced: unpriced };
+  }
+  function cartPaySplitText(lines, pay, storeEbt) {
+    var s = cartPaySplit(lines, pay, storeEbt);
+    if (!s.priced) return '';
+    var parts = [];
+    if (s.snapTotal > 0) parts.push('SNAP (Lone Star): $' + s.snapTotal.toFixed(2));
+    if (s.tanfTotal > 0) parts.push('TANF cash: $' + s.tanfTotal.toFixed(2));
+    if (s.cardTotal > 0) parts.push((s.cardTender === 'credit' ? 'Credit card on file' : 'Debit (Visa ending 2836)') + ': $' + s.cardTotal.toFixed(2));
+    if (s.unpriced) parts.push('Lumi to confirm the rest — some items have no price listed');
+    return parts.join(' · ');
+  }
    function loadCart() { try { var raw = localStorage.getItem(CART_KEY); var arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; } catch (e) { return []; } }
    function saveCart(items) { try { localStorage.setItem(CART_KEY, JSON.stringify(items)); } catch (e) {} updateCartBadge(); }
    function cartCount() { var n = 0; loadCart().forEach(function (l) { n += (l.qty || 0); }); return n; }
@@ -7728,7 +7844,7 @@
    function addToCart(storeId, storeName, it, qty) {
      var items = loadCart();
      var n = (typeof qty === 'number' && qty > 0) ? Math.floor(qty) : 1;
-     var line = { storeId: storeId, storeName: storeName, name: it.name || '', price: it.price || null, image: it.image || null, qty: n, note: (it && it.note) || '' };
+     var line = { storeId: storeId, storeName: storeName, name: it.name || '', price: it.price || null, image: it.image || null, qty: n, note: (it && it.note) || '', ebt: (it && typeof it.ebt === 'boolean') ? it.ebt : null };
      var id = cartLineId(line);
      var found = null;
      items.forEach(function (l) { if (cartLineId(l) === id) found = l; });
@@ -7841,7 +7957,92 @@
      row.appendChild(chips);
      return row;
    }
-   function renderCart() {
+   function cartPayBox(g, items) {
+    var pay = cartPayFor(g.storeId);
+    var box = document.createElement('div');
+    box.className = 'cartPayBox';
+    var title = document.createElement('p');
+    title.className = 'cartPayTitle';
+    title.textContent = 'How do you want to pay?';
+    box.appendChild(title);
+    var snapRow = document.createElement('div');
+    snapRow.className = 'cartPayRow';
+    var snapBtn = document.createElement('button');
+    snapBtn.type = 'button';
+    snapBtn.className = pay.snap ? 'on' : '';
+    snapBtn.textContent = pay.snap ? '✓ SNAP (Lone Star)' : 'SNAP (Lone Star)';
+    if (!ebtPayAvailable(g.storeId)) { snapBtn.disabled = true; snapBtn.textContent = 'SNAP (Lone Star) — not set up at this store yet'; }
+    snapBtn.addEventListener('click', function () {
+      var p = cartPayFor(g.storeId);
+      p.snap = !p.snap;
+      setCartPay(g.storeId, p);
+      renderCart();
+    });
+    snapRow.appendChild(snapBtn);
+    var snapHint = document.createElement('span');
+    snapHint.textContent = ' pays the EBT items first';
+    snapRow.appendChild(snapHint);
+    box.appendChild(snapRow);
+    var restRow = document.createElement('div');
+    restRow.className = 'cartPayRow';
+    var restLab = document.createElement('span');
+    restLab.textContent = 'The rest goes on: ';
+    restRow.appendChild(restLab);
+    [['tanf', 'TANF cash'], ['debit', 'Debit (Visa ••2836)'], ['credit', 'Credit card on file']].forEach(function (opt) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = pay.remainder === opt[0] ? 'on' : '';
+      b.textContent = opt[1];
+      if (opt[0] === 'tanf' && !ebtPayAvailable(g.storeId)) { b.disabled = true; b.textContent = 'TANF cash — Lone Star not set up here yet'; }
+      b.addEventListener('click', function () {
+        var p = cartPayFor(g.storeId);
+        p.remainder = opt[0];
+        setCartPay(g.storeId, p);
+        renderCart();
+      });
+      restRow.appendChild(b);
+    });
+    box.appendChild(restRow);
+    if (pay.remainder === 'tanf') {
+      var tanfRow = document.createElement('div');
+      tanfRow.className = 'cartPayRow';
+      var tanfLab = document.createElement('span');
+      tanfLab.textContent = 'Does TANF have money this time? ';
+      tanfRow.appendChild(tanfLab);
+      [['yes', true], ['no', false]].forEach(function (opt) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = (pay.tanfHasFunds === opt[1]) ? 'on' : '';
+        b.textContent = opt[0] === 'yes' ? 'Yes — TANF has money' : 'No — TANF is empty';
+        b.addEventListener('click', function () {
+          var p = cartPayFor(g.storeId);
+          p.tanfHasFunds = opt[1];
+          setCartPay(g.storeId, p);
+          renderCart();
+        });
+        tanfRow.appendChild(b);
+      });
+      box.appendChild(tanfRow);
+      if (!pay.tanfHasFunds) {
+        var tanfNote = document.createElement('p');
+        tanfNote.className = 'cartPayNote';
+        tanfNote.textContent = 'TANF is empty, so the rest goes on your debit card (Visa ending 2836).';
+        box.appendChild(tanfNote);
+      }
+    }
+    var lines = g.indices.map(function (idx) { return items[idx]; });
+    var split = document.createElement('p');
+    split.className = 'cartPaySplit';
+    var splitTxt = cartPaySplitText(lines, pay, ebtPayAvailable(g.storeId));
+    split.textContent = splitTxt ? ('Split: ' + splitTxt) : 'Split: Lumi to confirm';
+    box.appendChild(split);
+    var feeNote = document.createElement('p');
+    feeNote.className = 'cartPayNote';
+    feeNote.textContent = 'Favor delivery fee is separate — always on your debit card, never on EBT.';
+    box.appendChild(feeNote);
+    return box;
+  }
+  function renderCart() {
      var list = document.getElementById('cartList');
      var empty = document.getElementById('cartEmpty');
      var totals = document.getElementById('cartTotals');
@@ -7880,17 +8081,7 @@
        sub.className = 'cartStoreSubtotal';
        sub.textContent = (!gUnpriced && gPriced) ? ('Subtotal: $' + gSum.toFixed(2)) : 'Subtotal: Lumi to confirm';
        wrap.appendChild(sub);
-       if (ebtPayAvailable(g.storeId)) {
-         var payBtn = document.createElement('button');
-         payBtn.type = 'button';
-         payBtn.className = 'cartPayBtn' + (cartPayFor(g.storeId) === 'ebt' ? ' on' : '');
-         payBtn.textContent = cartPayFor(g.storeId) === 'ebt' ? '✓ Pay with EBT / food stamps' : '💳 Pay with EBT / food stamps';
-         payBtn.addEventListener('click', function () {
-           setCartPay(g.storeId, cartPayFor(g.storeId) === 'ebt' ? '' : 'ebt');
-           renderCart();
-         });
-         wrap.appendChild(payBtn);
-       }
+       if (EBT_PAY_STORES[g.storeId]) wrap.appendChild(cartPayBox(g, items));
        list.appendChild(wrap);
      });
      if (totals) {
@@ -7959,7 +8150,18 @@
          lines.push('- ' + l.name + (v === null ? '' : ' — $' + v.toFixed(2)) + ' x' + (l.qty || 1) + (l.note ? ' — ' + l.note : ''));
        });
        lines.push(allPriced ? ('Subtotal: $' + sub.toFixed(2)) : 'Subtotal: Lumi to confirm');
-       if (cartPayFor(byStore[storeName].storeId) === 'ebt') lines.push('Payment: EBT / food stamps — SNAP-eligible groceries on my Lone Star card, the rest on my debit card.');
+       if (EBT_PAY_STORES[byStore[storeName].storeId]) {
+         var gPay = cartPayFor(byStore[storeName].storeId);
+         var gSplit = cartPaySplit(byStore[storeName].lines, gPay, ebtPayAvailable(byStore[storeName].storeId));
+         var payParts = [];
+         if (gSplit.snapTotal > 0) payParts.push('SNAP $' + gSplit.snapTotal.toFixed(2) + ' on my Lone Star card (EBT items)');
+         if (gSplit.tanfTotal > 0) payParts.push('TANF cash $' + gSplit.tanfTotal.toFixed(2));
+         if (gSplit.cardTotal > 0) payParts.push((gSplit.cardTender === 'credit' ? 'credit card on file' : 'debit card (Visa ending 2836)') + ' $' + gSplit.cardTotal.toFixed(2));
+         if (!gSplit.priced) payParts.push('Lumi to confirm the split — some items have no price listed');
+         if (payParts.length) lines.push('Payment: ' + payParts.join('; ') + '.');
+         if (!ebtPayAvailable(byStore[storeName].storeId)) lines.push('EBT is not set up at this store yet — SNAP cannot pay here.');
+         lines.push('If a Favor runner delivers this, the Favor fee goes on my debit card, separate — never on EBT.');
+       }
      });
      lines.push('Please place one order per store.');
      return lines.join('\n');
