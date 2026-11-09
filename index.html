@@ -175,22 +175,31 @@
     /* News tab + STEM tab (build 2026.11.08-20, owner order Nov 8,
        2026): same overlay pattern as Entertainment — a fixed
        full-screen overlay, tappable links, Close goes back home.
-       News stories load live from the public WordPress API (no
-       Worker); STEM links are static verified free sources. No
-       sign-up or subscription from either tab. */
-    #newsOverlay, #stemOverlay, #financeOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
-    #newsOverlay.open, #stemOverlay.open, #financeOverlay.open { display: flex; }
-    #newsOverlay h2, #stemOverlay h2, #financeOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+       News stories load live from webbwatch956.com itself
+       (stories/index.json + per-story JSON, no Worker);
+       STEM links are static verified free sources. No
+       sign-up or subscription from either tab.
+       COMBINED NEWS / STEM / FINANCE TAB (build 2026.11.08-26,
+       owner order Nov 8, 2026 ~10:19 PM CST): the three tabs
+       are ONE home button and ONE overlay now — News, then
+       STEM, then Finance, each section with its own heading,
+       in that order. Same overlay, same links, same
+       Close-goes-home. */
+    #newsStemFinanceOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
+    #newsStemFinanceOverlay.open { display: flex; }
+    #newsStemFinanceOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #newsStemFinanceOverlay h3 { margin: 18px 0 0; font-size: 17px; color: #72edfa; }
     #newsHint, #newsNote, #stemHint, #stemNote, #finHint, #finNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
-    #newsLinks, #newsStories, #stemList, #finList { width: min(420px, 90vw); text-align: left; }
+    #newsLinks, #newsStories, #newsMore, #stemList, #finList { width: min(420px, 90vw); text-align: left; }
     #newsStories h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
+    #newsMore h4 { margin: 14px 0 6px; font-size: 16px; color: #72edfa; }
     .newsStatus { font-size: 13px; color: #bbb; margin: 4px 0; }
     .newsList h5, .stemList h5 { margin: 12px 0 4px; font-size: 14px; color: #9c89f4; }
     .newsList ul, .stemList ul { margin: 4px 0; padding-left: 22px; font-size: 14px; line-height: 1.5; }
     .newsList a, .stemList a { color: #b7a6ff; text-decoration: underline; }
     .newsStoryMeta { font-size: 12px; color: #888; }
     .newsStoryExcerpt { display: block; font-size: 13px; color: #bbb; margin-top: 2px; }
-    #newsClose, #stemClose, #finClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    #newsStemFinanceClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     .foodCompanyLoading { font-size: 13px; color: #bbb; margin: 4px 0; }
     #foodMenuAdded { min-height: 18px; font-size: 13px; color: #7dff9e; text-align: center; margin: 8px 0; }
     .foodMenuBtn { display: block; width: 100%; background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin: 6px 0; }
@@ -771,9 +780,7 @@
         <button id="homeShopBtn" type="button">🛍️ Shopping</button>
         <button id="homeEntertainmentBtn" type="button">🎬 Entertainment</button>
         <button id="homeCartBtn" type="button">🛒 My cart</button>
-        <button id="homeNewsBtn" type="button">📰 News</button>
-        <button id="homeStemBtn" type="button">🔬 STEM</button>
-        <button id="homeFinanceBtn" type="button">💰 Finance</button>
+        <button id="homeNewsStemFinanceBtn" type="button">📰🔬💰 News, STEM &amp; Finance</button>
     </div>
     <p id="homeHint">Tap 🏠 up top any time to come back home.</p>
 </div>
@@ -942,8 +949,9 @@
     <p id="entNote">More services are added as they're linked.</p>
     <button id="entClose" type="button">← Back to home</button>
 </div>
-<div id="newsOverlay">
-    <h2>📰 News</h2>
+<div id="newsStemFinanceOverlay">
+    <h2>📰 News, STEM &amp; Finance</h2>
+    <h3>📰 News</h3>
     <p id="newsHint">Webb Watch nine five six — Laredo &amp; Webb County news, plus La Onda Libre. Lumi follows what you already have; she never signs you up for anything new.</p>
     <div id="newsLinks" class="newsList"></div>
     <div id="newsStories">
@@ -951,22 +959,20 @@
         <p id="newsStoriesStatus" class="newsStatus">Loading the latest stories…</p>
         <div id="newsStoriesList" class="newsList"></div>
     </div>
+    <div id="newsMore">
+        <h4>🗞️ More news from trusted sources</h4>
+        <div id="newsMoreList" class="newsList"></div>
+    </div>
     <p id="newsNote">Stories come straight from the Webb Watch wire, newest first.</p>
-    <button id="newsClose" type="button">← Back to home</button>
-</div>
-<div id="stemOverlay">
-    <h2>🔬 STEM</h2>
+    <h3>🔬 STEM</h3>
     <p id="stemHint">Science, tech, and space — free to read, no sign-up. Tap a source to open it.</p>
     <div id="stemList" class="stemList"></div>
     <p id="stemNote">Every source here is free to read — no paywall, no subscription from Lumi.</p>
-    <button id="stemClose" type="button">← Back to home</button>
-</div>
-<div id="financeOverlay">
-    <h2>💰 Finance</h2>
+    <h3>💰 Finance</h3>
     <p id="finHint">Your money, your markets — ask Lumi about any stock and she researches it for you, view-only. She never trades, never moves money, and never connects a bank account without your explicit yes.</p>
     <div id="finList" class="stemList"></div>
     <p id="finNote">Robinhood and OG are your accounts — Lumi only follows what you already have. Every research source here is free to read.</p>
-    <button id="finClose" type="button">← Back to home</button>
+    <button id="newsStemFinanceClose" type="button">← Back to home</button>
 </div>
 <div id="meetOverlay">
     <canvas id="meetStars"></canvas>
@@ -1072,7 +1078,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-24</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-26</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1088,7 +1094,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-24';
+  var LUMI_BUILD_STAMP = '2026.11.08-26';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -4989,7 +4995,7 @@
     // home screen, or the chat.
     window._callPriorView = (function () {
       try {
-        var ov = document.querySelector('#meetOverlay.open, #teamOverlay.open, #foodOverlay.open, #shopOverlay.open, #entOverlay.open, #newsOverlay.open, #stemOverlay.open, #financeOverlay.open, #threadsOverlay.open, #cartOverlay.open');
+        var ov = document.querySelector('#meetOverlay.open, #teamOverlay.open, #foodOverlay.open, #shopOverlay.open, #entOverlay.open, #newsStemFinanceOverlay.open, #threadsOverlay.open, #cartOverlay.open');
         if (ov) return ov.id;
         if (document.body.classList.contains('onHome')) return 'home';
       } catch (e) {}
@@ -8021,13 +8027,29 @@
       kind from either tab: News only follows the Webb Watch /
       La Onda Libre Tanya already has; STEM only links free
       public sources. No Worker dependency: News stories load
-      straight from the public WordPress API (CORS-open, verified
-      live Nov 8, 2026 — HTTP 200, real stories returned), STEM
-      links are static verified URLs. Titles/excerpts from the
-      wire are HTML — stripped to plain text before display, and
-      every link is built with textContent only (same rule as
-      entRenderList: no HTML is ever built from a title). */
-   var NEWS_API_URL = 'https://public-api.wordpress.com/wp/v2/sites/webbwatch956.wordpress.com/posts?per_page=10&_fields=id,date,title,excerpt,link';
+      straight from webbwatch956.com itself — stories/index.json
+      (slug list, newest first) plus one stories/<slug>.json per
+      story (slug, title, date, excerpt), verified live Nov 8,
+      2026. No outside news feed anywhere: the old feed is
+      OUT (owner order Nov 8, 2026 ~10:20 PM CST) — if the
+      site's own JSON fails, the tab shows a plain link to
+      webbwatch956.com and nothing else. Titles/excerpts from
+      the wire may carry HTML — stripped to plain text before
+      display, and every link is built with textContent only
+      (same rule as entRenderList: no HTML is ever built from
+      a title). */
+   var NEWS_INDEX_URL = 'https://webbwatch956.com/stories/index.json';
+   var NEWS_STORY_URL = 'https://webbwatch956.com/stories/';
+   var NEWS_STORY_PAGE = 'https://webbwatch956.com/story.html?slug=';
+   var NEWS_STORY_COUNT = 10;
+   var MORE_NEWS_LINKS = [
+     { title: 'AP News — U.S. & world news', url: 'https://apnews.com' },
+     { title: 'Texas Tribune — Texas news', url: 'https://www.texastribune.org' },
+     { title: 'Laredo Morning Times — local news', url: 'https://www.lmtonline.com' },
+     { title: 'KGNS — Laredo TV news', url: 'https://www.kgns.tv' },
+     { title: 'Fox 13 — news', url: 'https://www.fox13news.com' },
+     { title: 'NY Post — news', url: 'https://nypost.com' }
+   ];
    var NEWS_LINKS = [
      { title: '📰 webbwatch956.com — Webb Watch nine five six', url: 'https://webbwatch956.com/' },
      { title: '▶️ Webb Watch 956 on YouTube', url: 'https://www.youtube.com/@WebbWatch956' },
@@ -8089,6 +8111,12 @@
      box.textContent = '';
      box.appendChild(linkListEl(NEWS_LINKS));
    }
+   function renderMoreNewsLinks() {
+     var box = document.getElementById('newsMoreList');
+     if (!box) return;
+     box.textContent = '';
+     box.appendChild(linkListEl(MORE_NEWS_LINKS));
+   }
    function renderStemLinks() {
      var box = document.getElementById('stemList');
      if (!box) return;
@@ -8112,16 +8140,16 @@
      posts.forEach(function (p) {
        var li = document.createElement('li');
        var a = document.createElement('a');
-       a.href = p.link;
+       a.href = NEWS_STORY_PAGE + encodeURIComponent(p.slug || '');
        a.target = '_blank';
        a.rel = 'noopener';
-       a.textContent = stripHtml(p.title && p.title.rendered) || 'Untitled story';
+       a.textContent = stripHtml(p.title) || 'Untitled story';
        li.appendChild(a);
        var meta = document.createElement('span');
        meta.className = 'newsStoryMeta';
        meta.textContent = ' — ' + String(p.date || '').slice(0, 10);
        li.appendChild(meta);
-       var ex = stripHtml(p.excerpt && p.excerpt.rendered).replace(/\s*Continue reading\s*$/i, '');
+       var ex = stripHtml(p.excerpt || '');
        if (ex) {
          var exEl = document.createElement('span');
          exEl.className = 'newsStoryExcerpt';
@@ -8138,37 +8166,19 @@
      if (!list) return null;
      if (status) status.textContent = 'Loading the latest stories…';
      list.textContent = '';
-     return fetch(NEWS_API_URL).then(function (r) { return r.json(); }).then(function (posts) {
-       renderNewsStories(list, status, posts);
+     return fetch(NEWS_INDEX_URL).then(function (r) { return r.json(); }).then(function (slugs) {
+       var latest = (slugs || []).slice(0, NEWS_STORY_COUNT);
+       return Promise.all(latest.map(function (slug) {
+         return fetch(NEWS_STORY_URL + encodeURIComponent(slug) + '.json')
+           .then(function (r) { return r.json(); })
+           .catch(function () { return null; });
+       }));
+     }).then(function (posts) {
+       renderNewsStories(list, status, (posts || []).filter(function (p) { return p && p.slug; }));
      }).catch(function () {
-       if (status) status.textContent = 'Couldn\'t load the latest stories — check your connection, or tap a link above to open webbwatch956.com.';
+       if (status) status.textContent = 'Couldn\'t load the latest stories — tap a link above to open webbwatch956.com.';
      });
    }
-   var newsOverlay = document.getElementById('newsOverlay');
-   var newsGo = document.getElementById('homeNewsBtn');
-   if (newsGo) newsGo.addEventListener('click', function () {
-     showChat();
-     if (newsOverlay) newsOverlay.classList.add('open');
-     renderNewsLinks();
-     loadNewsStories();
-   });
-   var newsClose = document.getElementById('newsClose');
-   if (newsClose) newsClose.addEventListener('click', function () {
-     if (newsOverlay) newsOverlay.classList.remove('open');
-     showHome();
-   });
-   var stemOverlay = document.getElementById('stemOverlay');
-   var stemGo = document.getElementById('homeStemBtn');
-   if (stemGo) stemGo.addEventListener('click', function () {
-     showChat();
-     if (stemOverlay) stemOverlay.classList.add('open');
-     renderStemLinks();
-   });
-   var stemClose = document.getElementById('stemClose');
-   if (stemClose) stemClose.addEventListener('click', function () {
-     if (stemOverlay) stemOverlay.classList.remove('open');
-     showHome();
-   });
    /* Finance tab (build 2026.11.08-23, owner order Nov 8,
       2026 ~21:18 CST; merged onto the -22 combine build):
       same overlay pattern as News/STEM. Your accounts
@@ -8201,16 +8211,31 @@
        box.appendChild(linkListEl(FIN_LINKS[heading]));
      });
    }
-   var financeOverlay = document.getElementById('financeOverlay');
-   var financeGo = document.getElementById('homeFinanceBtn');
-   if (financeGo) financeGo.addEventListener('click', function () {
+   /* COMBINED NEWS / STEM / FINANCE TAB (build 2026.11.08-26,
+      owner order Nov 8, 2026 ~10:19 PM CST): the three home
+      buttons are ONE button and the three overlays are ONE
+      overlay now — News, then STEM, then Finance, in that
+      order, each section with its own heading. Same open
+      pattern as Food / Shopping / Entertainment: showChat()
+      (leave home, no silence — opening a tab is not going
+      home), open the overlay, render all three sections and
+      load the live stories. Close goes back home through
+      showHome(), which calls stopAllSpeech() — returning
+      home silences her, exactly like every other tab. */
+   var newsStemFinanceOverlay = document.getElementById('newsStemFinanceOverlay');
+   var nsfGo = document.getElementById('homeNewsStemFinanceBtn');
+   if (nsfGo) nsfGo.addEventListener('click', function () {
      showChat();
-     if (financeOverlay) financeOverlay.classList.add('open');
+     if (newsStemFinanceOverlay) newsStemFinanceOverlay.classList.add('open');
+     renderNewsLinks();
+     loadNewsStories();
+     renderStemLinks();
      renderFinLinks();
+     renderMoreNewsLinks();
    });
-   var finClose = document.getElementById('finClose');
-   if (finClose) finClose.addEventListener('click', function () {
-     if (financeOverlay) financeOverlay.classList.remove('open');
+   var nsfClose = document.getElementById('newsStemFinanceClose');
+   if (nsfClose) nsfClose.addEventListener('click', function () {
+     if (newsStemFinanceOverlay) newsStemFinanceOverlay.classList.remove('open');
      showHome();
    });
    paintChatBtn();
