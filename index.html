@@ -104,6 +104,9 @@
     .foodStore { background: #242746; border: 2px solid #72edfa; color: #fff; border-radius: 22px; padding: 13px 12px; font-size: 15px; cursor: pointer; }
     .foodStore:active { background: #72edfa; color: #171a3b; }
     .foodStore .foodState { display: block; font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    .foodStore .foodDelivery { display: block; font-size: 10px; opacity: 0.75; margin-top: 2px; line-height: 1.35; }
+    #foodDeliveryInfo { font-size: 13px; color: #cfe8ff; margin: 6px 0 0; max-width: 420px; text-align: center; }
+    .cartDeliveryFee { font-size: 12px; color: #cfe8ff; margin: 2px 0 0; }
     .foodStore[data-state="setting up"] { opacity: 0.65; border-style: dashed; }
     #foodClose { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     /* Company sub-folder (build 2026.11.08-14, owner order Nov 8,
@@ -172,6 +175,32 @@
     .entServiceEmpty { font-size: 13px; color: #bbb; margin: 4px 0; }
     .entServiceNote { font-size: 13px; color: #bbb; margin: 12px 0; }
     #entServiceBack { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
+    /* Scanner tab (build 2026.11.09-1, owner order Nov 9, 2026):
+       "Scanner" on the home screen — listen live to Laredo Police
+       + Webb County Sheriff, free on Broadcastify. Same overlay
+       pattern as Entertainment. Each card has a Listen button that
+       opens the feed page's own player inline (lazy iframe — the
+       feed page only loads when she taps Listen), plus an
+       "Open on Broadcastify" link that opens the feed page in a
+       new tab as the guaranteed path. Broadcastify sends no
+       X-Frame-Options on either feed page (checked Nov 9), but
+       the in-app render could not be verified without a browser —
+       the link covers it. No account, no sign-in, no payment. */
+    #scannerOverlay { display: none; position: fixed; inset: 0; background: rgba(23,26,59,0.94); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 24px; overflow-y: auto; }
+    #scannerOverlay.open { display: flex; }
+    #scannerOverlay h2 { margin: 0; font-size: 20px; color: #9c89f4; }
+    #scannerHint, #scannerNote { margin: 0; font-size: 13px; color: #bbb; text-align: center; max-width: 420px; }
+    .scannerCard { width: min(420px, 90vw); background: #242746; border: 2px solid #72edfa; border-radius: 22px; padding: 16px; text-align: left; }
+    .scannerCard h3 { margin: 0 0 6px; font-size: 18px; color: #72edfa; }
+    .scannerCard p { margin: 0 0 12px; font-size: 13px; color: #bbb; line-height: 1.5; }
+    .scannerListen { display: block; width: 100%; background: #6a4fd0; border: none; color: #fff; border-radius: 18px; padding: 12px 18px; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+    .scannerListen:active { background: #72edfa; color: #171a3b; }
+    .scannerListen.playing { background: #c0392b; }
+    .scannerOpen { display: block; text-align: center; color: #b7a6ff; font-size: 13px; }
+    .scannerPlayer { margin-top: 10px; }
+    .scannerPlayer[hidden] { display: none; }
+    .scannerPlayer iframe { width: 100%; height: 420px; border: none; border-radius: 12px; background: #0f1126; }
+    #scannerClose, #scannerCloseTop { background: none; border: 1px solid #72edfa; color: #fff; border-radius: 18px; padding: 8px 18px; font-size: 14px; cursor: pointer; }
     /* News tab + STEM tab (build 2026.11.08-20, owner order Nov 8,
        2026): same overlay pattern as Entertainment — a fixed
        full-screen overlay, tappable links, Close goes back home.
@@ -804,6 +833,7 @@
         <button id="homeFoodBtn" type="button">🍔 Food &amp; Groceries</button>
         <button id="homeShopBtn" type="button">🛍️ Shopping</button>
         <button id="homeEntertainmentBtn" type="button">🎬 Entertainment</button>
+        <button id="homeScannerBtn" type="button">📻 Scanner</button>
         <button id="homeCartBtn" type="button">🛒 My cart</button>
         <button id="homeNewsStemFinanceBtn" type="button">📰🔬💰 News, STEM &amp; Finance</button>
     </div>
@@ -890,52 +920,53 @@
     <p id="foodHint">Tap a place to order from it with Lumi.</p>
     <button id="foodCloseTop" type="button">← Back to home</button>
     <div id="foodGrid">
-        <button type="button" class="foodStore" data-store="Whataburger" data-state="linked">🍔 Whataburger <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Chick-fil-A" data-state="linked">🐔 Chick-fil-A <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Raising Cane's" data-state="linked">🍗 Raising Cane's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Domino's" data-state="linked">🍕 Domino's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Taco Palenque" data-state="linked">🌮 Taco Palenque <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Chili's" data-state="linked">🌶️ Chili's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="H-E-B" data-state="linked">🛒 H-E-B <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Walmart" data-state="linked">🛒 Walmart <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Sam's Club" data-state="linked">🛒 Sam's Club <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Chipotle" data-state="linked">🌯 Chipotle <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Texas Roadhouse" data-state="linked">🥩 Texas Roadhouse <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Olive Garden" data-state="linked">🍝 Olive Garden <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Golden Corral" data-state="linked">🍽️ Golden Corral <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="McDonald's" data-state="linked">🍟 McDonald's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Danny's" data-state="linked">🍳 Danny's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Logan's Roadhouse" data-state="linked">🥩 Logan's Roadhouse <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Lin's Grand Buffet" data-state="linked">🥡 Lin's Grand Buffet <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="La Roca" data-state="linked">🌮 La Roca <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Suarez" data-state="linked">🍽️ Suarez <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Tremendo Taco" data-state="linked">🌮 Tremendo Taco <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Cosmos Bar &amp; Grill" data-state="linked">🍹 Cosmos Bar &amp; Grill <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Target" data-state="linked">🎯 Target <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Pizza Hut" data-state="linked">🍕 Pizza Hut <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Papa John's" data-state="linked">🍕 Papa John's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Popeyes" data-state="linked">🍗 Popeyes <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Wingstop" data-state="linked">🍗 Wingstop <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="KFC" data-state="linked">🍗 KFC <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Burger King" data-state="linked">🍔 Burger King <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Wendy's" data-state="linked">🍔 Wendy's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Taco Bell" data-state="linked">🌮 Taco Bell <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Buffalo Wild Wings" data-state="linked">🍗 Buffalo Wild Wings <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="La Unica (Shiloh)" data-state="linked">🌮 La Unica (Shiloh) <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Church's Texas Chicken" data-state="linked">🍗 Church's Texas Chicken <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Chopsticks" data-state="linked">🥡 Chopsticks <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Jalapeños Pizza" data-state="linked">🍕 Jalapeños Pizza <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Sushi Madre" data-state="linked">🍣 Sushi Madre <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Applebee's" data-state="linked">🍽️ Applebee's <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Pizza Patrón" data-state="linked">🍕 Pizza Patrón <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Buffalo Wings &amp; Rings" data-state="linked">🍗 Buffalo Wings &amp; Rings <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Laredo Taco Company" data-state="linked">🌮 Laredo Taco Company <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Palenque Grill" data-state="linked">🌮 Palenque Grill <span class="foodState">linked</span></button>
-        <button type="button" class="foodStore" data-store="Nothing Bundt Cakes" data-state="linked">🎂 Nothing Bundt Cakes <span class="foodState">linked</span></button>
+        <button type="button" class="foodStore" data-store="Whataburger" data-state="linked">🍔 Whataburger <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Chick-fil-A" data-state="linked">🐔 Chick-fil-A <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Raising Cane's" data-state="linked">🍗 Raising Cane's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Pickup only</span></button>
+        <button type="button" class="foodStore" data-store="Domino's" data-state="linked">🍕 Domino's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Taco Palenque" data-state="linked">🌮 Taco Palenque <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Chili's" data-state="linked">🌶️ Chili's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="H-E-B" data-state="linked">🛒 H-E-B <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company delivery fee: $9.95 (dated)</span></button>
+        <button type="button" class="foodStore" data-store="Walmart" data-state="linked">🛒 Walmart <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company delivery fee: $7.95–$9.95 (reported) · Min $35.00 · Free delivery $35.00+</span></button>
+        <button type="button" class="foodStore" data-store="Sam's Club" data-state="linked">🛒 Sam's Club <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company delivery fee: tiered (Plus $0 on $50+) · Free delivery $50.00+</span></button>
+        <button type="button" class="foodStore" data-store="Chipotle" data-state="linked">🌯 Chipotle <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Texas Roadhouse" data-state="linked">🥩 Texas Roadhouse <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Pickup only</span></button>
+        <button type="button" class="foodStore" data-store="Olive Garden" data-state="linked">🍝 Olive Garden <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Restaurant delivery fee: $4.99 · Min $4.99</span></button>
+        <button type="button" class="foodStore" data-store="Golden Corral" data-state="linked">🍽️ Golden Corral <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="McDonald's" data-state="linked">🍟 McDonald's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Danny's" data-state="linked">🍳 Danny's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Logan's Roadhouse" data-state="linked">🥩 Logan's Roadhouse <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Lin's Grand Buffet" data-state="linked">🥡 Lin's Grand Buffet <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="La Roca" data-state="linked">🌮 La Roca <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Favor delivery fee: $3.49</span></button>
+        <button type="button" class="foodStore" data-store="Suarez" data-state="linked">🍽️ Suarez <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Restaurant delivery fee: $3.99</span></button>
+        <button type="button" class="foodStore" data-store="Tremendo Taco" data-state="linked">🌮 Tremendo Taco <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Favor delivery fee: $3.49</span></button>
+        <button type="button" class="foodStore" data-store="Cosmos Bar &amp; Grill" data-state="linked">🍹 Cosmos Bar &amp; Grill <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Target" data-state="linked">🎯 Target <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company delivery fee: $9.99 · Min $35.00 · Free delivery $35.00+</span></button>
+        <button type="button" class="foodStore" data-store="Pizza Hut" data-state="linked">🍕 Pizza Hut <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Papa John's" data-state="linked">🍕 Papa John's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Popeyes" data-state="linked">🍗 Popeyes <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Restaurant delivery fee: $1.49 · Min $12.00</span></button>
+        <button type="button" class="foodStore" data-store="Wingstop" data-state="linked">🍗 Wingstop <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout · Min $5.00</span></button>
+        <button type="button" class="foodStore" data-store="KFC" data-state="linked">🍗 KFC <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Burger King" data-state="linked">🍔 Burger King <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Wendy's" data-state="linked">🍔 Wendy's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Taco Bell" data-state="linked">🌮 Taco Bell <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Buffalo Wild Wings" data-state="linked">🍗 Buffalo Wild Wings <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="La Unica (Shiloh)" data-state="linked">🌮 La Unica (Shiloh) <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Favor delivery fee: $3.49</span></button>
+        <button type="button" class="foodStore" data-store="Church's Texas Chicken" data-state="linked">🍗 Church's Texas Chicken <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout · Free delivery $25.00+</span></button>
+        <button type="button" class="foodStore" data-store="Chopsticks" data-state="linked">🥡 Chopsticks <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Restaurant delivery fee: $0.00</span></button>
+        <button type="button" class="foodStore" data-store="Jalapeños Pizza" data-state="linked">🍕 Jalapeños Pizza <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Pickup only</span></button>
+        <button type="button" class="foodStore" data-store="Sushi Madre" data-state="linked">🍣 Sushi Madre <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Favor delivery fee: $2.49</span></button>
+        <button type="button" class="foodStore" data-store="Applebee's" data-state="linked">🍽️ Applebee's <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Pizza Patrón" data-state="linked">🍕 Pizza Patrón <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Buffalo Wings &amp; Rings" data-state="linked">🍗 Buffalo Wings &amp; Rings <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Laredo Taco Company" data-state="linked">🌮 Laredo Taco Company <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Favor delivery fee: $3.49 · Free delivery $12.00+</span></button>
+        <button type="button" class="foodStore" data-store="Palenque Grill" data-state="linked">🌮 Palenque Grill <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
+        <button type="button" class="foodStore" data-store="Nothing Bundt Cakes" data-state="linked">🎂 Nothing Bundt Cakes <span class="foodState">linked</span><span class="foodDelivery">No additional food delivery fees · Company fee: shown at checkout</span></button>
     </div>
     <div id="foodCompanyView" hidden>
         <button id="foodCompanyBackTop" type="button">← Back to Food &amp; Groceries</button>
         <h3 id="foodCompanyTitle"></h3>
+        <p id="foodDeliveryInfo"></p>
         <div id="foodWalmartSpecials" hidden>
             <h4>🛒 This week's specials and coupons — Walmart</h4>
             <div id="foodWalmartSpecialsList"><p class="foodCompanyLoading">Loading specials…</p></div>
@@ -999,6 +1030,27 @@
     </div>
     <p id="entNote">More services are added as they're linked.</p>
     <button id="entClose" type="button">← Back to home</button>
+</div>
+<div id="scannerOverlay">
+    <h2>📻 Police Scanner</h2>
+    <p id="scannerHint">Listen live to Laredo's police and sheriff radio, free on Broadcastify. Tap Listen on a feed — the sound comes from the feed's own player.</p>
+    <button id="scannerCloseTop" type="button">← Back to home</button>
+    <div class="scannerCard">
+        <h3>🚓 Laredo Police</h3>
+        <p>Main dispatch is encrypted, so you'll hear special events, traffic control, and parking enforcement.</p>
+        <button type="button" class="scannerListen" data-feed="37517">▶ Listen live</button>
+        <div class="scannerPlayer" hidden><iframe title="Laredo Police scanner" allow="autoplay"></iframe></div>
+        <a class="scannerOpen" href="https://www.broadcastify.com/listen/feed/37517" target="_blank" rel="noopener">Open on Broadcastify ↗</a>
+    </div>
+    <div class="scannerCard">
+        <h3>🤠 Webb County Sheriff</h3>
+        <p>Sheriff channels are encrypted, so this feed mostly carries Webb County Fire — sometimes a sheriff unit on the old frequency.</p>
+        <button type="button" class="scannerListen" data-feed="37549">▶ Listen live</button>
+        <div class="scannerPlayer" hidden><iframe title="Webb County Sheriff scanner" allow="autoplay"></iframe></div>
+        <a class="scannerOpen" href="https://www.broadcastify.com/listen/feed/37549" target="_blank" rel="noopener">Open on Broadcastify ↗</a>
+    </div>
+    <p id="scannerNote">Both feeds are free to listen to — no account, no sign-in. If a feed is quiet, it just means nothing is on the air right now.</p>
+    <button id="scannerClose" type="button">← Back to home</button>
 </div>
 <div id="newsStemFinanceOverlay">
     <h2>📰 News, STEM &amp; Finance</h2>
@@ -1129,7 +1181,7 @@
 <canvas id="skyStars"></canvas>
 <canvas id="homeSky"></canvas>
 <div id="popBubble" role="status"></div>
-<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.08-32</div>
+<div id="lumiBuildStamp" aria-hidden="true">build 2026.11.09-1</div>
 <div id="audioUnlockChip" role="button" tabindex="0">&#128266; Tap anywhere once to turn on Lumi's new voice</div>
 <script>
   // ================================================================
@@ -1145,7 +1197,7 @@
   //    what desktop Chrome/Edge require before ANY audio may play) and
   //    hands it to the main script's audio primer when available.
   // ================================================================
-  var LUMI_BUILD_STAMP = '2026.11.08-32';
+  var LUMI_BUILD_STAMP = '2026.11.09-1';
   window.__lumiBuildStamp = LUMI_BUILD_STAMP;
   window.__lumiUserGestured = false;
   (function () {
@@ -5130,7 +5182,7 @@
     // home screen, or the chat.
     window._callPriorView = (function () {
       try {
-        var ov = document.querySelector('#meetOverlay.open, #teamOverlay.open, #foodOverlay.open, #shopOverlay.open, #entOverlay.open, #newsStemFinanceOverlay.open, #threadsOverlay.open, #cartOverlay.open');
+        var ov = document.querySelector('#meetOverlay.open, #teamOverlay.open, #foodOverlay.open, #shopOverlay.open, #entOverlay.open, #scannerOverlay.open, #newsStemFinanceOverlay.open, #threadsOverlay.open, #cartOverlay.open');
         if (ov) return ov.id;
         if (document.body.classList.contains('onHome')) return 'home';
       } catch (e) {}
@@ -7148,6 +7200,7 @@
       cart, grouped by store, and Lumi drafts one order per store
       from it. */
    var FOOD_STORE_IDS = { "Whataburger": "whataburger", "Chick-fil-A": "chick_fil_a", "Raising Cane's": "raising_canes", "Domino's": "dominos", "Taco Palenque": "taco_palenque", "Chili's": "chilis", "H-E-B": "heb", "Walmart": "walmart", "Sam's Club": "sams_club", "Target": "target", "Pizza Hut": "pizza_hut", "Papa John's": "papa_johns", "Popeyes": "popeyes", "Wingstop": "wingstop", "KFC": "kfc", "Burger King": "burger_king", "Wendy's": "wendys", "Taco Bell": "taco_bell", "Buffalo Wild Wings": "buffalo_wild_wings", "La Unica (Shiloh)": "la_unica_shiloh", "Church's Texas Chicken": "churchs", "Chopsticks": "chopsticks", "Jalapeños Pizza": "jalapenos_pizza", "Sushi Madre": "sushi_madre", "Applebee's": "applebees", "Pizza Patrón": "pizza_patron", "Buffalo Wings & Rings": "buffalo_wings_rings", "Laredo Taco Company": "laredo_taco_company", "Palenque Grill": "palenque_grill", "Chipotle": "chipotle", "Texas Roadhouse": "texas_roadhouse", "Olive Garden": "olive_garden", "Golden Corral": "golden_corral", "McDonald's": "mcdonalds", "Danny's": "dannys", "Logan's Roadhouse": "logans", "Lin's Grand Buffet": "lins", "La Roca": "la_roca", "Suarez": "suarez", "Tremendo Taco": "tremendo_taco", "Cosmos Bar & Grill": "cosmos", "Nothing Bundt Cakes": "nothing_bundt_cakes" };
+   var FOOD_DELIVERY_INFO = {"academy": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": null, "threshold": 75, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed same-day delivery fee published; shown at checkout. Same-day is DoorDash-powered — do NOT offer unless she explicitly approves that carrier. Delivery minimum: No minimum published for same-day delivery. Free delivery on orders of $75.00+. ($75+ in-app with myAcademy Rewards for FREE same-day delivery (limited-time promo); $25+ with myAcademy for free STANDARD shipping.)"}, "adafruit": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": null, "threshold": 200, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed shipping rate published; calculated at checkout. Delivery minimum: No minimum order to ship. Free delivery on orders of $200.00+. ($200+ for free shipping in the U.S. (Adafruit's own cart page).)"}, "applebees": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No standard fixed fee; shown at checkout. Delivery minimum: No minimum for delivery."}, "auntie_annes": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published for regular delivery. Delivery minimum: No minimum published for regular delivery (catering orders over $150)."}, "baskin_robbins": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "black_white_coffee": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee.) Delivery minimum: No minimum published on Favor listing."}, "border_foundry": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee.) Delivery minimum: No minimum published on Favor listing."}, "buffalo_wild_wings": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Varies by location; shown at checkout. Delivery minimum: No minimum for delivery."}, "buffalo_wings_rings": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No standard fee published; shown at checkout only. Delivery minimum: No minimum published."}, "burger_king": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published; shown at checkout. Delivery minimum: No minimum published."}, "chick_fil_a": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — A delivery fee may apply and varies by location and delivery method; shown at checkout. Delivery minimum: A minimum purchase is required for delivery; amount not published."}, "chilis": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published; shown at checkout only. Delivery minimum: No minimum published."}, "chipotle": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Varies by partner and location; shown at checkout. Delivery minimum: Minimum order amount varies by partner; amount not published."}, "chopsticks": {"delivers": true, "fee": 0, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $0.00 (Free delivery on own ordering ($0 own fee); $3.49 via Favor.) Delivery minimum: Free delivery has a minimum required, but the amount is never published. Free delivery (own) — minimum required, amount not published."}, "churchs": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": 25, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Base fee not published by Church's itself. Delivery minimum: No minimum order amount for delivery published. Free delivery on orders of $25.00+. ($25+ for $0 delivery fee (own official Facebook, Nov 18, 2024).)"}, "cicis": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fee published; shown at checkout only. Delivery minimum: No minimum published."}, "cinnabon": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published. Delivery minimum: No minimum published."}, "cold_stone": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No Laredo store — nothing can be delivered to Laredo. Delivery minimum: No Laredo store."}, "cosmos": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fee published; ToastTab page returned HTTP 403 when fetched Nov 9. Delivery minimum: No minimum published."}, "dairy_queen": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Own pages say only 'additional fees' with no amount. Delivery minimum: Minimum order requirements exist; amount not published."}, "dannys": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fee published on own site or app listing. Delivery minimum: No minimum published."}, "dominos": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Per-store delivery charge, shown at checkout. Delivery minimum: Minimum purchase required for delivery; amount not published."}, "dunkin": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "five_fifty_pizzeria": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Delivery via Favor advertised (own social post); no fee found — UNVERIFIED. Delivery minimum: No minimum published."}, "golden_corral": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Delivery via a delivery partner; fee set by the partner, not published by Golden Corral. Delivery minimum: No minimum published."}, "heb": {"delivers": true, "fee": 9.95, "feeLabel": "Company delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $9.95 ($5.00 delivery fee + $4.95 personal shopper fee — H-E-B Newsroom Dec 2020, updated May 2022; DATED. Current heb.com publishes no fee — confirm at checkout.) Delivery minimum: No current minimum published on heb.com."}, "jalapenos_pizza": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "jujuice": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "kfc": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Set per store; shown at checkout. Delivery minimum: No minimum published."}, "krispy_kreme": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published on own ordering pages. Delivery minimum: No minimum published for regular delivery (catering: $50 minimum)."}, "la_laguna": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — UNVERIFIED — no Favor listing found for Laredo La Laguna; prior $6.29 figure was a Dallas listing, discarded. Delivery minimum: No minimum published."}, "la_roca": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee.) Delivery minimum: No minimum published on Favor listing."}, "la_unica_mcpherson": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Delivery itself UNVERIFIED. Delivery minimum: Delivery UNVERIFIED."}, "la_unica_shiloh": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee.) Delivery minimum: No minimum published on Favor listing."}, "laredo_taco_company": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": 12, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee (verified live Nov 9).) Delivery minimum: No minimum published on Favor listing. Free delivery on orders of $12.00+. ($12+ for free delivery — Favor listing promo ('$0 delivery fee on $12+'); conflicts with per-store $3.49, confirm at checkout.)"}, "leoncillos": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Delivery advertised; no fee published. Delivery minimum: No minimum published."}, "lins": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fee text on own site; shown at checkout only. Delivery minimum: No minimum published."}, "logans": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published. Delivery minimum: No minimum published."}, "los_jacales": {"delivers": true, "fee": 4.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $4.49 (Favor delivery fee (verified live Nov 9).) Delivery minimum: No minimum published on Favor listing."}, "marios": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No delivery fee published anywhere; keg delivery 'For pricing — please call us'. Delivery minimum: No minimum published."}, "mcdonalds": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Varies per restaurant by location and courier availability. Delivery minimum: No minimum order amount."}, "nothing_bundt_cakes": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Delivery fee varies by location; stated during checkout. Delivery minimum: No delivery minimum published."}, "olive_garden": {"delivers": true, "fee": 4.99, "feeLabel": "Restaurant delivery fee", "min": 4.99, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $4.99 (Starting fee, based on address.) Delivery minimum: $4.99."}, "palenque_grill": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No regular-delivery fee published. Delivery minimum: No minimum for regular delivery (catering: $125 minimum)."}, "papa_johns": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Set per store; shown at checkout. Delivery minimum: No minimum published."}, "pizza_hut": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Varies by store; shown at checkout. Delivery minimum: Minimum varies by store; amount not published."}, "pizza_patron": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fee published; shown at checkout only. Delivery minimum: No minimum published."}, "pollo_feliz": {"delivers": true, "fee": 12.0, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $12.00 (Restaurant delivery fee $12.00 on own Toast ordering (San Dario location); page crawled Dec 3, 2025 — re-check at first order. NOT a Favor fee.) Delivery minimum: No minimum published on the Toast page."}, "popeyes": {"delivers": true, "fee": 1.49, "feeLabel": "Restaurant delivery fee", "min": 12, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $1.49 (Delivery fee $1.49.) Delivery minimum: $12.00."}, "raising_canes": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "ramen_kai": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee; own fee UNVERIFIED.) Delivery minimum: No minimum published."}, "sams_club": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": null, "threshold": 50, "full": "No additional food delivery fees. Company delivery fee: Tiered by membership: Plus standard $0 on $50+, $8 under $50, Express $10, 3hr-or-less $5; Club standard $12, Express $22, 3hr-or-less $17. Membership required. Delivery minimum: No minimum order for delivery. Free delivery on orders of $50.00+. ($50+ for Plus members (free standard delivery on eligible orders).)"}, "sonic": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": 10, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No standard fee published; varies by location, shown at checkout. Delivery minimum: No delivery minimum published. Free delivery on orders of $10.00+. ($10+ for $0 delivery with promo code DELIVERY in the Sonic app — PROMO, not standing free delivery.)"}, "specs": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Delivery fees vary by distance; displayed at checkout before paying. Delivery minimum: No minimum published."}, "suarez": {"delivers": true, "fee": 3.99, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.99 (Restaurant delivery fee (own Facebook page).) Delivery minimum: No minimum published."}, "sushi_madre": {"delivers": true, "fee": 2.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $2.49 (Favor delivery fee $2.49; own ToastTab fee UNVERIFIED (shown at checkout only).) Delivery minimum: No minimum published."}, "sweet_spot": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — UNVERIFIED — no Favor listing found in search Nov 9; confirm in Favor app. Delivery minimum: No minimum published."}, "taco_bell": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No standard fixed fee; shown at checkout. Delivery minimum: No minimum published."}, "taco_palenque": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fee published; shown at checkout only. Delivery minimum: No minimum published."}, "tacos_los_gordos": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "target": {"delivers": true, "fee": 9.99, "feeLabel": "Company delivery fee", "min": 35, "threshold": 35, "full": "No additional food delivery fees. Company delivery fee: $9.99 ($9.99 per same-day delivery order without Target Circle 360.) Delivery minimum: $35.00. Free delivery on orders of $35.00+. ($35+ with Target Circle 360 (unlimited free same-day delivery; $99/yr).)"}, "texas_roadhouse": {"delivers": false, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Pickup only — no delivery fee."}, "tremendo_taco": {"delivers": true, "fee": 3.49, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $3.49 (Favor delivery fee.) Delivery minimum: No minimum published on Favor listing."}, "vicas_delights": {"delivers": true, "fee": 6.29, "feeLabel": "Favor delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: $6.29 (Favor delivery fee (verified live Nov 9). NOTE: Favor listing is for 5517 McPherson Rd STE 12 — confirm location before ordering (main store 2357 E Saunders St).) Delivery minimum: No minimum published on Favor listing."}, "walmart": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": 35, "threshold": 35, "full": "No additional food delivery fees. Company delivery fee: $7.95–$9.95 per order, non-member; $0 for Walmart+ members on scheduled $35+ orders; Express +$10. REPORTED via 2026 guides — walmart.com bot-blocked the fetch; confirm at checkout. Delivery minimum: $35.00. Free delivery on orders of $35.00+. ($35+ with Walmart+ (free scheduled delivery); free site shipping $35+ without membership.)"}, "walmart_specials": {"delivers": true, "fee": null, "feeLabel": "Company delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Display-only — no ordering, no delivery fee. Delivery minimum: Display-only."}, "wendys": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published; shown at checkout. Delivery minimum: No minimum published."}, "whataburger": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": null, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — No fixed fee published; shown at checkout only. Delivery minimum: No minimum published."}, "wingstop": {"delivers": true, "fee": null, "feeLabel": "Restaurant delivery fee", "min": 5.0, "threshold": null, "full": "No additional food delivery fees. Company delivery fee: not yet confirmed — Varies by location; shown at checkout. Delivery minimum: $5.00."}};
    var FOOD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
    var currentFoodCompany = '';
    function foodSend(text) {
@@ -7170,6 +7223,8 @@
      currentFoodCompany = store;
      var title = document.getElementById('foodCompanyTitle');
      if (title) title.textContent = store;
+     var feeInfoEl = document.getElementById('foodDeliveryInfo');
+     if (feeInfoEl) { var _fid = FOOD_STORE_IDS[store] || ''; var _finfo = _fid ? FOOD_DELIVERY_INFO[_fid] : null; feeInfoEl.textContent = _finfo ? _finfo.full : ''; }
      var grid = document.getElementById('foodGrid');
      var hint = document.getElementById('foodHint');
      var note = document.getElementById('foodNote');
@@ -8017,6 +8072,16 @@
        sub.className = 'cartStoreSubtotal';
        sub.textContent = (!gUnpriced && gPriced) ? ('Subtotal: $' + gSum.toFixed(2)) : 'Subtotal: Lumi to confirm';
        wrap.appendChild(sub);
+       var feeInfo = FOOD_DELIVERY_INFO[g.storeId];
+       if (feeInfo) {
+         var feeP = document.createElement('p');
+         feeP.className = 'cartDeliveryFee';
+         if (feeInfo.delivers === false) { feeP.textContent = 'No additional food delivery fees. Pickup \u2014 no delivery fee.'; }
+         else if (typeof feeInfo.fee === 'number' && !gUnpriced && gPriced) { feeP.textContent = 'No additional food delivery fees. ' + feeInfo.feeLabel + ': $' + feeInfo.fee.toFixed(2) + ' \u2014 estimated total with delivery: $' + (gSum + feeInfo.fee).toFixed(2) + ' (estimate \u2014 the live checkout total is final).'; }
+         else if (typeof feeInfo.fee === 'number') { feeP.textContent = 'No additional food delivery fees. ' + feeInfo.feeLabel + ': $' + feeInfo.fee.toFixed(2) + ' (total with delivery shown once prices are confirmed).'; }
+         else { feeP.textContent = 'No additional food delivery fees. Company delivery fee: shown at checkout.'; }
+         wrap.appendChild(feeP);
+       }
        if (GROCERY_PAY_STORES[g.storeId]) {
         var ap = document.createElement('p');
         ap.className = 'cartAutoPay';
@@ -8211,6 +8276,56 @@
    if (entClose) entClose.addEventListener('click', function () {
      if (entOverlay) entOverlay.classList.remove('open');
      showHome();
+   });
+   /* Scanner tab (build 2026.11.09-1, owner order Nov 9, 2026):
+      home button opens the overlay (same pattern as Entertainment);
+      each Listen button lazy-loads its Broadcastify feed page into
+      the card's iframe (src is only set on tap, so nothing loads
+      until she asks) and toggles back to stop. Only one feed plays
+      at a time. stopScannerAudio() clears the iframe srcs so the
+      sound stops when she closes the tab, taps home, or switches
+      feeds — a hidden iframe must never keep playing. */
+   var scannerOverlay = document.getElementById('scannerOverlay');
+   var scannerGo = document.getElementById('homeScannerBtn');
+   if (scannerGo) scannerGo.addEventListener('click', function () {
+     showChat();
+     if (scannerOverlay) scannerOverlay.classList.add('open');
+   });
+   function stopScannerAudio() {
+     Array.prototype.forEach.call(document.querySelectorAll('#scannerOverlay .scannerPlayer iframe'), function (fr) {
+       try { fr.removeAttribute('src'); } catch (e) {}
+     });
+     Array.prototype.forEach.call(document.querySelectorAll('#scannerOverlay .scannerPlayer'), function (box) { box.hidden = true; });
+     Array.prototype.forEach.call(document.querySelectorAll('#scannerOverlay .scannerListen'), function (btn) {
+       btn.classList.remove('playing');
+       btn.textContent = '▶ Listen live';
+     });
+   }
+   function closeScanner() {
+     stopScannerAudio();
+     if (scannerOverlay) scannerOverlay.classList.remove('open');
+     showHome();
+   }
+   var scannerClose = document.getElementById('scannerClose');
+   if (scannerClose) scannerClose.addEventListener('click', closeScanner);
+   var scannerCloseTop = document.getElementById('scannerCloseTop');
+   if (scannerCloseTop) scannerCloseTop.addEventListener('click', closeScanner);
+   var scannerHomeBtn = document.getElementById('homeBtn');
+   if (scannerHomeBtn) scannerHomeBtn.addEventListener('click', stopScannerAudio);
+   Array.prototype.forEach.call(document.querySelectorAll('#scannerOverlay .scannerListen'), function (btn) {
+     btn.addEventListener('click', function () {
+       var card = btn.closest('.scannerCard');
+       var box = card ? card.querySelector('.scannerPlayer') : null;
+       var fr = box ? box.querySelector('iframe') : null;
+       if (!box || !fr) return;
+       if (btn.classList.contains('playing')) { stopScannerAudio(); return; }
+       stopScannerAudio();
+       var feed = btn.getAttribute('data-feed') || '';
+       fr.src = 'https://www.broadcastify.com/listen/feed/' + feed;
+       box.hidden = false;
+       btn.classList.add('playing');
+       btn.textContent = '⏸ Stop listening';
+     });
    });
    /* Verified lists (Nov 8, 2026, live browser sign-ins — real,
       use exactly as written; never invent or guess a title). Each
